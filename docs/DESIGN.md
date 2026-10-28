@@ -1,7 +1,8 @@
 # Waystation: Design
 
-> Working title. A spaceport management tycoon set in space, with the colourful, low-poly
-> look of No Man's Sky. You begin as a lonely rest stop and grow into a bustling hub.
+> Working title. A **grim-dark** spaceport management tycoon: a rusting waystation hanging in a cold
+> void beside a dying red star. You begin as a lonely refuelling stop and grow into a grimy hub
+> that desperate pilots depend on.
 
 ## Pillars
 
@@ -11,7 +12,9 @@
    You should be able to *see* a bottleneck before the numbers tell you.
 3. **Service is reputation, reputation is traffic.** Happy pilots bring more pilots; angry ones
    cost you. The loop is: serve well → more traffic → expand → serve well.
-4. **Cosy sci-fi.** Saturated nebulae, chunky ships, friendly hardware. No grim survival.
+4. **Grim-dark industrial.** Darkness, failing lamps, rust, smoke and sparks. Light is scarce and
+   precious; every pad is a pool of sodium light in the void. Readability comes from light and
+   emissives, not bright colours.
 
 ## Core loop (prototype)
 
@@ -58,7 +61,15 @@ ship arrives → hails the station (patience ↓) → you clear it to a pad → 
 
 ## Look and feel
 
-No Man's Sky palette: deep purple space, teal and pink nebulae, a ringed gas giant, chunky
-two-tone ships, yellow hazard stripes, cyan running lights. Isometric orthographic camera that
-turns in 90° steps. All art is produced separately (GPT) and dropped into fixed slots, so code
-ships only placeholders.
+Grim-dark industrial sci-fi (think *Alien*, *Dead Space*, *Blade Runner*, *Barotrauma*):
+- **Palette:** near-black void, gunmetal and rust, dirty hazard yellow, sodium-orange lamps, cold
+  blue work lights, alarm red. A dying red giant and a dark planet with a thin lit crescent.
+- **Light:** almost everything is dark; pads, walkways and hangars are pools of lamplight. Some
+  lamps are failing and flicker. Unpowered (unconnected) modules go dark except a red emergency lamp.
+- **FX tied to gameplay:** damaged ships arrive trailing smoke and sparks; repairs throw welding
+  sparks and arc flashes; refuelling vents frosty vapour; engines burn hard on landing and take-off.
+- **Camera:** isometric orthographic, 90° turns; post-processing with bloom, heavy vignette, film
+  grain, desaturated teal/amber grade, slight chromatic aberration.
+- **UI:** old amber terminal (scanlines and glitches to come).
+
+All art is produced separately (GPT) and dropped into fixed slots; code ships placeholders, lamps and FX.

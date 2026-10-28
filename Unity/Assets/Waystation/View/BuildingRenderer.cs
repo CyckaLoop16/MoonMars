@@ -5,33 +5,40 @@ using Waystation.Sim;
 namespace Waystation.View
 {
     /// <summary>
-    /// Station modules floating in space. Walkways and foundations auto-connect: railings and edge
+    /// Station modules floating in the dark. Walkways and foundations auto-connect: railings and edge
     /// trim only appear on sides that face open space, so paths and platforms join up on their own.
-    /// Landing pads carry a live status light (green free, amber cleared, red occupied, grey offline).
+    ///
+    /// Lighting and FX: sodium floodlights on pads (some failing), cold work lights in hangars, a red
+    /// rotating beacon on the comms mast, lamp posts along walkways, fuel lines venting vapour while a
+    /// ship refuels, welding sparks and arc flashes during repairs. Unconnected modules go dark except
+    /// for a flickering red emergency lamp. Pads carry a status light (green free, amber cleared,
+    /// red occupied, grey offline).
     ///
     /// Art drop-in slots (pivot at the footprint centre, deck top at Y=0, 1 unit = 1 grid cell):
     ///   Resources/Buildings/StarterPad.prefab, LandingPad.prefab, Hangar.prefab
-    ///   Resources/Buildings/Walkway_Deck.prefab       (full 1×1 grated deck)
-    ///   Resources/Buildings/Walkway_Railing.prefab    (railing along the cell's +Z edge; rotated per open side)
-    ///   Resources/Buildings/Foundation.prefab         (full 1×1 deck plate)
-    ///   Resources/Buildings/Foundation_Edge.prefab    (trim along the +Z edge; rotated per open side)
-    /// Anything missing falls back to the coloured placeholder.
+    ///   Resources/Buildings/Walkway_Deck.prefab, Walkway_Railing.prefab (+Z edge), Walkway_Lamp.prefab
+    ///   Resources/Buildings/Foundation.prefab, Foundation_Edge.prefab (+Z edge)
+    /// Lamps and effects are added in code on top of any art, at the positions noted in docs/TECH.md.
     /// </summary>
     public sealed class BuildingRenderer : MonoBehaviour
     {
-        static readonly Color Deck = MeshBuilder.Hex("#3b4252");
-        static readonly Color Underside = MeshBuilder.Hex("#262b38");
-        static readonly Color Stripe = MeshBuilder.Hex("#ffc93c");
-        static readonly Color Light = MeshBuilder.Hex("#4fe3ff");
-        static readonly Color Hull = MeshBuilder.Hex("#e9eef3");
-        static readonly Color Accent = MeshBuilder.Hex("#ff8a3d");
-        static readonly Color Teal = MeshBuilder.Hex("#3fd0c9");
-        static readonly Color Warning = MeshBuilder.Hex("#ff3b5c");
-        static readonly Color Grate = MeshBuilder.Hex("#4a5163");
-        static readonly Color GrateSlat = MeshBuilder.Hex("#353a48");
-        static readonly Color Post = MeshBuilder.Hex("#8a93a6");
-        static readonly Color Plate = MeshBuilder.Hex("#59627a");
-        static readonly Color PlateTop = MeshBuilder.Hex("#6b7590");
+        static readonly Color Deck = MeshBuilder.Hex("#2c2f34");
+        static readonly Color Underside = MeshBuilder.Hex("#15171a");
+        static readonly Color Stripe = MeshBuilder.Hex("#b8942a");
+        static readonly Color Hull = MeshBuilder.Hex("#7d8187");
+        static readonly Color Rust = MeshBuilder.Hex("#7a3418");
+        static readonly Color Oxide = MeshBuilder.Hex("#3d5f55");
+        static readonly Color Grate = MeshBuilder.Hex("#33373d");
+        static readonly Color GrateSlat = MeshBuilder.Hex("#1f2125");
+        static readonly Color Post = MeshBuilder.Hex("#55595f");
+        static readonly Color Plate = MeshBuilder.Hex("#3a3e44");
+        static readonly Color PlateTop = MeshBuilder.Hex("#44494f");
+        static readonly Color Dead = MeshBuilder.Hex("#2a2c2f");
+
+        public static readonly Color Sodium = MeshBuilder.Hex("#ff9a3c");
+        static readonly Color WorkLight = MeshBuilder.Hex("#cfe0ff");
+        static readonly Color Alarm = MeshBuilder.Hex("#ff2a3a");
+        static readonly Color ArcLight = MeshBuilder.Hex("#bcd8ff");
 
         enum PadStatus
         {
@@ -43,16 +50,26 @@ namespace Waystation.View
 
         static readonly Dictionary<PadStatus, Color> StatusColors = new Dictionary<PadStatus, Color>
         {
-            { PadStatus.Offline, MeshBuilder.Hex("#5b6070") },
-            { PadStatus.Free, MeshBuilder.Hex("#45ff8a") },
+            { PadStatus.Offline, MeshBuilder.Hex("#3a3d44") },
+            { PadStatus.Free, MeshBuilder.Hex("#3cff7a") },
             { PadStatus.Cleared, MeshBuilder.Hex("#ffb020") },
-            { PadStatus.Occupied, MeshBuilder.Hex("#ff4060") },
+            { PadStatus.Occupied, MeshBuilder.Hex("#ff3048") },
         };
+
+        /// <summary>Live bits of a pad or hangar, updated every frame from the sim.</summary>
+        sealed class PadFx
+        {
+            public MeshFilter StatusMesh;
+            public FxLight StatusLight;
+            public ParticleSystem Vapor;
+            public ParticleSystem Weld;
+            public FxLight WeldLight;
+        }
 
         readonly Dictionary<string, Mesh> _meshes = new Dictionary<string, Mesh>();
         readonly Dictionary<string, GameObject> _prefabs = new Dictionary<string, GameObject>();
         readonly List<GameObject> _objects = new List<GameObject>();
-        readonly Dictionary<int, MeshFilter> _statusLights = new Dictionary<int, MeshFilter>();
+        readonly Dictionary<int, PadFx> _pads = new Dictionary<int, PadFx>();
         readonly Dictionary<PadStatus, Mesh> _statusMeshes = new Dictionary<PadStatus, Mesh>();
         Material _material;
         Station _station;
@@ -63,7 +80,7 @@ namespace Waystation.View
             foreach (var kv in StatusColors)
             {
                 var b = new MeshBuilder();
-                b.AddBox(Vector3.zero, Vector3.one * 0.16f, kv.Value, 45f);
+                b.AddBox(Vector3.zero, Vector3.one * 0.14f, kv.Value, 45f, kv.Key == PadStatus.Offline ? 0f : 1f);
                 _statusMeshes[kv.Key] = b.ToMesh($"Status {kv.Key}");
             }
         }
@@ -77,7 +94,7 @@ namespace Waystation.View
         {
             foreach (var go in _objects) Destroy(go);
             _objects.Clear();
-            _statusLights.Clear();
+            _pads.Clear();
             var s = _station;
 
             foreach (var b in s.Buildings)
@@ -86,29 +103,136 @@ namespace Waystation.View
                 root.transform.SetParent(transform, false);
                 root.transform.position = Center(b, s.Width, s.Height);
                 _objects.Add(root);
+                bool powered = b.Connected;
 
                 switch (b.Type)
                 {
                     case BuildingType.Walkway:
-                        BuildTile(root, s.LinkMask(b.Origin), "Walkway_Deck", WalkwayDeck, "Walkway_Railing", WalkwayRailing);
+                        int mask = s.LinkMask(b.Origin);
+                        BuildTile(root, mask, "Walkway_Deck", WalkwayDeck, "Walkway_Railing", WalkwayRailing);
+                        AddWalkwayLamp(root, b, mask, powered);
                         break;
                     case BuildingType.Foundation:
                         BuildTile(root, s.LinkMask(b.Origin), "Foundation", FoundationPlate, "Foundation_Edge", FoundationEdge);
                         break;
                     default:
-                        Spawn(root, b.Type.ToString(), () => Placeholder(b.Type), Vector3.zero, Quaternion.identity);
+                        string key = powered ? b.Type.ToString() : b.Type + "_Dark";
+                        Spawn(root, b.Type.ToString(), key, () => Placeholder(b.Type, powered), Vector3.zero, Quaternion.identity);
+                        if (powered) AddFixtures(root, b);
                         break;
                 }
 
-                if (b.Def.Serves.Length > 0) AddStatusLight(root, b);
-                if (!b.Connected) Spawn(root, "NoConnection", WarningBeacon, Vector3.zero, Quaternion.identity, prefabAllowed: false);
+                if (b.Def.Serves.Length > 0) AddPadFx(root, b, powered);
+                if (!powered) AddEmergencyLamp(root, b);
             }
-            UpdateStatusLights();
+            UpdatePads();
         }
 
         void Update()
         {
-            if (_station != null) UpdateStatusLights();
+            if (_station != null) UpdatePads();
+        }
+
+        // ------------------------------------------------------------------ lamps and effects
+
+        /// <summary>Floodlights, beacons and work lights for a connected module.</summary>
+        void AddFixtures(GameObject root, Building b)
+        {
+            var t = root.transform;
+            float w = b.Def.Width - 0.1f, h = b.Def.Height - 0.1f;
+            bool failing = b.Id % 5 == 3; // the odd lamp is always on its way out
+
+            switch (b.Type)
+            {
+                case BuildingType.StarterPad:
+                case BuildingType.LandingPad:
+                    FxLight.Create(t, new Vector3(-(w / 2f - 0.25f), 1.0f, -(h / 2f - 0.25f)), Sodium, 1.5f, 3.4f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
+                    FxLight.Create(t, new Vector3(w / 2f - 0.25f, 1.0f, h / 2f - 0.25f), Sodium, 1.5f, 3.4f);
+                    if (b.Type == BuildingType.StarterPad)
+                        FxLight.Create(t, new Vector3(1.05f, 1.75f, -1.05f), Alarm, 1.6f, 4f, FxLightMode.Strobe);
+                    break;
+
+                case BuildingType.Hangar:
+                    FxLight.Create(t, new Vector3(-(w / 2f - 0.4f), 1.2f, h / 2f - 0.4f), WorkLight, 1.3f, 3.8f);
+                    FxLight.Create(t, new Vector3(w / 2f - 0.4f, 1.2f, h / 2f - 0.4f), WorkLight, 1.3f, 3.8f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
+                    FxLight.Create(t, new Vector3(0f, 1.1f, -h / 2f + 0.2f), Alarm, 0.7f, 2.2f, FxLightMode.Pulse);
+                    break;
+            }
+        }
+
+        void AddPadFx(GameObject root, Building b, bool powered)
+        {
+            var t = root.transform;
+            float w = b.Def.Width - 0.1f, h = b.Def.Height - 0.1f;
+            var fx = new PadFx();
+
+            var status = new GameObject("StatusLight");
+            status.transform.SetParent(t, false);
+            status.transform.localPosition = new Vector3(w / 2f - 0.25f, 0.78f, h / 2f - 0.25f);
+            fx.StatusMesh = status.AddComponent<MeshFilter>();
+            status.AddComponent<MeshRenderer>().sharedMaterial = _material;
+            if (powered) fx.StatusLight = FxLight.Create(t, status.transform.localPosition, Color.white, 0.6f, 1.3f);
+
+            if (powered && b.Type != BuildingType.Hangar)
+                fx.Vapor = Fx.Create(t, FxPreset.Vapor, new Vector3(0.6f, 0.45f, -h / 2f + 0.18f), Vector3.up);
+
+            if (powered && b.Def.Repairs)
+            {
+                fx.Weld = Fx.Create(t, FxPreset.Weld, new Vector3(0.15f, 0.55f, 0.1f), Vector3.up);
+                fx.WeldLight = FxLight.Create(t, new Vector3(0.15f, 0.7f, 0.1f), ArcLight, 0f, 3.2f, FxLightMode.Flicker);
+            }
+            _pads[b.Id] = fx;
+        }
+
+        void UpdatePads()
+        {
+            foreach (var kv in _pads)
+            {
+                var b = _station.GetBuilding(kv.Key);
+                var fx = kv.Value;
+                if (b == null || fx.StatusMesh == null) continue;
+                var ship = b.ShipId.HasValue ? _station.GetShip(b.ShipId.Value) : null;
+
+                var status = !b.Connected ? PadStatus.Offline
+                    : ship == null ? PadStatus.Free
+                    : ship.State == ShipState.Landing ? PadStatus.Cleared
+                    : PadStatus.Occupied;
+                var mesh = _statusMeshes[status];
+                if (fx.StatusMesh.sharedMesh != mesh) fx.StatusMesh.sharedMesh = mesh;
+                if (fx.StatusLight != null) fx.StatusLight.Color = StatusColors[status];
+
+                bool servicing = ship != null && ship.State == ShipState.Servicing;
+                bool refuelling = servicing && ship.FuelLoaded < ship.FuelNeeded;
+                bool welding = servicing && !refuelling && ship.NeedsRepair && !ship.Repaired && b.Def.Repairs;
+
+                Fx.SetActive(fx.Vapor, refuelling);
+                Fx.SetActive(fx.Weld, welding);
+                if (fx.WeldLight != null) fx.WeldLight.Intensity = welding ? 2.4f : 0f;
+            }
+        }
+
+        void AddWalkwayLamp(GameObject root, Building b, int mask, bool powered)
+        {
+            // A lamp post on roughly every third walkway tile, on an open side.
+            if (mask == 0xF || (b.Origin.X * 7 + b.Origin.Y * 13) % 3 != 0) return;
+            int side = 0;
+            while ((mask & (1 << side)) != 0) side++;
+            var d = Cell.Directions[side];
+            var rotation = Quaternion.LookRotation(new Vector3(d.X, 0f, d.Y));
+
+            string key = powered ? "Walkway_Lamp" : "Walkway_Lamp_Dark";
+            Spawn(root, "Walkway_Lamp", key, () => WalkwayLamp(powered), Vector3.zero, rotation);
+            if (powered)
+            {
+                var mode = (b.Origin.X + b.Origin.Y) % 4 == 0 ? FxLightMode.Flicker : FxLightMode.Steady;
+                FxLight.Create(root.transform, rotation * new Vector3(0.38f, 0.72f, 0.38f), Sodium, 0.9f, 2f, mode);
+            }
+        }
+
+        void AddEmergencyLamp(GameObject root, Building b)
+        {
+            Spawn(root, "EmergencyLamp", "EmergencyLamp", EmergencyLamp, Vector3.zero, Quaternion.identity, prefabAllowed: false);
+            FxLight.Create(root.transform, new Vector3(0f, 1.15f, 0f), Alarm, 1.4f, Mathf.Max(2.4f, b.Def.Width * 0.9f), FxLightMode.Flicker);
         }
 
         // ------------------------------------------------------------------ auto-connecting tiles
@@ -116,57 +240,20 @@ namespace Waystation.View
         /// <summary>A deck piece plus an edge piece on every side that faces open space.</summary>
         void BuildTile(GameObject root, int mask, string deckKey, System.Func<Mesh> deck, string edgeKey, System.Func<Mesh> edge)
         {
-            Spawn(root, deckKey, deck, Vector3.zero, Quaternion.identity);
+            Spawn(root, deckKey, deckKey, deck, Vector3.zero, Quaternion.identity);
             for (int i = 0; i < 4; i++)
             {
                 if ((mask & (1 << i)) != 0) continue; // a neighbour is there: leave the side open
                 var d = Cell.Directions[i];
-                Spawn(root, edgeKey, edge, Vector3.zero, Quaternion.LookRotation(new Vector3(d.X, 0f, d.Y)));
-            }
-        }
-
-        // ------------------------------------------------------------------ pad status lights
-
-        void AddStatusLight(GameObject root, Building b)
-        {
-            var light = new GameObject("StatusLight");
-            light.transform.SetParent(root.transform, false);
-            float corner = b.Def.Width / 2f - 0.3f;
-            light.transform.localPosition = new Vector3(corner, 0.75f, b.Def.Height / 2f - 0.3f);
-            var filter = light.AddComponent<MeshFilter>();
-            light.AddComponent<MeshRenderer>().sharedMaterial = _material;
-            _statusLights[b.Id] = filter;
-
-            // The pole the light sits on.
-            var pole = new MeshBuilder();
-            pole.AddBox(new Vector3(0f, -0.38f, 0f), new Vector3(0.06f, 0.7f, 0.06f), Post);
-            var poleGo = new GameObject("StatusPole");
-            poleGo.transform.SetParent(light.transform, false);
-            poleGo.AddComponent<MeshFilter>().sharedMesh = Cached("StatusPole", () => pole.ToMesh("StatusPole"));
-            poleGo.AddComponent<MeshRenderer>().sharedMaterial = _material;
-        }
-
-        void UpdateStatusLights()
-        {
-            foreach (var kv in _statusLights)
-            {
-                var b = _station.GetBuilding(kv.Key);
-                if (b == null || kv.Value == null) continue;
-
-                var status = !b.Connected ? PadStatus.Offline
-                    : b.ShipId == null ? PadStatus.Free
-                    : _station.GetShip(b.ShipId.Value)?.State == ShipState.Landing ? PadStatus.Cleared
-                    : PadStatus.Occupied;
-                var mesh = _statusMeshes[status];
-                if (kv.Value.sharedMesh != mesh) kv.Value.sharedMesh = mesh;
+                Spawn(root, edgeKey, edgeKey, edge, Vector3.zero, Quaternion.LookRotation(new Vector3(d.X, 0f, d.Y)));
             }
         }
 
         // ------------------------------------------------------------------ spawning
 
-        void Spawn(GameObject parent, string key, System.Func<Mesh> placeholder, Vector3 position, Quaternion rotation, bool prefabAllowed = true)
+        void Spawn(GameObject parent, string prefabKey, string meshKey, System.Func<Mesh> placeholder, Vector3 position, Quaternion rotation, bool prefabAllowed = true)
         {
-            var prefab = prefabAllowed ? LoadPrefab(key) : null;
+            var prefab = prefabAllowed ? LoadPrefab(prefabKey) : null;
             GameObject go;
             if (prefab != null)
             {
@@ -174,19 +261,14 @@ namespace Waystation.View
             }
             else
             {
-                go = new GameObject(key);
+                go = new GameObject(meshKey);
                 go.transform.SetParent(parent.transform, false);
-                go.AddComponent<MeshFilter>().sharedMesh = Cached(key, placeholder);
+                if (!_meshes.TryGetValue(meshKey, out var mesh)) _meshes[meshKey] = mesh = placeholder();
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
                 go.AddComponent<MeshRenderer>().sharedMaterial = _material;
             }
             go.transform.localPosition = position;
             go.transform.localRotation = rotation;
-        }
-
-        Mesh Cached(string key, System.Func<Mesh> build)
-        {
-            if (!_meshes.TryGetValue(key, out var mesh)) _meshes[key] = mesh = build();
-            return mesh;
         }
 
         GameObject LoadPrefab(string key)
@@ -198,58 +280,62 @@ namespace Waystation.View
 
         // ------------------------------------------------------------------ module placeholders
 
-        static Mesh Placeholder(BuildingType type)
+        /// <summary>Grimy industrial placeholder; unpowered modules get dead (non-glowing) lamps.</summary>
+        static Mesh Placeholder(BuildingType type, bool powered)
         {
             var b = new MeshBuilder();
             var def = BuildingCatalog.Get(type);
             float w = def.Width - 0.1f, h = def.Height - 0.1f;
+            float glow = powered ? 1f : 0f;
+            var lamp = powered ? Sodium : Dead;
 
-            // Every module is a floating deck with a tapered underside, hazard stripes and corner lights.
             b.AddBox(new Vector3(0f, -0.12f, 0f), new Vector3(w, 0.24f, h), Deck);
             b.AddSpike(new Vector3(0f, -0.24f, 0f), new Vector3(0f, -0.4f - def.Width * 0.3f, 0f), Mathf.Min(w, h) * 0.45f, 4, Underside, 45f);
             AddEdgeStripes(b, w, h);
             foreach (var (sx, sz) in new[] { (1, 1), (1, -1), (-1, 1), (-1, -1) })
-                b.AddBox(new Vector3(sx * (w / 2f - 0.12f), 0.06f, sz * (h / 2f - 0.12f)), Vector3.one * 0.12f, Light);
+                b.AddBox(new Vector3(sx * (w / 2f - 0.12f), 0.04f, sz * (h / 2f - 0.12f)), Vector3.one * 0.08f, lamp, 0f, glow * 0.6f);
 
             switch (type)
             {
                 case BuildingType.StarterPad:
-                    AddPadDetails(b, w, h);
-                    // The station's fuel tank and the comms mast ships hail.
-                    b.AddPrism(new Vector3(-1.0f, 0f, 1.0f), 0.3f, 0.85f, 8, Accent);
+                    AddPadDetails(b, w, h, lamp, glow);
+                    // The station's fuel tank and the comms mast ships hail, with its rotating beacon.
+                    b.AddPrism(new Vector3(-1.0f, 0f, 1.0f), 0.3f, 0.85f, 8, Rust);
                     b.AddPrism(new Vector3(-1.0f, 0.85f, 1.0f), 0.22f, 0.12f, 8, Hull);
                     b.AddBox(new Vector3(-1.0f, 0.45f, 0.62f), new Vector3(0.08f, 0.08f, 0.5f), Post);
                     b.AddPrism(new Vector3(1.05f, 0f, -1.05f), 0.04f, 1.7f, 4, Post);
                     b.AddSpike(new Vector3(1.05f, 1.55f, -1.05f), new Vector3(0.85f, 1.75f, -0.85f), 0.22f, 6, Hull);
-                    b.AddBox(new Vector3(1.05f, 1.75f, -1.05f), Vector3.one * 0.08f, Warning);
+                    b.AddBox(new Vector3(1.05f, 1.75f, -1.05f), Vector3.one * 0.09f, powered ? Alarm : Dead, 0f, glow);
                     break;
 
                 case BuildingType.LandingPad:
-                    AddPadDetails(b, w, h);
+                    AddPadDetails(b, w, h, lamp, glow);
                     break;
 
                 case BuildingType.Hangar:
-                    // An open bay: three walls, a gantry crane and floor markings, so docked ships stay visible.
                     const float wallH = 1.3f;
                     b.AddBox(new Vector3(0f, wallH / 2f, h / 2f - 0.12f), new Vector3(w, wallH, 0.24f), Hull);
                     b.AddBox(new Vector3(w / 2f - 0.12f, wallH / 2f, 0f), new Vector3(0.24f, wallH, h), Hull);
                     b.AddBox(new Vector3(-w / 2f + 0.12f, wallH / 2f, 0f), new Vector3(0.24f, wallH, h), Hull);
                     for (int i = -1; i <= 1; i++)
-                        b.AddBox(new Vector3(i * 1.1f, 0.85f, h / 2f - 0.25f), new Vector3(0.6f, 0.22f, 0.02f), Light);
-                    b.AddBox(new Vector3(0f, wallH + 0.04f, h / 2f - 0.12f), new Vector3(w, 0.08f, 0.3f), Accent);
-                    b.AddBox(new Vector3(0f, wallH + 0.1f, 0f), new Vector3(w, 0.14f, 0.28f), Teal);
-                    b.AddBox(new Vector3(0.6f, wallH - 0.15f, 0f), new Vector3(0.3f, 0.3f, 0.3f), Accent);
+                        b.AddBox(new Vector3(i * 1.1f, 0.85f, h / 2f - 0.25f), new Vector3(0.6f, 0.22f, 0.02f), powered ? Oxide : Dead, 0f, glow * 0.5f);
+                    b.AddBox(new Vector3(0f, wallH + 0.04f, h / 2f - 0.12f), new Vector3(w, 0.08f, 0.3f), Rust);
+                    b.AddBox(new Vector3(0f, wallH + 0.1f, 0f), new Vector3(w, 0.14f, 0.28f), Post);
+                    b.AddBox(new Vector3(0.6f, wallH - 0.15f, 0f), new Vector3(0.3f, 0.3f, 0.3f), Rust);
                     b.AddBox(new Vector3(0.6f, wallH - 0.55f, 0f), new Vector3(0.03f, 0.5f, 0.03f), Post);
                     b.AddBox(new Vector3(0.6f, wallH - 0.82f, 0f), new Vector3(0.14f, 0.06f, 0.14f), Stripe);
-                    // Tool racks along the side walls.
+                    // Work-light housings in the back corners, tool racks, floor guide line.
                     foreach (float side in new[] { -1f, 1f })
-                    for (int i = 0; i < 3; i++)
-                        b.AddBox(new Vector3(side * (w / 2f - 0.36f), 0.2f, -0.9f + i * 0.7f), new Vector3(0.2f, 0.4f, 0.4f), i % 2 == 0 ? Accent : Teal);
-                    // Floor guide lines.
+                    {
+                        b.AddBox(new Vector3(side * (w / 2f - 0.4f), 1.2f, h / 2f - 0.4f), new Vector3(0.24f, 0.12f, 0.18f), powered ? WorkLight : Dead, 0f, glow);
+                        for (int i = 0; i < 3; i++)
+                            b.AddBox(new Vector3(side * (w / 2f - 0.36f), 0.2f, -0.9f + i * 0.7f), new Vector3(0.2f, 0.4f, 0.4f), i % 2 == 0 ? Rust : Oxide);
+                    }
                     b.AddBox(new Vector3(0f, 0.012f, -0.4f), new Vector3(0.1f, 0.02f, 2.2f), Stripe);
+                    b.AddBox(new Vector3(0f, 1.1f, -h / 2f + 0.2f), new Vector3(0.14f, 0.14f, 0.14f), powered ? Alarm : Dead, 45f, glow);
                     break;
             }
-            return b.ToMesh(type.ToString());
+            return b.ToMesh(type + (powered ? "" : "_Dark"));
         }
 
         static void AddEdgeStripes(MeshBuilder b, float w, float h)
@@ -261,26 +347,33 @@ namespace Waystation.View
             b.AddBox(new Vector3(-w / 2f + inset, y, 0f), new Vector3(t, 0.02f, h - 2 * inset), Stripe);
         }
 
-        /// <summary>The big "L" from the concept sketch, a touchdown ring and the fuel pump.</summary>
-        static void AddPadDetails(MeshBuilder b, float w, float h)
+        /// <summary>The big "L" from the concept sketch, a touchdown ring, the fuel pump and two floodlight masts.</summary>
+        static void AddPadDetails(MeshBuilder b, float w, float h, Color lamp, float glow)
         {
             b.AddBox(new Vector3(-0.22f, 0.012f, 0.08f), new Vector3(0.24f, 0.02f, 1.2f), Stripe);
             b.AddBox(new Vector3(0.08f, 0.012f, -0.4f), new Vector3(0.84f, 0.02f, 0.24f), Stripe);
 
             const int segments = 16;
             const float radius = 1.05f;
-            for (int i = 0; i < segments; i += 1)
+            for (int i = 0; i < segments; i += 2) // dashed ring
             {
-                if (i % 2 == 1) continue; // dashed ring
                 float a = 2f * Mathf.PI * (i + 0.5f) / segments;
                 var p = new Vector3(Mathf.Cos(a) * radius, 0.011f, Mathf.Sin(a) * radius);
                 b.AddBox(p, new Vector3(0.36f, 0.02f, 0.06f), Hull, -a * Mathf.Rad2Deg + 90f);
             }
 
-            // Fuel pump on the south edge, with its hose reel.
-            b.AddBox(new Vector3(0.6f, 0.22f, -h / 2f + 0.18f), new Vector3(0.3f, 0.44f, 0.22f), Accent);
+            // Fuel pump on the south edge, with its hose reel and a dim readout.
+            b.AddBox(new Vector3(0.6f, 0.22f, -h / 2f + 0.18f), new Vector3(0.3f, 0.44f, 0.22f), Rust);
             b.AddPrism(new Vector3(0.6f, 0.44f, -h / 2f + 0.18f), 0.1f, 0.06f, 8, Hull);
-            b.AddBox(new Vector3(0.6f, 0.3f, -h / 2f + 0.06f), new Vector3(0.16f, 0.1f, 0.02f), Light);
+            b.AddBox(new Vector3(0.6f, 0.3f, -h / 2f + 0.06f), new Vector3(0.16f, 0.1f, 0.02f), lamp, 0f, glow * 0.7f);
+
+            // Floodlight masts in two opposite corners (the north-east one also carries the status light).
+            foreach (var (sx, sz) in new[] { (-1f, -1f), (1f, 1f) })
+            {
+                var basePos = new Vector3(sx * (w / 2f - 0.25f), 0f, sz * (h / 2f - 0.25f));
+                b.AddBox(basePos + new Vector3(0f, 0.5f, 0f), new Vector3(0.06f, 1f, 0.06f), Post);
+                b.AddBox(basePos + new Vector3(0f, 1.02f, 0f), new Vector3(0.24f, 0.1f, 0.18f), lamp, 45f, glow);
+            }
         }
 
         // ------------------------------------------------------------------ walkway and foundation pieces
@@ -295,7 +388,7 @@ namespace Waystation.View
             return b.ToMesh("Walkway_Deck");
         }
 
-        /// <summary>A railing along the cell's +Z edge: two posts, a yellow handrail and a mid rail.</summary>
+        /// <summary>A railing along the cell's +Z edge: posts, a hazard-yellow handrail and a mid rail.</summary>
         static Mesh WalkwayRailing()
         {
             var b = new MeshBuilder();
@@ -307,6 +400,15 @@ namespace Waystation.View
             return b.ToMesh("Walkway_Railing");
         }
 
+        /// <summary>A lamp post at the +X/+Z corner (rotated onto an open side).</summary>
+        static Mesh WalkwayLamp(bool powered)
+        {
+            var b = new MeshBuilder();
+            b.AddBox(new Vector3(0.38f, 0.35f, 0.38f), new Vector3(0.05f, 0.7f, 0.05f), Post);
+            b.AddBox(new Vector3(0.38f, 0.72f, 0.38f), new Vector3(0.14f, 0.07f, 0.14f), powered ? Sodium : Dead, 45f, powered ? 1f : 0f);
+            return b.ToMesh(powered ? "Walkway_Lamp" : "Walkway_Lamp_Dark");
+        }
+
         static Mesh FoundationPlate()
         {
             var b = new MeshBuilder();
@@ -314,6 +416,7 @@ namespace Waystation.View
             b.AddBox(new Vector3(0f, 0.005f, 0f), new Vector3(0.86f, 0.01f, 0.86f), PlateTop);
             foreach (var (sx, sz) in new[] { (1, 1), (1, -1), (-1, 1), (-1, -1) })
                 b.AddBox(new Vector3(sx * 0.36f, 0.015f, sz * 0.36f), Vector3.one * 0.05f, Post);
+            b.AddBox(new Vector3(0.2f, 0.012f, -0.25f), new Vector3(0.3f, 0.005f, 0.08f), Rust);
             b.AddSpike(new Vector3(0f, -0.3f, 0f), new Vector3(0f, -0.8f, 0f), 0.35f, 4, Underside, 45f);
             return b.ToMesh("Foundation");
         }
@@ -327,13 +430,13 @@ namespace Waystation.View
             return b.ToMesh("Foundation_Edge");
         }
 
-        /// <summary>Red beacon hovering over a module that isn't connected to the station.</summary>
-        static Mesh WarningBeacon()
+        /// <summary>Red emergency lamp on a short post: the only light left on an unconnected module.</summary>
+        static Mesh EmergencyLamp()
         {
             var b = new MeshBuilder();
-            b.AddSpike(new Vector3(0f, 2.2f, 0f), new Vector3(0f, 1.6f, 0f), 0.25f, 4, Warning, 45f);
-            b.AddBox(new Vector3(0f, 2.35f, 0f), new Vector3(0.3f, 0.3f, 0.3f), Warning, 45f);
-            return b.ToMesh("NoConnection");
+            b.AddBox(new Vector3(0f, 0.5f, 0f), new Vector3(0.07f, 1f, 0.07f), Post);
+            b.AddBox(new Vector3(0f, 1.08f, 0f), new Vector3(0.2f, 0.16f, 0.2f), Alarm, 45f, 1f);
+            return b.ToMesh("EmergencyLamp");
         }
     }
 }

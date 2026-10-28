@@ -80,17 +80,17 @@ namespace Waystation.Sim
 
         static readonly string[] Prefixes =
         {
-            "Radiant", "Fugitive", "Silent", "Crimson", "Vagrant", "Lucid", "Hollow", "Golden", "Restless", "Azure",
-            "Wandering", "Distant", "Ember", "Quiet", "Brave", "Faded", "Bright", "Last", "Iron", "Velvet",
+            "Ashen", "Rusted", "Silent", "Crimson", "Grim", "Hollow", "Pale", "Bleak", "Iron", "Broken",
+            "Weeping", "Distant", "Cinder", "Fallen", "Gaunt", "Last", "Black", "Sorrowful", "Bitter", "Grave",
         };
 
         static readonly string[] Nouns =
         {
-            "Pillar", "Moa", "Heron", "Nomad", "Lantern", "Comet", "Drifter", "Anvil", "Atlas", "Kestrel",
-            "Orchid", "Voyager", "Harbor", "Ibis", "Meridian", "Shard", "Tern", "Echo", "Zephyr", "Halcyon",
+            "Penitent", "Pilgrim", "Mule", "Wretch", "Lantern", "Requiem", "Anvil", "Vigil", "Carrion", "Drifter",
+            "Gallows", "Reliquary", "Mourner", "Ox", "Scavenger", "Censer", "Martyr", "Hulk", "Tithe", "Exile",
         };
 
-        /// <summary>No Man's Sky-style ship names: "Radiant Pillar BC1".</summary>
+        /// <summary>Grim registry names: "Ashen Penitent KR3".</summary>
         public static string RandomName(Random rng)
         {
             char a = (char)('A' + rng.Next(26)), b = (char)('A' + rng.Next(26));

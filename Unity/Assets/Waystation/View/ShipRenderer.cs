@@ -10,8 +10,13 @@ namespace Waystation.View
     /// comms beacon), settling onto their assigned pad, and leaving again. Motion is presentation only:
     /// positions are derived from each ship's sim state.
     ///
+    /// FX: exhaust plumes (harder burns on landing and take-off) with an engine light that washes over
+    /// the pads; ships that need repairs trail smoke and throw sparks until a hangar fixes them.
+    ///
     /// Art drop-in slots: Resources/Ships/Shuttle.prefab, Resources/Ships/Hauler.prefab
-    /// (nose along +Z, pivot at the bottom of the landing gear, ~1–2 units long).
+    /// (nose along +Z, pivot at the bottom of the landing gear, ~1–2 units long). Optional attachment
+    /// points: child transforms named "FX_Engine…" (one exhaust each, pointing backwards along their -Z)
+    /// and "FX_Damage" (smoke and sparks). Without them, default positions per class are used.
     /// </summary>
     public sealed class ShipRenderer : MonoBehaviour
     {
@@ -21,19 +26,25 @@ namespace Waystation.View
         {
             public GameObject GameObject;
             public GameObject Beacon;
+            public readonly List<ParticleSystem> Exhausts = new List<ParticleSystem>();
+            public ParticleSystem Smoke;
+            public ParticleSystem Sparks;
+            public FxLight EngineLight;
             public Vector3 Position;
             public Quaternion Rotation = Quaternion.identity;
         }
 
+        /// <summary>Worn industrial paint: gunmetal, olive drab, rust, black with hazard red.</summary>
         static readonly (string primary, string secondary)[] Liveries =
         {
-            ("#f2f2f2", "#ff8a3d"), ("#ffd23f", "#5b6474"), ("#2ec4b6", "#f2f2f2"),
-            ("#e63946", "#1d1f2b"), ("#8e6cff", "#ffcf56"), ("#9be564", "#2b2d42"),
+            ("#6b6f73", "#7a3418"), ("#4b5320", "#b8942a"), ("#2d2f33", "#a3141f"),
+            ("#7d6b55", "#2d2f33"), ("#55606b", "#c9c2b3"), ("#3b3b3b", "#8a4b22"),
         };
-        static readonly Color Glass = MeshBuilder.Hex("#2fd6ff");
-        static readonly Color Engine = MeshBuilder.Hex("#2a2a35");
+        static readonly Color Glass = MeshBuilder.Hex("#1f3a3c");
+        static readonly Color Engine = MeshBuilder.Hex("#1c1d21");
         static readonly Color Glow = MeshBuilder.Hex("#ffb347");
         static readonly Color Comms = MeshBuilder.Hex("#4fe3ff");
+        static readonly Color EngineLightColor = MeshBuilder.Hex("#ff8a3c");
         Mesh _beaconMesh;
 
         readonly Dictionary<int, Visual> _visuals = new Dictionary<int, Visual>();
@@ -98,6 +109,7 @@ namespace Waystation.View
 
                 v.GameObject.transform.SetPositionAndRotation(v.Position, v.Rotation);
                 v.Beacon.SetActive(ship.State == ShipState.Hailing && blinkOn);
+                UpdateFx(v, ship);
             }
 
             foreach (var id in _visuals.Keys.Where(id => !alive.Contains(id)).ToList())
@@ -130,6 +142,22 @@ namespace Waystation.View
                 default:
                     return pad;
             }
+        }
+
+        static void UpdateFx(Visual v, Ship ship)
+        {
+            bool burning = ship.State == ShipState.Landing || ship.State == ShipState.Departing;
+            bool flying = burning || ship.State == ShipState.Approaching || ship.State == ShipState.Hailing;
+            foreach (var exhaust in v.Exhausts)
+            {
+                Fx.SetActive(exhaust, flying);
+                Fx.SetRate(exhaust, burning ? 75f : 35f);
+            }
+            if (v.EngineLight != null) v.EngineLight.Intensity = burning ? 1.4f : flying ? 0.7f : 0f;
+
+            bool damaged = ship.NeedsRepair && !ship.Repaired;
+            Fx.SetActive(v.Smoke, damaged);
+            Fx.SetActive(v.Sparks, damaged);
         }
 
         Vector3 PadPosition(Ship ship)
@@ -184,8 +212,8 @@ namespace Waystation.View
             if (_beaconMesh == null)
             {
                 var bb = new MeshBuilder();
-                bb.AddSpike(new Vector3(0f, 1.2f, 0f), new Vector3(0f, 0.95f, 0f), 0.14f, 4, Comms, 45f);
-                bb.AddSpike(new Vector3(0f, 1.2f, 0f), new Vector3(0f, 1.45f, 0f), 0.14f, 4, Comms, 45f);
+                bb.AddSpike(new Vector3(0f, 1.2f, 0f), new Vector3(0f, 0.95f, 0f), 0.14f, 4, Comms, 45f, 1f);
+                bb.AddSpike(new Vector3(0f, 1.2f, 0f), new Vector3(0f, 1.45f, 0f), 0.14f, 4, Comms, 45f, 1f);
                 _beaconMesh = bb.ToMesh("CommsBeacon");
             }
             var beacon = new GameObject("CommsBeacon");
@@ -194,7 +222,45 @@ namespace Waystation.View
             beacon.AddComponent<MeshRenderer>().sharedMaterial = _material;
 
             var start = EntryPoint(ship);
-            return new Visual { GameObject = go, Beacon = beacon, Position = start, Rotation = Quaternion.LookRotation(-start.normalized) };
+            var visual = new Visual { GameObject = go, Beacon = beacon, Position = start, Rotation = Quaternion.LookRotation(-start.normalized) };
+            AttachFx(visual, ship.Class);
+            return visual;
+        }
+
+        void AttachFx(Visual v, ShipClass cls)
+        {
+            var t = v.GameObject.transform;
+
+            // Art can mark its own engines and damage point; otherwise use the placeholder's layout.
+            var engines = new List<Transform>();
+            Transform damage = null;
+            foreach (var child in t.GetComponentsInChildren<Transform>())
+            {
+                if (child.name.StartsWith("FX_Engine")) engines.Add(child);
+                else if (child.name == "FX_Damage") damage = child;
+            }
+
+            if (engines.Count > 0)
+            {
+                foreach (var e in engines)
+                    v.Exhausts.Add(Fx.Create(e, FxPreset.Exhaust, Vector3.zero, Vector3.back));
+            }
+            else
+            {
+                var nozzles = cls == ShipClass.Shuttle
+                    ? new[] { new Vector3(-0.15f, 0.22f, -0.78f), new Vector3(0.15f, 0.22f, -0.78f) }
+                    : new[] { new Vector3(-0.3f, 0.4f, -1.22f), new Vector3(0f, 0.4f, -1.22f), new Vector3(0.3f, 0.4f, -1.22f) };
+                foreach (var n in nozzles)
+                    v.Exhausts.Add(Fx.Create(t, FxPreset.Exhaust, n, Vector3.back));
+            }
+
+            var engineLightPos = cls == ShipClass.Shuttle ? new Vector3(0f, 0.2f, -1.0f) : new Vector3(0f, 0.4f, -1.5f);
+            v.EngineLight = FxLight.Create(t, engineLightPos, EngineLightColor, 0f, cls == ShipClass.Shuttle ? 2.2f : 3f, FxLightMode.Pulse);
+
+            var damageParent = damage != null ? damage : t;
+            var damagePos = damage != null ? Vector3.zero : new Vector3(0.1f, cls == ShipClass.Shuttle ? 0.4f : 0.8f, 0f);
+            v.Smoke = Fx.Create(damageParent, FxPreset.Smoke, damagePos, Vector3.up);
+            v.Sparks = Fx.Create(damageParent, FxPreset.Sparks, damagePos, Vector3.up);
         }
 
         static Mesh Placeholder(ShipClass cls, int livery)
@@ -214,7 +280,7 @@ namespace Waystation.View
                 foreach (float x in new[] { -0.15f, 0.15f })
                 {
                     b.AddBox(new Vector3(x, 0.22f, -0.62f), new Vector3(0.18f, 0.18f, 0.24f), Engine);
-                    b.AddBox(new Vector3(x, 0.22f, -0.75f), new Vector3(0.13f, 0.13f, 0.04f), Glow);
+                    b.AddBox(new Vector3(x, 0.22f, -0.75f), new Vector3(0.13f, 0.13f, 0.04f), Glow, 0f, 1f);
                 }
             }
             else
@@ -227,7 +293,7 @@ namespace Waystation.View
                 foreach (float x in new[] { -0.3f, 0f, 0.3f })
                 {
                     b.AddBox(new Vector3(x, 0.4f, -1.08f), new Vector3(0.24f, 0.24f, 0.18f), Engine);
-                    b.AddBox(new Vector3(x, 0.4f, -1.19f), new Vector3(0.18f, 0.18f, 0.04f), Glow);
+                    b.AddBox(new Vector3(x, 0.4f, -1.19f), new Vector3(0.18f, 0.18f, 0.04f), Glow, 0f, 1f);
                 }
             }
             return b.ToMesh($"{cls} {livery}");

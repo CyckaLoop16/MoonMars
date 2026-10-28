@@ -1,8 +1,8 @@
 # Waystation
 
-*Working title.* A **spaceport management tycoon** in space, in the bright low-poly style of
-**No Man's Sky**. You start with one floating landing platform and a fuel tank. Ships drop out of
-the void and **hail** the station. You clear each one to a pad, and it lands, refuels, pays and
+*Working title.* A **grim-dark spaceport management tycoon**. A rusting waystation hangs in a cold
+void beside a dying red star. You start with one floating landing platform and a fuel tank. Ships
+drop out of the dark and **hail** the station. You clear each one to a pad, and it lands, refuels, pays and
 leaves. Keep pilots happy, grow your reputation, and expand with walkways, foundations, hangars and
 new landing pads.
 
@@ -24,8 +24,9 @@ new landing pads.
 - **Connections:** modules must link to the starter pad (directly, or through walkways and foundations) to get fuel
 - **Pads** show numbers and status lights (green free · amber cleared · red occupied · grey offline)
 - **Economy:** fuel margins, landing and repair fees, upkeep, automatic tanker restocks, reputation-driven traffic
-- **Visuals:** placeholders only: a holographic build grid over nebulae, stars, a ringed gas giant and
-  drifting asteroids. Art is made separately and dropped in (see [TECH.md](docs/TECH.md#art-pipeline))
+- **Grim-dark look:** URP (set up automatically), bloom/vignette/grain/grade, pools of sodium light,
+  failing lamps, red beacons, engine plumes, smoking damaged ships, welding sparks, venting fuel lines
+- **Visuals:** placeholder models only; art is made separately and dropped in (see [TECH.md](docs/TECH.md#art-pipeline))
 
 ## Layout
 
@@ -42,7 +43,10 @@ docs/                           design, tech, roadmap
 
 ### Run the game
 1. Pull, then open the `Unity/` folder in Unity Hub (Unity 6).
-2. Press **Play** in any scene (even an empty one). The game boots itself.
+2. On first open the project **installs URP and switches itself over** (watch the Console; it
+   recompiles once). If anything fails, use **Waystation → Set Up URP** or the manual steps in
+   [TECH.md](docs/TECH.md#rendering-lighting-and-fx).
+3. Press **Play** in any scene (even an empty one). The game boots itself.
 
 Controls: `T` or click a hailing ship → click a pad to clear it · build with the toolbar or `P` pad ·
 `H` hangar · `C` walkway · `F` foundation · `X` demolish · `Esc` cancel · drag to paint walkways and

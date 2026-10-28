@@ -1,0 +1,161 @@
+using UnityEngine;
+
+namespace Waystation.View
+{
+    public enum FxPreset
+    {
+        /// <summary>Engine exhaust: short, hot, additive.</summary>
+        Exhaust,
+        /// <summary>Thick dark smoke trailing from a damaged ship.</summary>
+        Smoke,
+        /// <summary>Sparks shorting out of a damaged hull.</summary>
+        Sparks,
+        /// <summary>Cold venting vapour from a fuel line.</summary>
+        Vapor,
+        /// <summary>Welding sparks during hangar repairs.</summary>
+        Weld,
+    }
+
+    /// <summary>
+    /// Code-built particle effects (no assets needed). Each effect loops; turn it on and off with
+    /// <see cref="SetActive"/>, which only stops new particles, so trails fade out naturally.
+    /// </summary>
+    public static class Fx
+    {
+        static Material _additive, _alpha;
+
+        static Material Additive => _additive != null ? _additive : _additive = new Material(Shader.Find("Waystation/Particle Additive"));
+        static Material Alpha => _alpha != null ? _alpha : _alpha = new Material(Shader.Find("Waystation/Particle Alpha"));
+
+        public static void SetActive(ParticleSystem ps, bool on)
+        {
+            if (ps == null) return;
+            var emission = ps.emission;
+            if (emission.enabled != on) emission.enabled = on;
+        }
+
+        public static void SetRate(ParticleSystem ps, float rate)
+        {
+            if (ps == null) return;
+            var emission = ps.emission;
+            emission.rateOverTime = rate;
+        }
+
+        /// <summary>Creates an effect under <paramref name="parent"/>, emitting along <paramref name="direction"/> (local).</summary>
+        public static ParticleSystem Create(Transform parent, FxPreset preset, Vector3 localPosition, Vector3 direction, bool startActive = false)
+        {
+            var go = new GameObject($"FX {preset}");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localRotation = Quaternion.LookRotation(direction == Vector3.zero ? Vector3.up : direction);
+
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            var shape = ps.shape;
+            var color = ps.colorOverLifetime;
+            var size = ps.sizeOverLifetime;
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+
+            main.loop = true;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            shape.enabled = true;
+            color.enabled = true;
+            size.enabled = true;
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+
+            switch (preset)
+            {
+                case FxPreset.Exhaust:
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(0.25f, 0.4f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(2f, 3f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.18f, 0.26f);
+                    main.maxParticles = 120;
+                    Rate(ps, 50f);
+                    Cone(shape, 7f, 0.04f);
+                    color.color = Fade(Hex("#fff1c4"), Hex("#ff7a1a"), 1f, 0f);
+                    size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.25f));
+                    renderer.sharedMaterial = Additive;
+                    break;
+
+                case FxPreset.Smoke:
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(1.6f, 2.6f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.1f, 0.4f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
+                    main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+                    main.maxParticles = 80;
+                    Rate(ps, 14f);
+                    Sphere(shape, 0.15f);
+                    color.color = Fade(Hex("#2a2725"), Hex("#121110"), 0.75f, 0f);
+                    size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 3f));
+                    renderer.sharedMaterial = Alpha;
+                    break;
+
+                case FxPreset.Sparks:
+                case FxPreset.Weld:
+                    bool weld = preset == FxPreset.Weld;
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f, weld ? 0.6f : 0.8f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, weld ? 3.5f : 2.5f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.06f);
+                    main.gravityModifier = 0.35f;
+                    main.maxParticles = 150;
+                    Rate(ps, weld ? 45f : 10f);
+                    Sphere(shape, 0.08f);
+                    color.color = weld ? Fade(Hex("#e6f2ff"), Hex("#ff9a3c"), 1f, 0f) : Fade(Hex("#ffe08a"), Hex("#ff4a1a"), 1f, 0f);
+                    size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.4f));
+                    renderer.renderMode = ParticleSystemRenderMode.Stretch;
+                    renderer.velocityScale = 0.06f;
+                    renderer.lengthScale = 1f;
+                    renderer.sharedMaterial = Additive;
+                    break;
+
+                case FxPreset.Vapor:
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(1f, 1.6f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, 0.6f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.2f);
+                    main.maxParticles = 60;
+                    Rate(ps, 12f);
+                    Cone(shape, 25f, 0.05f);
+                    color.color = Fade(Hex("#cfe6ef"), Hex("#8fa9b5"), 0.4f, 0f);
+                    size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 3.5f));
+                    renderer.sharedMaterial = Alpha;
+                    break;
+            }
+
+            SetActive(ps, startActive);
+            ps.Play();
+            return ps;
+        }
+
+        static void Rate(ParticleSystem ps, float rate)
+        {
+            var emission = ps.emission;
+            emission.rateOverTime = rate;
+        }
+
+        static void Cone(ParticleSystem.ShapeModule shape, float angle, float radius)
+        {
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = angle;
+            shape.radius = radius;
+        }
+
+        static void Sphere(ParticleSystem.ShapeModule shape, float radius)
+        {
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = radius;
+        }
+
+        static Color Hex(string hex) => MeshBuilder.ToRenderSpace(MeshBuilder.Hex(hex));
+
+        static ParticleSystem.MinMaxGradient Fade(Color from, Color to, float alphaFrom, float alphaTo)
+        {
+            var g = new Gradient();
+            g.SetKeys(
+                new[] { new GradientColorKey(from, 0f), new GradientColorKey(to, 1f) },
+                new[] { new GradientAlphaKey(alphaFrom, 0f), new GradientAlphaKey(alphaFrom * 0.8f, 0.4f), new GradientAlphaKey(alphaTo, 1f) });
+            return new ParticleSystem.MinMaxGradient(g);
+        }
+    }
+}

@@ -4,31 +4,37 @@ using UnityEngine;
 namespace Waystation.View
 {
     /// <summary>
-    /// The space around the station: a holographic build grid, stars, nebula clouds, a ringed
-    /// planet far below and slowly tumbling asteroids, in a bright No Man's Sky-style palette.
-    /// Placeholder art; the planet, asteroids and backdrop are obvious candidates for GPT replacements.
+    /// The space around the station, grim-dark: a cold void, a dying red giant, a dark planet with only
+    /// a thin lit crescent, rust-brown nebula haze, dim stars, distant wreck silhouettes, a faint build
+    /// grid, and tumbling rocks and scrap that catch the station's lamps.
+    /// Placeholder art; the backdrop, wrecks and debris are obvious candidates for GPT replacements.
     /// </summary>
     public sealed class WorldRenderer : MonoBehaviour
     {
-        public static readonly Color SpaceColor = MeshBuilder.Hex("#160f33");
+        public static readonly Color SpaceColor = MeshBuilder.Hex("#040506");
 
-        static readonly Color GridLine = MeshBuilder.Hex("#2b5d86");
-        static readonly Color GridCorner = MeshBuilder.Hex("#55d6ff");
-        static readonly Color[] StarColors = { MeshBuilder.Hex("#ffffff"), MeshBuilder.Hex("#bfefff"), MeshBuilder.Hex("#ffd6f3"), MeshBuilder.Hex("#fff1b8") };
-        static readonly Color[] NebulaColors = { MeshBuilder.Hex("#2a1a5c"), MeshBuilder.Hex("#3b1d63"), MeshBuilder.Hex("#13345e"), MeshBuilder.Hex("#4a1f5e") };
-        static readonly Color PlanetLow = MeshBuilder.Hex("#f29a5c");
-        static readonly Color PlanetMid = MeshBuilder.Hex("#f6c27a");
-        static readonly Color PlanetHigh = MeshBuilder.Hex("#3fc7b4");
-        static readonly Color Ring = MeshBuilder.Hex("#d9a8ff");
-        static readonly Color AsteroidA = MeshBuilder.Hex("#6b5a8a");
-        static readonly Color AsteroidB = MeshBuilder.Hex("#8a6f6a");
+        static readonly Color GridLine = MeshBuilder.Hex("#141c22");
+        static readonly Color GridCorner = MeshBuilder.Hex("#5a1e18");
+        static readonly Color[] StarColors = { MeshBuilder.Hex("#9a9a9a"), MeshBuilder.Hex("#7f8a90"), MeshBuilder.Hex("#a08878"), MeshBuilder.Hex("#c8c8c8") };
+        static readonly Color[] NebulaColors = { MeshBuilder.Hex("#140808"), MeshBuilder.Hex("#1a0c0a"), MeshBuilder.Hex("#0b1012"), MeshBuilder.Hex("#160a0e") };
+        static readonly Color StarCore = MeshBuilder.Hex("#ff6a2a");
+        static readonly Color[] StarHalo = { MeshBuilder.Hex("#a5301a"), MeshBuilder.Hex("#5e1a10"), MeshBuilder.Hex("#2a0c08"), MeshBuilder.Hex("#120604") };
+        static readonly Color PlanetDark = MeshBuilder.Hex("#0d0e10");
+        static readonly Color PlanetRim = MeshBuilder.Hex("#8a3a22");
+        static readonly Color PlanetRimFaint = MeshBuilder.Hex("#3a1a12");
+        static readonly Color Ring = MeshBuilder.Hex("#2a2420");
+        static readonly Color Wreck = MeshBuilder.Hex("#0a0b0c");
+        static readonly Color RockA = MeshBuilder.Hex("#3a3633");
+        static readonly Color RockB = MeshBuilder.Hex("#2e2a28");
+        static readonly Color Scrap = MeshBuilder.Hex("#4a4d52");
+        static readonly Color ScrapRust = MeshBuilder.Hex("#5a2a16");
 
         /// <summary>The backdrop is laid out for this orthographic size, then scaled with the zoom.</summary>
         const float ReferenceSize = 11f;
         /// <summary>Backdrop depths in front of the camera (its far plane is 500).</summary>
-        const float PlanetDepth = 380f, StarDepth = 400f, NebulaDepth = 420f;
+        const float WreckDepth = 360f, PlanetDepth = 380f, SunDepth = 390f, StarDepth = 400f, NebulaDepth = 420f;
 
-        readonly List<(Transform transform, Vector3 spin)> _asteroids = new List<(Transform, Vector3)>();
+        readonly List<(Transform transform, Vector3 spin)> _debris = new List<(Transform, Vector3)>();
         Camera _camera;
         Transform _backdrop;
 
@@ -36,27 +42,30 @@ namespace Waystation.View
         {
             foreach (Transform child in transform) Destroy(child.gameObject);
             if (_backdrop != null) Destroy(_backdrop.gameObject);
-            _asteroids.Clear();
+            _debris.Clear();
             _camera = camera;
             _camera.clearFlags = CameraClearFlags.SolidColor;
-            _camera.backgroundColor = SpaceColor;
+            _camera.backgroundColor = MeshBuilder.ToRenderSpace(SpaceColor);
 
-            var material = MeshBuilder.CreateMaterial();
+            var unlit = MeshBuilder.CreateMaterial(lit: false);
+            var lit = MeshBuilder.CreateMaterial(lit: true);
             var rng = new System.Random(seed * 31 + 7);
 
-            // Stars, nebulae and the planet ride along with the camera, like a skybox.
+            // The far backdrop rides along with the camera, like a skybox.
             var backdrop = new MeshBuilder();
             BuildNebulae(backdrop, rng);
             BuildStars(backdrop, rng);
+            BuildDyingStar(backdrop);
             BuildPlanet(backdrop);
-            _backdrop = AddChild("Backdrop", backdrop.ToMesh("Backdrop"), material).transform;
+            BuildWrecks(backdrop, rng);
+            _backdrop = AddChild("Backdrop", backdrop.ToMesh("Backdrop"), unlit).transform;
             _backdrop.SetParent(_camera.transform, false);
 
             var grid = new MeshBuilder();
             BuildGrid(grid, gridWidth, gridHeight);
-            AddChild("BuildGrid", grid.ToMesh("BuildGrid"), material);
+            AddChild("BuildGrid", grid.ToMesh("BuildGrid"), unlit);
 
-            BuildAsteroids(rng, gridWidth, gridHeight, material);
+            BuildDebris(rng, gridWidth, gridHeight, lit);
         }
 
         /// <summary>World position of a build-grid cell's centre (the grid is centred on the origin).</summary>
@@ -66,7 +75,7 @@ namespace Waystation.View
         void Update()
         {
             float dt = Time.deltaTime;
-            foreach (var (t, spin) in _asteroids) t.Rotate(spin * dt, Space.Self);
+            foreach (var (t, spin) in _debris) t.Rotate(spin * dt, Space.Self);
         }
 
         void LateUpdate()
@@ -85,10 +94,10 @@ namespace Waystation.View
             return go;
         }
 
-        /// <summary>Faint holographic lines with brighter corner brackets: where you're allowed to build.</summary>
+        /// <summary>Barely-there grid lines with rust-red corner brackets: where you're allowed to build.</summary>
         static void BuildGrid(MeshBuilder b, int w, int h)
         {
-            const float y = -0.02f, thin = 0.025f;
+            const float y = -0.02f, thin = 0.02f;
             float hw = w / 2f, hh = h / 2f;
             for (int x = 0; x <= w; x++)
             {
@@ -103,8 +112,8 @@ namespace Waystation.View
 
             foreach (var (cx, cz, sx, sz) in new[] { (-hw, -hh, 1f, 1f), (hw, -hh, -1f, 1f), (-hw, hh, 1f, -1f), (hw, hh, -1f, -1f) })
             {
-                b.AddBox(new Vector3(cx + sx * 1f, 0f, cz), new Vector3(2f, 0.06f, 0.12f), GridCorner);
-                b.AddBox(new Vector3(cx, 0f, cz + sz * 1f), new Vector3(0.12f, 0.06f, 2f), GridCorner);
+                b.AddBox(new Vector3(cx + sx * 1f, 0f, cz), new Vector3(2f, 0.05f, 0.1f), GridCorner);
+                b.AddBox(new Vector3(cx, 0f, cz + sz * 1f), new Vector3(0.1f, 0.05f, 2f), GridCorner);
             }
         }
 
@@ -114,12 +123,22 @@ namespace Waystation.View
         static void Flat(MeshBuilder b, Vector3 a, Vector3 c, Vector3 d, Color color) =>
             b.AddTriangle(a, c, d, Vector3.back, color, false);
 
+        static void Disc(MeshBuilder b, Vector3 center, float radius, Color color, int segments = 36, float squash = 1f)
+        {
+            for (int j = 0; j < segments; j++)
+            {
+                float a0 = 2f * Mathf.PI * j / segments, a1 = 2f * Mathf.PI * (j + 1) / segments;
+                Flat(b, center, center + new Vector3(Mathf.Cos(a0), Mathf.Sin(a0) * squash, 0f) * radius,
+                    center + new Vector3(Mathf.Cos(a1), Mathf.Sin(a1) * squash, 0f) * radius, color);
+            }
+        }
+
         static void BuildStars(MeshBuilder b, System.Random rng)
         {
-            for (int i = 0; i < 420; i++)
+            for (int i = 0; i < 220; i++)
             {
                 var p = new Vector3(Range(rng, -30f, 30f), Range(rng, -14f, 14f), StarDepth);
-                float r = Range(rng, 0.03f, 0.09f);
+                float r = Range(rng, 0.02f, 0.06f);
                 var color = StarColors[rng.Next(StarColors.Length)];
                 Flat(b, p + new Vector3(-r, 0f, 0f), p + new Vector3(0f, r, 0f), p + new Vector3(r, 0f, 0f), color);
                 Flat(b, p + new Vector3(-r, 0f, 0f), p + new Vector3(r, 0f, 0f), p + new Vector3(0f, -r, 0f), color);
@@ -128,42 +147,47 @@ namespace Waystation.View
 
         static void BuildNebulae(MeshBuilder b, System.Random rng)
         {
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < 10; i++)
             {
                 var center = new Vector3(Range(rng, -28f, 28f), Range(rng, -12f, 12f), NebulaDepth + i);
-                float radius = Range(rng, 5f, 11f);
+                float radius = Range(rng, 6f, 13f);
                 var color = NebulaColors[rng.Next(NebulaColors.Length)];
                 const int sides = 9;
                 for (int k = 0; k < sides; k++)
                 {
                     float a0 = 2f * Mathf.PI * k / sides, a1 = 2f * Mathf.PI * (k + 1) / sides;
-                    float r0 = radius * Range(rng, 0.65f, 1.1f), r1 = radius * Range(rng, 0.65f, 1.1f);
-                    Flat(b, center, center + new Vector3(Mathf.Cos(a0) * r0, Mathf.Sin(a0) * r0 * 0.6f, 0f),
-                        center + new Vector3(Mathf.Cos(a1) * r1, Mathf.Sin(a1) * r1 * 0.6f, 0f), color);
+                    float r0 = radius * Range(rng, 0.6f, 1.1f), r1 = radius * Range(rng, 0.6f, 1.1f);
+                    Flat(b, center, center + new Vector3(Mathf.Cos(a0) * r0, Mathf.Sin(a0) * r0 * 0.55f, 0f),
+                        center + new Vector3(Mathf.Cos(a1) * r1, Mathf.Sin(a1) * r1 * 0.55f, 0f), color);
                 }
             }
         }
 
-        /// <summary>A banded gas giant with a ring, low in one corner of the view.</summary>
+        /// <summary>A bloated red giant near the end of its life, upper left: a hot core inside fading halos.</summary>
+        static void BuildDyingStar(MeshBuilder b)
+        {
+            var center = new Vector3(-17f, 8.5f, SunDepth);
+            float[] radii = { 9f, 6.5f, 4.6f, 3.3f };
+            for (int i = 0; i < radii.Length; i++)
+                Disc(b, center + Vector3.back * (i * 0.2f), radii[i], StarHalo[StarHalo.Length - 1 - i], 40);
+            Disc(b, center + Vector3.back * 1f, 2.3f, StarCore, 40);
+            // Dark sunspots.
+            Disc(b, center + new Vector3(0.6f, -0.4f, -1.1f), 0.45f, StarHalo[0], 12);
+            Disc(b, center + new Vector3(-0.8f, 0.7f, -1.1f), 0.3f, StarHalo[0], 12);
+        }
+
+        /// <summary>A dark world lower right, lit only along the thin edge facing the dying star.</summary>
         static void BuildPlanet(MeshBuilder b)
         {
             var center = new Vector3(15f, -9f, PlanetDepth);
             const float radius = 7.5f;
-            const int segments = 40;
 
-            // Ring behind the planet (upper half of the ellipse), then the disc, then the ring in front.
             AddRing(b, center, radius, back: true);
-            for (int j = 0; j < segments; j++)
-            {
-                float a0 = 2f * Mathf.PI * j / segments, a1 = 2f * Mathf.PI * (j + 1) / segments;
-                var p0 = new Vector3(Mathf.Cos(a0), Mathf.Sin(a0), 0f) * radius;
-                var p1 = new Vector3(Mathf.Cos(a1), Mathf.Sin(a1), 0f) * radius;
-                // Bands by height; the lit side (upper left) is brighter.
-                float band = (p0.y + p1.y) * 0.5f / radius;
-                var color = band > 0.45f ? PlanetHigh : band > -0.1f ? PlanetMid : PlanetLow;
-                float light = 0.75f + 0.25f * Vector3.Dot(((p0 + p1) * 0.5f).normalized, new Vector3(-0.6f, 0.8f, 0f));
-                Flat(b, center - Vector3.forward * 0.1f, center + p0, center + p1, color * light);
-            }
+            // Crescent: a faint and a bright rim disc offset toward the star, then the dark body on top.
+            var towardStar = new Vector3(-0.85f, 0.55f, 0f);
+            Disc(b, center + towardStar * 0.32f + Vector3.forward * 0.05f, radius, PlanetRimFaint, 48);
+            Disc(b, center + towardStar * 0.16f, radius, PlanetRim, 48);
+            Disc(b, center + Vector3.back * 0.1f, radius, PlanetDark, 48);
             AddRing(b, center - Vector3.forward * 0.2f, radius, back: false);
         }
 
@@ -177,32 +201,59 @@ namespace Waystation.View
                 if (upper != back) continue;
 
                 Vector3 R(float r, float a) => center + new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r * 0.22f - Mathf.Cos(a) * r * 0.12f, 0f);
-                var color = j % 2 == 0 ? Ring : Color.Lerp(Ring, PlanetMid, 0.35f);
+                var color = j % 3 == 0 ? Color.Lerp(Ring, PlanetRim, 0.25f) : Ring;
                 Flat(b, R(radius * 1.3f, a0), R(radius * 1.3f, a1), R(radius * 1.9f, a1), color);
                 Flat(b, R(radius * 1.3f, a0), R(radius * 1.9f, a1), R(radius * 1.9f, a0), color);
             }
         }
 
-        void BuildAsteroids(System.Random rng, int w, int h, Material material)
+        /// <summary>Silhouettes of dead ships and hulks, black against the haze.</summary>
+        static void BuildWrecks(MeshBuilder b, System.Random rng)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                var c = new Vector3(Range(rng, -26f, 26f), Range(rng, -11f, 11f), WreckDepth + i);
+                float len = Range(rng, 2f, 5f), hgt = len * Range(rng, 0.15f, 0.3f);
+                float tilt = Range(rng, -0.4f, 0.4f);
+                var right = new Vector3(Mathf.Cos(tilt), Mathf.Sin(tilt), 0f);
+                var up = new Vector3(-right.y, right.x, 0f);
+                // Hull, a broken spine and a jagged stub.
+                Flat(b, c - right * len / 2 - up * hgt / 2, c + right * len / 2 - up * hgt / 2, c + right * len / 2 + up * hgt / 2, Wreck);
+                Flat(b, c - right * len / 2 - up * hgt / 2, c + right * len / 2 + up * hgt / 2, c - right * len / 2 + up * hgt / 2, Wreck);
+                Flat(b, c + right * len / 2, c + right * (len / 2 + len * 0.4f) + up * hgt * 0.8f, c + right * len / 2 + up * hgt * 0.3f, Wreck);
+                Flat(b, c - right * len * 0.2f + up * hgt / 2, c - right * len * 0.05f + up * hgt * 1.4f, c + right * len * 0.05f + up * hgt / 2, Wreck);
+            }
+        }
+
+        /// <summary>Rocks and wreckage drifting around and below the build area; they catch the station's lamps.</summary>
+        void BuildDebris(System.Random rng, int w, int h, Material material)
         {
             var b = new MeshBuilder();
-            for (int i = 0; i < 28; i++)
+            for (int i = 0; i < 34; i++)
             {
-                // Scattered around (and below) the build area, never inside it.
                 float angle = Range(rng, 0f, 2f * Mathf.PI);
-                float dist = Mathf.Max(w, h) * 0.5f + Range(rng, 4f, 30f);
-                var p = new Vector3(Mathf.Cos(angle) * dist, Range(rng, -14f, -3f), Mathf.Sin(angle) * dist);
+                float dist = Mathf.Max(w, h) * 0.5f + Range(rng, 2f, 26f);
+                var p = new Vector3(Mathf.Cos(angle) * dist, Range(rng, -12f, -1.5f), Mathf.Sin(angle) * dist);
 
                 b.Clear();
-                float size = Range(rng, 0.6f, 2.4f);
-                var color = rng.Next(2) == 0 ? AsteroidA : AsteroidB;
-                b.AddBox(Vector3.zero, new Vector3(size, size * 0.8f, size * 0.9f), color, Range(rng, 0f, 90f));
-                b.AddBox(new Vector3(size * 0.3f, size * 0.2f, 0f), new Vector3(size * 0.7f, size * 0.6f, size * 0.7f), color, Range(rng, 0f, 90f));
+                if (i % 3 == 0)
+                {
+                    // Scrap: a twisted girder and a hull plate.
+                    b.AddBox(Vector3.zero, new Vector3(Range(rng, 1.2f, 2.6f), 0.12f, 0.16f), Scrap, Range(rng, 0f, 90f));
+                    b.AddBox(new Vector3(0.2f, 0.1f, 0.1f), new Vector3(0.8f, 0.05f, 0.6f), ScrapRust, Range(rng, 0f, 90f));
+                }
+                else
+                {
+                    float size = Range(rng, 0.6f, 2.2f);
+                    var color = rng.Next(2) == 0 ? RockA : RockB;
+                    b.AddBox(Vector3.zero, new Vector3(size, size * 0.8f, size * 0.9f), color, Range(rng, 0f, 90f));
+                    b.AddBox(new Vector3(size * 0.3f, size * 0.2f, 0f), new Vector3(size * 0.7f, size * 0.6f, size * 0.7f), color, Range(rng, 0f, 90f));
+                }
 
-                var go = AddChild($"Asteroid {i}", b.ToMesh("Asteroid"), material);
+                var go = AddChild($"Debris {i}", b.ToMesh("Debris"), material);
                 go.transform.position = p;
                 go.transform.rotation = Random.rotationUniform;
-                _asteroids.Add((go.transform, new Vector3(Range(rng, -12f, 12f), Range(rng, -12f, 12f), Range(rng, -12f, 12f))));
+                _debris.Add((go.transform, new Vector3(Range(rng, -10f, 10f), Range(rng, -10f, 10f), Range(rng, -10f, 10f))));
             }
         }
 

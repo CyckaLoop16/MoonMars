@@ -48,6 +48,9 @@ namespace Waystation.View
         {
             if (_game == null || _game.Sim == null) return;
             EnsureStyles();
+            // Grim terminal look: dark panels, amber text (rich-text colours still override).
+            GUI.backgroundColor = new Color(0.3f, 0.28f, 0.26f, 0.95f);
+            GUI.contentColor = new Color(1f, 0.84f, 0.6f);
 
             DrawMapLabels();
             DrawShipLabels();
@@ -98,7 +101,7 @@ namespace Waystation.View
             GUILayout.BeginArea(TopBarRect, GUI.skin.box);
             GUILayout.BeginHorizontal();
 
-            GUILayout.Label("<b>WAYSTATION</b>", _rich, GUILayout.Width(110));
+            GUILayout.Label("<b>WAYSTATION</b> <size=9>// DOCK CONTROL</size>", _rich, GUILayout.Width(190));
             var moneyColor = s.Money < 0 ? "#ff6b6b" : "#ffd36b";
             GUILayout.Label($"<color={moneyColor}><b>{s.Money:N0} cr</b></color>", _rich, GUILayout.Width(110));
             GUILayout.Label($"Reputation <b>{s.Reputation:0}</b>/100", _rich, GUILayout.Width(130));

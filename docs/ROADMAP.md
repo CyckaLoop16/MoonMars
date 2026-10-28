@@ -11,6 +11,13 @@
 - Ships hail; the player clears each landing to a pad, or waves it off (until ATC)
 - Pad numbers and status lights; richer pad and hangar placeholders; comms mast
 
+## P0.75: Grim-dark look ✅
+- Automatic URP setup; post-processing (bloom, vignette, grain, grade, chromatic aberration)
+- Lamp system: sodium floods, failing flickers, beacons, work lights, emergency lamps; dark ambient
+- FX: engine plumes and burns, damaged-ship smoke and sparks, refuel venting, welding sparks + arc light
+- Grim backdrop (dying red star, dark planet, wrecks, drifting scrap), grim palette, amber terminal HUD
+- [ ] Terminal HUD: scanlines, glow, glitch on alerts; camera shake; audio (drones, klaxons, radio static)
+
 ## P1: Feel & feedback
 - Playtest and tune the first 15 minutes
 - Ship arrival/landing polish: thrusters, landing lights, refuelling hose, docking clamps
