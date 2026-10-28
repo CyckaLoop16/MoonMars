@@ -1,0 +1,7 @@
+PASS: native StarterPad and LandingPad load from the game's Resources slots.
+URP Lit, albedo/normal/metallic-smoothness textures, emission maps, normals, UVs and tangents present; no baked vertex colours.
+Both pad footprints fit 3x3 and keep the central landing volume clear.
+Two connected pads create four real spotlights at their modelled lenses.
+Disconnected pad has zero floodlight emission; existing red emergency lamp retained.
+Failing southwest lamp and its HDR emission agree at 8% intensity.
+Actual URP preview with bloom: PadFloodlightsUnity.png

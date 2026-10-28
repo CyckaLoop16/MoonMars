@@ -1,0 +1,14 @@
+{
+  "name": "Waystation.IndustrialPads.Editor",
+  "rootNamespace": "Waystation.EditorTools",
+  "references": [
+    "Waystation.View",
+    "Waystation.Sim",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": false
+}

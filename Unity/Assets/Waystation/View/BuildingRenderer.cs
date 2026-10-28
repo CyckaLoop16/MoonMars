@@ -113,11 +113,15 @@ namespace Waystation.View
                         AddWalkwayLamp(root, b, mask, powered);
                         break;
                     case BuildingType.Foundation:
-                        BuildTile(root, s.LinkMask(b.Origin), "Foundation", FoundationPlate, "Foundation_Edge", FoundationEdge);
+                        int foundationMask = s.LinkMask(b.Origin);
+                        BuildTile(root, foundationMask, "Foundation", FoundationPlate, "Foundation_Edge", FoundationEdge);
+                        AddFoundationLights(root, b, foundationMask, powered);
                         break;
                     default:
                         string key = powered ? b.Type.ToString() : b.Type + "_Dark";
                         Spawn(root, b.Type.ToString(), key, () => Placeholder(b.Type, powered), Vector3.zero, Quaternion.identity);
+                        var padArt = root.GetComponentInChildren<PadArtLighting>();
+                        if (padArt != null) padArt.SetPowered(powered);
                         if (powered) AddFixtures(root, b);
                         break;
                 }
@@ -146,10 +150,27 @@ namespace Waystation.View
             {
                 case BuildingType.StarterPad:
                 case BuildingType.LandingPad:
-                    FxLight.Create(t, new Vector3(-(w / 2f - 0.25f), 1.0f, -(h / 2f - 0.25f)), Sodium, 1.5f, 3.4f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
-                    FxLight.Create(t, new Vector3(w / 2f - 0.25f, 1.0f, h / 2f - 0.25f), Sodium, 1.5f, 3.4f);
+                    var southwest = FxLight.Create(t, new Vector3(-(w / 2f - 0.25f), 1.0f, -(h / 2f - 0.25f)), Sodium, 1.5f, 3.4f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
+                    var northeast = FxLight.Create(t, new Vector3(w / 2f - 0.25f, 1.0f, h / 2f - 0.25f), Sodium, 1.5f, 3.4f);
+                    FxLight beacon = null;
                     if (b.Type == BuildingType.StarterPad)
-                        FxLight.Create(t, new Vector3(1.05f, 1.75f, -1.05f), Alarm, 1.6f, 4f, FxLightMode.Strobe);
+                        beacon = FxLight.Create(t, new Vector3(1.05f, 1.75f, -1.05f), Alarm, 1.6f, 4f, FxLightMode.Strobe);
+                    var art = root.GetComponentInChildren<PadArtLighting>();
+                    if (art != null)
+                    {
+                        if (art.SouthwestSocket != null)
+                        {
+                            southwest.transform.position = art.SouthwestSocket.position;
+                            southwest.ConfigureSpot(t.InverseTransformDirection(art.SouthwestSocket.forward));
+                        }
+                        if (art.NortheastSocket != null)
+                        {
+                            northeast.transform.position = art.NortheastSocket.position;
+                            northeast.ConfigureSpot(t.InverseTransformDirection(art.NortheastSocket.forward));
+                        }
+                        if (beacon != null && art.BeaconSocket != null) beacon.transform.position = art.BeaconSocket.position;
+                        art.BindLights(southwest, northeast, beacon);
+                    }
                     break;
 
                 case BuildingType.Hangar:
@@ -213,20 +234,55 @@ namespace Waystation.View
 
         void AddWalkwayLamp(GameObject root, Building b, int mask, bool powered)
         {
-            // A lamp post on roughly every third walkway tile, on an open side.
-            if (mask == 0xF || (b.Origin.X * 7 + b.Origin.Y * 13) % 3 != 0) return;
+            bool enclosed = mask == 0xF;
             int side = 0;
-            while ((mask & (1 << side)) != 0) side++;
+            if (!enclosed) while ((mask & (1 << side)) != 0) side++;
             var d = Cell.Directions[side];
-            var rotation = Quaternion.LookRotation(new Vector3(d.X, 0f, d.Y));
+            var rotation = enclosed ? Quaternion.identity : Quaternion.LookRotation(new Vector3(d.X, 0f, d.Y));
+            string prefab = enclosed ? "Walkway_InsetLight" : "Walkway_Lamp";
+            string key = prefab + (powered ? "" : "_Dark");
+            var go = Spawn(root, prefab, key, () => enclosed ? InsetGuideLights(powered) : WalkwayLamp(powered), Vector3.zero, rotation);
+            var fallback = enclosed ? new Vector3(0f, .14f, 0f) : rotation * new Vector3(.38f, .70f, .38f);
+            var mode = (b.Origin.X + b.Origin.Y) % 11 == 0 ? FxLightMode.Flicker : FxLightMode.Steady;
+            BindTileFixture(root, go, powered, true, fallback, Sodium, enclosed ? .35f : .65f, 1.8f, mode);
+        }
 
-            string key = powered ? "Walkway_Lamp" : "Walkway_Lamp_Dark";
-            Spawn(root, "Walkway_Lamp", key, () => WalkwayLamp(powered), Vector3.zero, rotation);
-            if (powered)
+        void AddFoundationLights(GameObject root, Building b, int mask, bool powered)
+        {
+            if (mask == 0xF)
             {
-                var mode = (b.Origin.X + b.Origin.Y) % 4 == 0 ? FxLightMode.Flicker : FxLightMode.Steady;
-                FxLight.Create(root.transform, rotation * new Vector3(0.38f, 0.72f, 0.38f), Sodium, 0.9f, 2f, mode);
+                var go = Spawn(root, "Foundation_InsetLight", "Foundation_InsetLight" + (powered ? "" : "_Dark"),
+                    () => InsetGuideLights(powered), Vector3.zero, Quaternion.identity);
+                // Recessed markers on every interior tile; alternating tiles supply the area light.
+                BindTileFixture(root, go, powered, (b.Origin.X + b.Origin.Y) % 2 == 0,
+                    new Vector3(0f, .14f, 0f), WorkLight, .3f, 1.6f);
+                return;
             }
+            bool areaLight = true;
+            for (int side = 0; side < 4; side++)
+            {
+                if ((mask & (1 << side)) != 0) continue;
+                var d = Cell.Directions[side];
+                var rotation = Quaternion.LookRotation(new Vector3(d.X, 0f, d.Y));
+                var go = Spawn(root, "Foundation_EdgeLight", "Foundation_EdgeLight" + (powered ? "" : "_Dark"),
+                    () => FoundationGuideLight(powered), Vector3.zero, rotation);
+                BindTileFixture(root, go, powered, areaLight, rotation * new Vector3(0f, .2f, .36f), WorkLight, .5f, 1.8f);
+                areaLight = false;
+            }
+        }
+
+        void BindTileFixture(GameObject root, GameObject go, bool powered, bool areaLight, Vector3 fallback,
+            Color color, float intensity, float range, FxLightMode mode = FxLightMode.Steady)
+        {
+            var fixture = go.GetComponent<TileLightFixture>();
+            FxLight lamp = null;
+            if (powered && areaLight)
+            {
+                Vector3 position = fixture != null && fixture.Socket != null
+                    ? root.transform.InverseTransformPoint(fixture.Socket.position) : fallback;
+                lamp = FxLight.Create(root.transform, position, color, intensity, range, mode);
+            }
+            if (fixture != null) fixture.Bind(powered, lamp);
         }
 
         void AddEmergencyLamp(GameObject root, Building b)
@@ -251,7 +307,7 @@ namespace Waystation.View
 
         // ------------------------------------------------------------------ spawning
 
-        void Spawn(GameObject parent, string prefabKey, string meshKey, System.Func<Mesh> placeholder, Vector3 position, Quaternion rotation, bool prefabAllowed = true)
+        GameObject Spawn(GameObject parent, string prefabKey, string meshKey, System.Func<Mesh> placeholder, Vector3 position, Quaternion rotation, bool prefabAllowed = true)
         {
             var prefab = prefabAllowed ? LoadPrefab(prefabKey) : null;
             GameObject go;
@@ -269,6 +325,7 @@ namespace Waystation.View
             }
             go.transform.localPosition = position;
             go.transform.localRotation = rotation;
+            return go;
         }
 
         GameObject LoadPrefab(string key)
@@ -407,6 +464,25 @@ namespace Waystation.View
             b.AddBox(new Vector3(0.38f, 0.35f, 0.38f), new Vector3(0.05f, 0.7f, 0.05f), Post);
             b.AddBox(new Vector3(0.38f, 0.72f, 0.38f), new Vector3(0.14f, 0.07f, 0.14f), powered ? Sodium : Dead, 45f, powered ? 1f : 0f);
             return b.ToMesh(powered ? "Walkway_Lamp" : "Walkway_Lamp_Dark");
+        }
+
+        static Mesh InsetGuideLights(bool powered)
+        {
+            var b = new MeshBuilder();
+            foreach (float x in new[] { -.34f, .34f })
+            {
+                b.AddBox(new Vector3(x, .015f, 0f), new Vector3(.09f, .03f, .36f), Post);
+                b.AddBox(new Vector3(x, .033f, 0f), new Vector3(.045f, .006f, .28f), powered ? Sodium : Dead, 0f, powered ? 1f : 0f);
+            }
+            return b.ToMesh("InsetGuideLights");
+        }
+
+        static Mesh FoundationGuideLight(bool powered)
+        {
+            var b = new MeshBuilder();
+            b.AddBox(new Vector3(0f, .052f, .45f), new Vector3(.7f, .075f, .09f), Post);
+            b.AddBox(new Vector3(0f, .093f, .45f), new Vector3(.60f, .01f, .044f), powered ? WorkLight : Dead, 0f, powered ? 1f : 0f);
+            return b.ToMesh("FoundationGuideLight");
         }
 
         static Mesh FoundationPlate()

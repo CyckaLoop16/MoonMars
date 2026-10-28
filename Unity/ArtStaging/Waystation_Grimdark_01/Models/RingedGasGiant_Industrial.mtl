@@ -1,0 +1,9 @@
+newmtl Gas
+Kd 1 1 1
+Pr 0.85
+Pm 0
+map_Kd ../Textures/GasGiant_BaseColor.png
+newmtl Ring
+Kd 1 1 1
+Pr 0.85
+Pm 0

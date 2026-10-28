@@ -1,0 +1,6 @@
+newmtl Basalt
+Kd 1 1 1
+Pr 0.85
+Pm 0
+map_Kd ../Textures/Rock_BaseColor.png
+norm ../Textures/Rock_Normal.png

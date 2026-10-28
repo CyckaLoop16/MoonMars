@@ -1,0 +1,7 @@
+# Metal colour atlas prompt
+
+Tool: built-in image_gen. Generated as new art, then copied unchanged into this package.
+
+Use case: stylized-concept. Asset type: production 3D game base-color texture atlas, NOT a render or a scene. Create one square 2048x2048 diffuse/albedo material atlas divided EXACTLY into four equal square quadrants with no gutters or borders, orthographic flat scans under perfectly even neutral illumination. Top left quadrant: worn dark charcoal gunmetal steel, fine scratches, rubbed metal, subtle grime, no large objects. Top right: desaturated military olive green painted steel, aged chipped paint exposing grey steel, a little oil dirt. Bottom left: dirty bone-white painted steel, restrained chipped coating, worn edges in small scattered islands, soot streaks and hairline scratches. Bottom right: faded industrial oxide-red/orange painted steel, scuffed and chipped, some dark greasy dirt. Grimdark grounded industrial science-fiction, believable microsurface, restrained wear, dense fine detail with a few larger chips. Each quadrant must be its own flat full-coverage material texture, with no bolts, no panel outlines, no raised geometry, no stencil text, no letters, no logos, no symbols, no vignette, no perspective, no cast shadows, no directional lighting, no specular highlights. All four regions fill their exact quarters. Keep the whole atlas flat and useful for UV mapping.
+
+Returned resolution: 1254 × 1254. The source image is retained at that resolution; the technical maps use their own 2048 × 2048 data grids.

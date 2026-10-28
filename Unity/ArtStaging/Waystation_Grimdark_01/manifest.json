@@ -1,0 +1,55 @@
+{
+  "package": "Waystation Grimdark 01",
+  "status": "STAGED ONLY - not installed in Unity",
+  "models": [
+    {
+      "name": "LandingPad_Industrial",
+      "triangles": 4188,
+      "parts": 43,
+      "embedded_textures": 3,
+      "glb_bytes": 11759468
+    },
+    {
+      "name": "StarterPad_Industrial",
+      "triangles": 4612,
+      "parts": 45,
+      "embedded_textures": 3,
+      "glb_bytes": 11817424
+    },
+    {
+      "name": "RingedGasGiant_Industrial",
+      "triangles": 31872,
+      "parts": 2,
+      "embedded_textures": 1,
+      "glb_bytes": 6553288
+    },
+    {
+      "name": "DistantMoon_Industrial",
+      "triangles": 2208,
+      "parts": 1,
+      "embedded_textures": 3,
+      "glb_bytes": 13222476
+    },
+    {
+      "name": "Asteroid_Basalt_Industrial",
+      "triangles": 320,
+      "parts": 1,
+      "embedded_textures": 3,
+      "glb_bytes": 12973364
+    },
+    {
+      "name": "Asteroid_Warm_Industrial",
+      "triangles": 320,
+      "parts": 1,
+      "embedded_textures": 3,
+      "glb_bytes": 12973360
+    },
+    {
+      "name": "Asteroid_Icy_Industrial",
+      "triangles": 320,
+      "parts": 1,
+      "embedded_textures": 3,
+      "glb_bytes": 12973360
+    }
+  ]
+}

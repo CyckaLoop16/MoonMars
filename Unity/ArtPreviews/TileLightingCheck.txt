@@ -1,0 +1,5 @@
+PASS: all 16 connection masks for walkways and foundations, powered and unpowered (64 cases).
+Joined foundation edges have no lamp trim; all fixtures fit one tile and leave the central route clear.
+At most one area light per tile; disconnected fixtures emit zero light.
+Runtime station loads installed fixtures; connected lenses emit HDR light.
+URP + bloom preview: WalkwayFoundationLightsUnity.png

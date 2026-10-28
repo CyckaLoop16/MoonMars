@@ -1,0 +1,9 @@
+PASS LandingPad_Industrial: 4188 triangles; valid UVs/normals; 3 embedded PNG textures; all geometry finite and non-degenerate.
+PASS StarterPad_Industrial: 4612 triangles; valid UVs/normals; 3 embedded PNG textures; all geometry finite and non-degenerate.
+PASS RingedGasGiant_Industrial: 31872 triangles; valid UVs/normals; 1 embedded PNG textures; all geometry finite and non-degenerate.
+PASS DistantMoon_Industrial: 2208 triangles; valid UVs/normals; 3 embedded PNG textures; all geometry finite and non-degenerate.
+PASS Asteroid_Basalt_Industrial: 320 triangles; valid UVs/normals; 3 embedded PNG textures; all geometry finite and non-degenerate.
+PASS Asteroid_Warm_Industrial: 320 triangles; valid UVs/normals; 3 embedded PNG textures; all geometry finite and non-degenerate.
+PASS Asteroid_Icy_Industrial: 320 triangles; valid UVs/normals; 3 embedded PNG textures; all geometry finite and non-degenerate.
+PASS: all texture files decode as PNG; model counts match the manifest.
+Status: staged outside Assets. No game integration performed.

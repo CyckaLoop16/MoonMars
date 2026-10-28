@@ -31,6 +31,8 @@ namespace Waystation.View
 
         float _phase;
         Light _light;
+        bool _spot;
+        float _spotAngle = 90f, _innerSpotAngle = 55f;
 
         /// <summary>Animated intensity this frame (set by LightRig).</summary>
         public float Current { get; private set; }
@@ -55,7 +57,9 @@ namespace Waystation.View
             if (UseUnityLights && _light == null)
             {
                 _light = gameObject.AddComponent<Light>();
-                _light.type = LightType.Point;
+                _light.type = _spot ? LightType.Spot : LightType.Point;
+                _light.spotAngle = _spotAngle;
+                _light.innerSpotAngle = _innerSpotAngle;
                 _light.shadows = LightShadows.None;
             }
         }
@@ -77,6 +81,19 @@ namespace Waystation.View
                 default:
                     return 1f;
             }
+        }
+
+        /// <summary>Aim a modelled floodlight into the deck while retaining the shared flicker driver.</summary>
+        public void ConfigureSpot(Vector3 localDirection, float angle = 90f, float innerAngle = 55f)
+        {
+            _spot = true;
+            _spotAngle = angle;
+            _innerSpotAngle = innerAngle;
+            transform.localRotation = Quaternion.LookRotation(localDirection, Vector3.up);
+            if (_light == null) return;
+            _light.type = LightType.Spot;
+            _light.spotAngle = angle;
+            _light.innerSpotAngle = innerAngle;
         }
 
         public void Apply(float intensity)

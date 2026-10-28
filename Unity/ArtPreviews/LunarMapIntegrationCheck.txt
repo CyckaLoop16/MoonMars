@@ -1,0 +1,8 @@
+PASS: Unity 6000.7.0b6
+Generated 16x12 lunar map: 84366 triangles, first build 164 ms.
+Repeated build deterministic; collision hits all 192 sampled tiles and matches surface heights.
+Habitat feet and ramp sit on level terrain; selection and hover outlines rebuild.
+Mars keeps its original 18-triangle single-tile mesh and ground height.
+64x44 lunar map: 1242218 triangles, build 1174 ms.
+Incremental foundation update changes only its own chunk; other chunk geometry preserved.
+Preview: LunarMapUnity.png

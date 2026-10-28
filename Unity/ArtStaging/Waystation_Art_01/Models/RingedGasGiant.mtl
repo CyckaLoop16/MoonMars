@@ -1,0 +1,10 @@
+newmtl Gas
+Kd 1.0 1.0 1.0
+Pr 0.95
+Pm 0
+Ks 0.1 0.1 0.1
+newmtl Ring
+Kd 1.0 1.0 1.0
+Pr 0.95
+Pm 0
+Ks 0.1 0.1 0.1
