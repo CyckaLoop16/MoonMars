@@ -1,7 +1,8 @@
 # Waystation
 
-*Working title.* A **grim-dark spaceport management tycoon**. A rusting waystation hangs in a cold
-void beside a dying red star. You start with one floating landing platform and a fuel tank. Ships
+*Working title.* A **grim-dark spaceport management tycoon**. A rusting waystation hangs in low
+orbit over a scarred world, swinging into the planet's shadow every few minutes. You start with one
+floating landing platform and a fuel tank. Ships
 drop out of the dark and **hail** the station. You clear each one to a pad, and it lands, refuels, pays and
 leaves. Keep pilots happy, grow your reputation, and expand with walkways, foundations, hangars and
 new landing pads.
@@ -22,6 +23,12 @@ new landing pads.
 - **Build:** landing pads, hangars, open-air **walkways** with railings and **foundation** platforms (drag to
   paint; railings and trims join up automatically), demolish for a 50% refund
 - **Connections:** modules must link to the starter pad (directly, or through walkways and foundations) to get fuel
+- **Orbit:** a 6-minute day/night cycle. The sun crosses the sky and sets behind the planet, and the
+  station spends ~2 minutes of each orbit in the eclipse
+- **Power:** solar arrays (sunlight only), battery banks, a backup fuel cell generator, brownouts that
+  slow everything down; switch modules off to save power
+- **Modules on foundations:** solar array, battery bank, fuel cell generator, fuel tank, ice refinery,
+  pilot lounge (extra income), comms array (more traffic), traffic control (automatic clearance)
 - **Pads** show numbers and status lights (green free · amber cleared · red occupied · grey offline)
 - **Economy:** fuel margins, landing and repair fees, upkeep, automatic tanker restocks, reputation-driven traffic
 - **Grim-dark look:** URP (set up automatically), bloom/vignette/grain/grade, pools of sodium light,
@@ -59,7 +66,9 @@ opens the menu · `Space` pause · `1`/`2`/`3` speed · `WASD`/right-drag pan ·
 
 **First steps:** when a ship hails (blinking cyan beacon, Comms panel), clear it to Pad 1. When you
 can afford it, build a second landing pad touching the first, or anywhere with a walkway linking it
-back. Save up for a hangar to start taking haulers.
+back. Save up for a hangar to start taking haulers, but watch the **POWER** gauge first: a hangar
+overloads the starter grid. Paint a 2×2 patch of foundations (`F`) next to the station, put a
+**Solar Array** on it (Power tab), and add a **Battery Bank** so the lights stay on through the eclipse.
 
 ### Run the sim tests (no Unity needed)
 

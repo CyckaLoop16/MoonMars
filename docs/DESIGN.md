@@ -1,7 +1,8 @@
 # Waystation: Design
 
-> Working title. A **grim-dark** spaceport management tycoon: a rusting waystation hanging in a cold
-> void beside a dying red star. You begin as a lonely refuelling stop and grow into a grimy hub
+> Working title. A **grim-dark** spaceport management tycoon: a rusting waystation in low orbit
+> over a scarred world. Every few minutes the station swings into the planet's shadow and has to
+> survive the dark on batteries. You begin as a lonely refuelling stop and grow into a grimy hub
 > that desperate pilots depend on.
 
 ## Pillars
@@ -25,9 +26,9 @@ ship arrives → hails the station (patience ↓) → you clear it to a pad → 
                        │ 6 ships already circling → diverted (lost revenue)
 ```
 
-- **Hailing and clearance**: until the station buys an **air traffic control tower** (later), the
-  player clears every landing by hand: click the ship (or use the Comms panel), then a pad. That
-  busywork at high traffic is deliberate: it's what makes the ATC tower worth buying.
+- **Hailing and clearance**: until the station has a powered **Traffic Control** tower, the
+  player clears every landing by hand: one click on a pad button in the Comms panel, or click the
+  ship, then a pad. That busywork at high traffic is deliberate: it's what makes the tower worth buying.
 
 - **Shuttles**: small, frequent. Land on any pad or a hangar. Pay a landing fee plus fuel.
 - **Haulers**: big. Need a hangar. Often (45%) need repairs: slow but lucrative.
@@ -38,6 +39,32 @@ ship arrives → hails the station (patience ↓) → you clear it to a pad → 
 - **Reputation (0–100)** drives arrival rate and the share of haulers.
 - **Upkeep** is charged every minute; demolishing refunds 50%.
 
+## Orbit: day and night
+
+The station circles the planet every **6 minutes** and spends **35%** of each orbit in its shadow
+(about 2 minutes of eclipse). Sunrise and sunset take ~10 seconds, as they do in low orbit. In
+sunlight the station is lit by hard white sunlight (orange at the edges of the day); in the eclipse
+it's lamps and emissives only. A new station starts in mid-morning, so the first sunset arrives
+after ~3 minutes.
+
+## Power
+
+Power is in **kW**, battery storage in **MJ**.
+- **Supply:** the starter pad's radioisotope generator (8 kW, always), **solar arrays** (10 kW
+  each in full sun, nothing in shadow) and **fuel cell generators** (12 kW, backup only).
+- **Demand:** pads 2 kW, hangars 6, the starter pad 2, and modules (refinery 14, ATC 5, comms 4,
+  lounge 3). Walkways, foundations, tanks and batteries use nothing.
+- **Batteries** (starter pad 0.4 MJ, battery bank 0.9 MJ each) absorb the surplus by day and cover
+  the deficit at night.
+- **Generators** start by themselves when the batteries drop below 20% while the station is short,
+  burn station fuel (0.3/s each), and stop at 60%.
+- **Refineries** are a deferrable load: they only run on spare power or a battery above 35%.
+- **Brownout:** flat batteries plus more demand than supply means only part of the demand is met.
+  Pumps, repairs and refineries slow down in proportion; below 50%, lounges, comms and traffic
+  control shut down. Lamps stutter. One hangar on the starter grid is enough to cause one, so power
+  is the first thing to plan when expanding.
+- Any powered module can be **switched off** from the inspector (it still costs upkeep).
+
 ## Buildings (prototype)
 
 | Building | Size | Cost | Upkeep/min | Role |
@@ -46,13 +73,25 @@ ship arrives → hails the station (patience ↓) → you clear it to a pad → 
 | Landing Pad | 3×3 | 900 | 8 | Shuttles |
 | Hangar | 4×4 | 2,600 | 25 | Haulers and shuttles, repairs |
 | Walkway | 1×1 | 25 | 0.3 | Open-air catwalk; railings only on open sides, so paths join up |
-| Foundation | 1×1 | 60 | 0.5 | Heavy deck plate that extends the station; future buildings go on these |
+| Foundation | 1×1 | 60 | 0.5 | Heavy deck plate that extends the station; modules are built on top |
+
+Modules must stand entirely on foundations (a foundation can't be removed from under one):
+
+| Module | Size | Cost | Upkeep/min | Power | Role |
+|---|---|---|---|---|---|
+| Solar Array | 2×2 | 450 | 1 | +10 kW in sun | Sun-tracking wings; nothing in the eclipse |
+| Battery Bank | 1×2 | 350 | 1 | stores 0.9 MJ | Carries the station through the eclipse |
+| Fuel Cell Generator | 1×2 | 700 | 4 | +12 kW backup | Starts on low battery, burns 0.3 fuel/s |
+| Fuel Tank | 2×2 | 500 | 2 | – | +600 fuel capacity |
+| Ice Refinery | 2×3 | 2,200 | 18 | −14 kW | Makes 1 fuel/s from comet ice, only on spare power |
+| Pilot Lounge | 2×2 | 1,400 | 10 | −3 kW | 3 docked crews at a time spend 20 (shuttle) / 45 (hauler) cr, +0.3 reputation |
+| Comms Array | 2×2 | 1,800 | 12 | −4 kW | ×1.25 traffic and +2 holding slots each (up to 3) |
+| Traffic Control | 2×2 | 4,000 | 30 | −5 kW | Clears hailing ships to free pads automatically |
 
 ## Next ideas (not built yet)
 
-- **Air traffic control tower**: automatic clearance (the sim already supports it via `AutoAssign`)
-- **Buildings on foundations**: fuel tanks, lounges, shops
-- **Fuel tanks and refinery:** more storage, cheaper fuel, fuel-price setting
+- **Fuel-price setting** and fuel quality; ice deliveries for the refinery
+- **More modules:** shops, crew quarters, cargo/trade terminal, shipyard, radiators and heat
 - **Pad sizes:** small/medium/large pads; more ship classes (explorers, fighters, freighter captains)
 - **Services:** traveller lounge/diner, trade terminal, ship shop, crew quarters and staff
 - **Pilot needs and moods:** VIP pilots, contracts, faction ships (NMS-style races)
@@ -63,9 +102,15 @@ ship arrives → hails the station (patience ↓) → you clear it to a pad → 
 
 Grim-dark industrial sci-fi (think *Alien*, *Dead Space*, *Blade Runner*, *Barotrauma*):
 - **Palette:** near-black void, gunmetal and rust, dirty hazard yellow, sodium-orange lamps, cold
-  blue work lights, alarm red. A dying red giant and a dark planet with a thin lit crescent.
-- **Light:** almost everything is dark; pads, walkways and hangars are pools of lamplight. Some
-  lamps are failing and flicker. Unpowered (unconnected) modules go dark except a red emergency lamp.
+  blue work lights, alarm red; gold foil and blue solar cells on the newer modules.
+- **Space:** a huge planet curving across the bottom of the view: a day side with oceans,
+  rust-brown continents and cloud, and night-side lights. A thin blue atmosphere on the limb,
+  flaring orange at sunrise and sunset. The sun crosses the sky and sets behind the planet. A moon
+  whose crescent follows the sun, slowly wheeling stars, distant ships blinking past, ice dust
+  glinting around the station.
+- **Light:** by day, hard vacuum sunlight with a sharp terminator; in the eclipse almost
+  everything is dark and pads, walkways and modules are pools of lamplight. Some lamps are failing
+  and flicker; in a brownout they all stutter. Unconnected modules go dark except a red emergency lamp.
 - **FX tied to gameplay:** damaged ships arrive trailing smoke and sparks; repairs throw welding
   sparks and arc flashes; refuelling vents frosty vapour; engines burn hard on landing and take-off.
 - **Camera:** isometric orthographic, 90° turns; post-processing with bloom, heavy vignette, film

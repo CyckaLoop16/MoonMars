@@ -10,6 +10,7 @@ namespace Waystation.Sim
         LandingFees,
         FuelSales,
         Repairs,
+        Services,
         Refunds,
         // Expenses
         FuelPurchases,
@@ -37,7 +38,7 @@ namespace Waystation.Sim
     public sealed class Ledger
     {
         public static readonly int LineCount = Enum.GetValues(typeof(LedgerLine)).Length;
-        public static readonly LedgerLine[] IncomeLines = { LedgerLine.LandingFees, LedgerLine.FuelSales, LedgerLine.Repairs, LedgerLine.Refunds };
+        public static readonly LedgerLine[] IncomeLines = { LedgerLine.LandingFees, LedgerLine.FuelSales, LedgerLine.Repairs, LedgerLine.Services, LedgerLine.Refunds };
         public static readonly LedgerLine[] ExpenseLines = { LedgerLine.FuelPurchases, LedgerLine.Upkeep, LedgerLine.Construction };
         /// <summary>Minutes of history kept for charts.</summary>
         public const int HistoryMinutes = 30;
@@ -57,6 +58,7 @@ namespace Waystation.Sim
                 case LedgerLine.LandingFees: return "Landing fees";
                 case LedgerLine.FuelSales: return "Fuel sales";
                 case LedgerLine.Repairs: return "Repairs";
+                case LedgerLine.Services: return "Lounge services";
                 case LedgerLine.Refunds: return "Salvage refunds";
                 case LedgerLine.FuelPurchases: return "Fuel purchases";
                 case LedgerLine.Upkeep: return "Upkeep";

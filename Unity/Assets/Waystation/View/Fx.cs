@@ -14,6 +14,8 @@ namespace Waystation.View
         Vapor,
         /// <summary>Welding sparks during hangar repairs.</summary>
         Weld,
+        /// <summary>Ice crystals and grit drifting around the station, glinting in the light.</summary>
+        Dust,
     }
 
     /// <summary>
@@ -107,6 +109,21 @@ namespace Waystation.View
                     renderer.renderMode = ParticleSystemRenderMode.Stretch;
                     renderer.velocityScale = 0.06f;
                     renderer.lengthScale = 1f;
+                    renderer.sharedMaterial = Additive;
+                    break;
+
+                case FxPreset.Dust:
+                    main.startLifetime = new ParticleSystem.MinMaxCurve(14f, 22f);
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.03f, 0.12f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
+                    main.maxParticles = 500;
+                    main.prewarm = true;
+                    Rate(ps, 26f);
+                    shape.shapeType = ParticleSystemShapeType.Box;
+                    shape.scale = new Vector3(40f, 6f, 40f);
+                    shape.randomDirectionAmount = 1f;
+                    color.color = Fade(Hex("#dbe8ff"), Hex("#a8c0e0"), 0.5f, 0f);
+                    size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.6f));
                     renderer.sharedMaterial = Additive;
                     break;
 

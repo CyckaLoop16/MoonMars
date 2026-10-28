@@ -72,7 +72,9 @@ namespace Waystation.View
         {
             var card = Ui.El("ws-card");
             Ui.Text(def.Name, "ws-card-name").AddTo(card);
-            Ui.Text($"{def.Width}×{def.Height} · upkeep {def.UpkeepPerMinute:0.#}/min", "ws-card-meta").AddTo(card);
+            Ui.Text($"{def.Width}×{def.Height} · {def.UpkeepPerMinute:0.#} cr/min", "ws-card-meta").AddTo(card);
+            string power = PowerLine(def);
+            if (power != null) Ui.Text(power, "ws-card-meta", def.PowerUse > 0 ? "ws-warn" : "ws-good").AddTo(card);
             Ui.El("ws-spacer").AddTo(card);
             Ui.Text(Ui.Money(def.Cost), "ws-card-cost").AddTo(card);
             if (Hotkeys.TryGetValue(def.Type, out var key)) Ui.Text(key, "ws-key").AddTo(card);
@@ -83,9 +85,20 @@ namespace Waystation.View
             return card;
         }
 
+        static string PowerLine(BuildingDef def)
+        {
+            if (def.PowerUse > 0) return $"uses {def.PowerUse:0.#} kW";
+            if (def.SolarOutput > 0) return $"+{def.SolarOutput:0} kW in sun";
+            if (def.GeneratorOutput > 0) return $"+{def.GeneratorOutput:0} kW backup";
+            if (def.BatteryCapacity > 0) return $"stores {def.BatteryCapacity / 1000:0.#} MJ";
+            if (def.FuelCapacity > 0) return $"+{def.FuelCapacity:0} fuel";
+            return null;
+        }
+
         static string Describe(BuildingDef def)
         {
             string text = def.Description;
+            if (def.RequiresFoundation) text += "\nBuilt on foundations.";
             if (def.Serves.Length > 0)
                 text += "\nTakes: " + string.Join(", ", def.Serves.Select(c => ShipCatalog.Get(c).Name.ToLowerInvariant() + "s"));
             if (def.Repairs) text += "\nRepairs damaged ships.";
@@ -121,7 +134,7 @@ namespace Waystation.View
                 {
                     case Tool.Build:
                         var def = BuildingCatalog.Get(_game.BuildType);
-                        hint = $"Placing {def.Name} ({Ui.Money(def.Cost)}){(def.IsPaintable ? " · drag to paint" : "")} · Esc to stop";
+                        hint = $"Placing {def.Name} ({Ui.Money(def.Cost)}){(def.IsPaintable ? " · drag to paint" : "")}{(def.RequiresFoundation ? $" · on a {def.Width}×{def.Height} patch of foundations" : "")} · Esc to stop";
                         break;
                     case Tool.Demolish:
                         hint = $"Click a module to demolish it ({Rules.DemolishRefund:P0} refund) · Esc to stop";

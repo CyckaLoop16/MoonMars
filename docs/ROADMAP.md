@@ -25,6 +25,16 @@
 - Station log (L) with filters, ledger (M) with per-minute chart and books; pause menu (Esc)
 - Sim: typed events (`EventKind`), ledger lines, hail-wait stats
 
+## P1.0: Orbit, power and modules ✅
+- Orbital day/night: the sun crosses the sky and sets behind the planet; a 2-minute eclipse every 6 minutes
+- Power grid: radioisotope generator, solar arrays, battery banks, fuel cell generators, brownouts
+- Modules built on foundations: solar, battery, generator, fuel tank, ice refinery, pilot lounge,
+  comms array, traffic control (automatic clearance)
+- Switch modules on and off; lounge services income; comms boosts traffic
+- Space backdrop: big planet with day side, night lights, atmosphere and sunrise flare; moon;
+  distant traffic; ice dust; grid only shows while building
+- HUD: power and orbit gauges, power stats on build cards, module details in the inspector
+
 ## P1: Feel & feedback
 - Playtest and tune the first 15 minutes
 - Ship arrival/landing polish: thrusters, landing lights, refuelling hose, docking clamps
@@ -32,9 +42,8 @@
 - Art drop-ins from GPT: pads, hangar, corridor pieces, shuttle, hauler
 
 ## P2: More to build
-- **Air traffic control tower**: automatic landing clearance (flips `Station.AutoAssign`)
-- Buildings placed on foundations
-- Fuel tanks (capacity) and a refinery (cheaper fuel); player-set fuel price
+- Player-set fuel price; ice deliveries for the refinery
+- Heat: radiators as a second resource alongside power
 - Small / medium / large pads and more ship classes
 - Traveller services: lounge, diner, trade terminal
 

@@ -62,16 +62,17 @@ namespace Waystation.View
 
             // Pad and hangar names.
             _seen.Clear();
-            foreach (var b in s.Buildings.Where(b => b.Def.Label != null))
+            foreach (var b in s.Buildings.Where(b => b.Def.Label != null || !b.Enabled))
             {
                 _seen.Add(b.Id);
                 var label = Get(_buildings, b.Id, "ws-world-label");
-                Ui.Set(label, s.Label(b).ToUpperInvariant());
+                string name = b.Def.Label != null ? s.Label(b).ToUpperInvariant() : b.Def.Name.ToUpperInvariant();
+                Ui.Set(label, b.Enabled ? name : name + " · OFF");
 
                 string tone;
                 if (_game.Tool == Tool.ClearToLand && _game.ClearingShip != null)
                     tone = s.LandingError(_game.ClearingShip, b) == null ? "ws-good" : "ws-bad";
-                else if (!b.Connected) tone = "ws-muted";
+                else if (!b.Operating) tone = "ws-muted";
                 else tone = b.ShipId != null ? "ws-warn" : null;
                 Ui.Tone(label, tone);
                 Place(label, Center(b) + Vector3.up * 0.2f);

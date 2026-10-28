@@ -13,6 +13,22 @@ namespace Waystation.View
     /// </summary>
     public static class GrimPostFx
     {
+#if WAYSTATION_URP
+        static ColorAdjustments _grade;
+        static Vignette _vignette;
+#endif
+
+        /// <summary>Sunlight (0–1): a touch more colour and a lighter vignette while the sun is up.</summary>
+        public static void SetDaylight(float daylight)
+        {
+#if WAYSTATION_URP
+            if (_grade == null) return;
+            _grade.saturation.Override(Mathf.Lerp(-30f, -12f, daylight));
+            _grade.postExposure.Override(Mathf.Lerp(0.25f, 0.1f, daylight));
+            _vignette.intensity.Override(Mathf.Lerp(0.46f, 0.34f, daylight));
+#endif
+        }
+
         public static bool Available
         {
             get
@@ -64,9 +80,11 @@ namespace Waystation.View
             grain.response.Override(0.75f);
 
             var grade = profile.Add<ColorAdjustments>(true);
-            grade.saturation.Override(-38f);
+            grade.saturation.Override(-30f);
             grade.contrast.Override(22f);
             grade.postExposure.Override(0.25f);
+            _grade = grade;
+            _vignette = vignette;
 
             var toning = profile.Add<SplitToning>(true);
             toning.shadows.Override(new Color(0.24f, 0.42f, 0.46f));

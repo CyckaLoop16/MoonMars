@@ -14,8 +14,10 @@ namespace Waystation.Sim
         Construction,
         /// <summary>Something needs attention soon (low fuel, diversions, waving off).</summary>
         Warning,
-        /// <summary>Something went wrong (a ship left angry).</summary>
+        /// <summary>Something went wrong (a ship left angry, a power failure).</summary>
         Alert,
+        /// <summary>Orbital sunrise and sunset.</summary>
+        Orbit,
     }
 
     public readonly struct StationEvent
@@ -79,6 +81,34 @@ namespace Waystation.Sim
 
         public double AverageHailWaitSeconds => HailsAnswered == 0 ? 0 : HailWaitTicks / (double)HailsAnswered / TicksPerSecond;
 
+        // Power grid, recomputed every tick (kW; battery in kJ).
+        public double SolarPower;
+        public double PowerSupply;
+        public double PowerDemand;
+        public double BatteryCharge;
+        public double BatteryCapacity;
+        /// <summary>Share of demand actually met: 1 normally, less during a brownout.</summary>
+        public double PowerSatisfaction = 1;
+        public bool GeneratorsOn;
+        /// <summary>Accumulates satisfaction so time-based work (repairs) slows down in proportion during brownouts.</summary>
+        public double PowerCredit;
+        public bool Brownout;
+        public long LastPowerReportTick = -100000;
+        public bool BatteryWarned;
+        public bool WasDay = true;
+
+        /// <summary>Lounges, comms and traffic control need at least half power to work.</summary>
+        public bool SystemsOnline => PowerSatisfaction >= 0.5;
+        public double NetPower => PowerSupply - PowerDemand;
+        public double BatteryFraction => BatteryCapacity > 0 ? BatteryCharge / BatteryCapacity : 0;
+        public double SunExposure => Orbit.SunExposure(Tick);
+        /// <summary>A traffic control tower is connected, switched on and powered.</summary>
+        public bool AtcOnline => SystemsOnline && Buildings.Any(b => b.Def.Atc && b.Operating);
+        /// <summary>Hailing ships are cleared automatically (ATC, or <see cref="AutoAssign"/> in tests and tools).</summary>
+        public bool AutoClearance => AutoAssign || AtcOnline;
+        public int CommsArraysOnline => SystemsOnline ? Math.Min(3, Buildings.Count(b => b.Def.Comms && b.Operating)) : 0;
+        public int LoungeSeats => SystemsOnline ? Buildings.Where(b => b.Operating).Sum(b => b.Def.LoungeSeats) : 0;
+
         public Station(int width, int height, int seed)
         {
             Width = width;
@@ -88,11 +118,15 @@ namespace Waystation.Sim
         }
 
         public double Seconds => Tick / (double)TicksPerSecond;
-        public double FuelCapacity => Buildings.Sum(b => b.Def.FuelCapacity);
+        public double FuelCapacity => Buildings.Where(b => b.Connected || b.Def.IsHub).Sum(b => b.Def.FuelCapacity);
         public Building Hub => Buildings.FirstOrDefault(b => b.Def.IsHub);
 
         public bool InBounds(Cell c) => c.X >= 0 && c.Y >= 0 && c.X < Width && c.Y < Height;
-        public Building BuildingAt(Cell c) => Buildings.FirstOrDefault(b => b.Contains(c));
+        /// <summary>The topmost building on a cell: a module rather than the foundation under it.</summary>
+        public Building BuildingAt(Cell c) => Buildings.FirstOrDefault(b => !b.Def.IsFloor && b.Contains(c)) ?? FloorAt(c);
+        public Building FloorAt(Cell c) => Buildings.FirstOrDefault(b => b.Def.IsFloor && b.Contains(c));
+        /// <summary>The module standing on a foundation cell, if any.</summary>
+        public Building ModuleAt(Cell c) => Buildings.FirstOrDefault(b => !b.Def.IsFloor && b.Contains(c));
         public Building GetBuilding(int id) => Buildings.FirstOrDefault(b => b.Id == id);
         public Ship GetShip(int id) => Ships.FirstOrDefault(s => s.Id == id);
 
@@ -100,8 +134,8 @@ namespace Waystation.Sim
         public IEnumerable<Ship> Hailing => Ships.Where(s => s.State == ShipState.Hailing).OrderBy(s => s.ArrivedTick).ThenBy(s => s.Id);
 
         /// <summary>
-        /// When true, hailing ships are cleared to free pads automatically. Until the station owns an
-        /// air traffic control tower (coming later) the player assigns every landing by hand.
+        /// Forces automatic clearance (tests and tools). In play, clearance is automatic only while a
+        /// traffic control tower is online (<see cref="AtcOnline"/>); until then the player assigns every landing.
         /// </summary>
         public bool AutoAssign;
 
@@ -120,6 +154,7 @@ namespace Waystation.Sim
             if (b == null || b.Def.Serves.Length == 0) return "Ships can't land there";
             if (!b.Def.CanServe(ship.Class)) return $"{b.Def.Name} can't take a {ship.Class.ToString().ToLowerInvariant()}";
             if (!b.Connected) return $"{Label(b)} isn't connected to the station";
+            if (!b.Enabled) return $"{Label(b)} is switched off";
             if (b.ShipId != null) return $"{Label(b)} is taken";
             return null;
         }
@@ -152,10 +187,14 @@ namespace Waystation.Sim
             var hub = Hub;
             if (hub == null) return;
 
-            var occupied = new Dictionary<Cell, Building>();
+            // A cell can hold a foundation and the module on top of it.
+            var occupied = new Dictionary<Cell, List<Building>>();
             foreach (var b in Buildings)
             foreach (var c in b.Footprint())
-                occupied[c] = b;
+            {
+                if (!occupied.TryGetValue(c, out var list)) occupied[c] = list = new List<Building>(2);
+                list.Add(b);
+            }
 
             var seen = new HashSet<Cell>();
             var frontier = new Queue<Cell>(hub.Footprint());
@@ -164,7 +203,7 @@ namespace Waystation.Sim
             while (frontier.Count > 0)
             {
                 var c = frontier.Dequeue();
-                occupied[c].Connected = true;
+                foreach (var b in occupied[c]) b.Connected = true;
                 foreach (var n in c.Neighbors())
                     if (occupied.ContainsKey(n) && seen.Add(n))
                         frontier.Enqueue(n);

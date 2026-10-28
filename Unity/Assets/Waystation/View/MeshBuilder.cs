@@ -122,6 +122,27 @@ namespace Waystation.View
             }
         }
 
+        /// <summary>Low-poly UV sphere (fuel tanks, domes).</summary>
+        public void AddSphere(Vector3 center, float radius, int rings, int sides, Color color, float emissive = 0f)
+        {
+            Vector3 P(int ring, int side)
+            {
+                float lat = Mathf.PI * ring / rings - Mathf.PI / 2f;
+                float lon = 2f * Mathf.PI * side / sides;
+                return new Vector3(Mathf.Cos(lat) * Mathf.Cos(lon), Mathf.Sin(lat), Mathf.Cos(lat) * Mathf.Sin(lon));
+            }
+
+            for (int r = 0; r < rings; r++)
+            for (int i = 0; i < sides; i++)
+            {
+                Vector3 a = P(r, i), b = P(r, i + 1), c = P(r + 1, i + 1), d = P(r + 1, i);
+                var outward = (a + b + c + d).normalized;
+                if (r == 0) AddTriangle(center + a * radius, center + c * radius, center + d * radius, outward, color, true, emissive);
+                else if (r == rings - 1) AddTriangle(center + a * radius, center + b * radius, center + c * radius, outward, color, true, emissive);
+                else AddQuad(center + a * radius, center + b * radius, center + c * radius, center + d * radius, outward, color, true, emissive);
+            }
+        }
+
         /// <summary>Pointed n-sided spike (crystals, nose cones).</summary>
         public void AddSpike(Vector3 baseCenter, Vector3 tip, float radius, int sides, Color color, float yawDegrees = 0f, float emissive = 0f)
         {

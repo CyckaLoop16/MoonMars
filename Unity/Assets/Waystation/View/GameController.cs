@@ -34,6 +34,7 @@ namespace Waystation.View
         WorldRenderer _world;
         BuildingRenderer _buildings;
         ShipRenderer _ships;
+        SkyCycle _sky;
         UiRoot _ui;
         LineRenderer _ghostOutline;
         MeshFilter _ghostFill;
@@ -82,9 +83,9 @@ namespace Waystation.View
             _cameraRig = _camera.GetComponent<IsoCamera>();
             if (_cameraRig == null) _cameraRig = _camera.gameObject.AddComponent<IsoCamera>();
 
-            SetUpGrimLighting();
-
             _world = new GameObject("Space").AddComponent<WorldRenderer>();
+            SetUpLighting();
+
             _buildings = new GameObject("Buildings").AddComponent<BuildingRenderer>();
             _ships = new GameObject("Ships").AddComponent<ShipRenderer>();
             CreateGhost();
@@ -95,23 +96,14 @@ namespace Waystation.View
         }
 
         /// <summary>
-        /// Dark ambient, a faint cold "starlight" for lit art assets, the lamp rig that feeds the
-        /// placeholder shader, and URP post-processing (bloom, vignette, grain, grade).
+        /// The lamp rig that feeds the placeholder shader, the sun and the day/night cycle (SkyCycle),
+        /// and URP post-processing (bloom, vignette, grain, grade).
         /// </summary>
-        void SetUpGrimLighting()
+        void SetUpLighting()
         {
             gameObject.AddComponent<LightRig>();
-
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.07f, 0.08f, 0.1f);
-
-            var star = new GameObject("Starlight").AddComponent<Light>();
-            star.type = LightType.Directional;
-            star.color = new Color(0.62f, 0.5f, 0.45f); // the dying red star
-            star.intensity = 0.35f;
-            star.shadows = LightShadows.Soft;
-            star.transform.rotation = Quaternion.Euler(48f, -140f, 0f);
-
+            _sky = gameObject.AddComponent<SkyCycle>();
+            _sky.Init(_camera, _world);
             GrimPostFx.Apply(_camera);
         }
 
@@ -130,6 +122,7 @@ namespace Waystation.View
             _world.Build(Station.Width, Station.Height, seed, _camera);
             _buildings.Bind(Station);
             _ships.Bind(Station);
+            _sky.Bind(Station);
             float half = Station.Width / 2f + 6f;
             _cameraRig.Init(_camera, Vector3.zero, Rect.MinMaxRect(-half, -half, half, half));
             if (_ui != null) _ui.OnNewGame();
@@ -152,6 +145,7 @@ namespace Waystation.View
                 SetTool(Tool.Select);
 
             HandlePointer();
+            _world.ShowGrid(Tool == Tool.Build || Tool == Tool.Demolish);
         }
 
         // ------------------------------------------------------------------ clock & keys
