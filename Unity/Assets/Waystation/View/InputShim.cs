@@ -107,6 +107,19 @@ namespace Waystation.View
 #endif
         }
 
+        /// <summary>Cheat key this frame: F9 gives 10,000 credits, Shift+F9 100,000; otherwise 0.</summary>
+        public static double CheatPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var k = Keyboard.current;
+            if (k == null || !k.f9Key.wasPressedThisFrame) return 0;
+            return k.shiftKey.isPressed ? 100000 : 10000;
+#else
+            if (!Input.GetKeyDown(KeyCode.F9)) return 0;
+            return Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) ? 100000 : 10000;
+#endif
+        }
+
         /// <summary>Number key 1–3 this frame (game speed), or 0.</summary>
         public static int SpeedPressed()
         {

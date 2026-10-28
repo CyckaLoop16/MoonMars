@@ -77,5 +77,17 @@ namespace Waystation.Sim.Tests
             Assert.That(s.HailsAnswered, Is.EqualTo(1));
             Assert.That(s.AverageHailWaitSeconds, Is.EqualTo(5).Within(0.11));
         }
+
+        [Test]
+        public void CheatMoneyIsBookedOnItsOwnLine()
+        {
+            var sim = GameSetup.NewStation(1);
+            var s = sim.Station;
+            double before = s.Money;
+            Assert.That(sim.Execute(new CheatMoney(10000), out var error), Is.True, error);
+            Assert.That(s.Money, Is.EqualTo(before + 10000));
+            Assert.That(s.Ledger.Totals[(int)LedgerLine.Cheats], Is.EqualTo(10000));
+            Assert.That(Ledger.IsIncome(LedgerLine.Cheats));
+        }
     }
 }

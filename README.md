@@ -66,7 +66,7 @@ Controls: clear a hailing ship with its pad button in the **Comms** panel (right
 ship, then click a pad · click a pad or ship to **inspect** it · build with the cards at the bottom or
 `P` pad · `H` hangar · `C` walkway · `F` foundation · `X` demolish · drag to paint walkways and
 foundations · `G` build grid · `L` log · `M` ledger · `Esc` closes a window, then the tool, then the selection, then
-opens the menu · `Space` pause · `1`/`2`/`3` speed · `WASD`/right-drag pan · wheel zoom · `Q`/`E` rotate.
+opens the menu · `Space` pause · `F9` cheat +10,000 cr (`Shift+F9` +100,000) · `1`/`2`/`3` speed · `WASD`/right-drag pan · wheel zoom · `Q`/`E` rotate.
 
 **First steps:** when a ship hails (blinking cyan beacon, Comms panel), clear it to Pad 1. When you
 can afford it, build a second landing pad touching the first, or anywhere with a walkway linking it

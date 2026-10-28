@@ -162,6 +162,8 @@ namespace Waystation.View
             if (MenuOpen) return;
 
             if (InputShim.PausePressed()) TogglePause();
+            double cheat = InputShim.CheatPressed();
+            if (cheat > 0) Cheat(cheat);
             int speed = InputShim.SpeedPressed();
             if (speed > 0) SetSpeed(speed);
 
@@ -206,6 +208,9 @@ namespace Waystation.View
         }
 
         public void ToggleGrid() => GridVisible = !GridVisible;
+
+        /// <summary>F9 / pause menu: free credits for testing.</summary>
+        public void Cheat(double amount) => TryExecute(new CheatMoney(amount));
 
         public void ClearSelection()
         {

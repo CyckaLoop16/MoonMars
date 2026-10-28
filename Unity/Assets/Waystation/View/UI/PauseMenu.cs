@@ -18,6 +18,7 @@ namespace Waystation.View
             Ui.Heading("Paused").AddTo(menu).style.marginBottom = 10;
             Ui.Button("Resume", () => _game.SetMenuOpen(false)).AddTo(menu);
             Ui.Button("New station", () => _game.NewGame(System.Environment.TickCount)).AddTo(menu);
+            Ui.Button("Cheat: +10,000 cr (F9)", () => _game.Cheat(10000)).AddTo(menu);
             Ui.Button("Quit", Quit, "ws-button--danger").AddTo(menu);
             Ui.Show(Root, false);
         }

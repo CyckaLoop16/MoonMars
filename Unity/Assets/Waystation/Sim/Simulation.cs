@@ -141,6 +141,25 @@ namespace Waystation.Sim
         }
     }
 
+    /// <summary>Cheat: add credits (booked on the ledger's Cheats line).</summary>
+    public sealed class CheatMoney : ICommand
+    {
+        public readonly double Amount;
+
+        public CheatMoney(double amount)
+        {
+            Amount = amount;
+        }
+
+        public string Validate(Station s) => Amount > 0 ? null : "Nothing to add";
+
+        public void Apply(Station s)
+        {
+            s.Earn(Amount, LedgerLine.Cheats);
+            s.Report($"Cheat: +{Amount:N0} cr.", EventKind.Info);
+        }
+    }
+
     /// <summary>Switch a module on or off, e.g. to save power through the eclipse.</summary>
     public sealed class SetEnabled : ICommand
     {

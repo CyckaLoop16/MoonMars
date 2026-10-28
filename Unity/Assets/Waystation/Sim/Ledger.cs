@@ -14,6 +14,8 @@ namespace Waystation.Sim
         Leisure,
         Commerce,
         Refunds,
+        /// <summary>Money added with the cheat key (kept on its own line so the books stay honest).</summary>
+        Cheats,
         // Expenses
         FuelPurchases,
         Upkeep,
@@ -40,7 +42,7 @@ namespace Waystation.Sim
     public sealed class Ledger
     {
         public static readonly int LineCount = Enum.GetValues(typeof(LedgerLine)).Length;
-        public static readonly LedgerLine[] IncomeLines = { LedgerLine.LandingFees, LedgerLine.FuelSales, LedgerLine.Repairs, LedgerLine.Business, LedgerLine.Leisure, LedgerLine.Commerce, LedgerLine.Refunds };
+        public static readonly LedgerLine[] IncomeLines = { LedgerLine.LandingFees, LedgerLine.FuelSales, LedgerLine.Repairs, LedgerLine.Business, LedgerLine.Leisure, LedgerLine.Commerce, LedgerLine.Refunds, LedgerLine.Cheats };
         public static readonly LedgerLine[] ExpenseLines = { LedgerLine.FuelPurchases, LedgerLine.Upkeep, LedgerLine.Construction };
         /// <summary>Minutes of history kept for charts.</summary>
         public const int HistoryMinutes = 30;
@@ -64,6 +66,7 @@ namespace Waystation.Sim
                 case LedgerLine.Leisure: return "Leisure";
                 case LedgerLine.Commerce: return "Commerce";
                 case LedgerLine.Refunds: return "Salvage refunds";
+                case LedgerLine.Cheats: return "Cheats";
                 case LedgerLine.FuelPurchases: return "Fuel purchases";
                 case LedgerLine.Upkeep: return "Upkeep";
                 default: return "Construction";
