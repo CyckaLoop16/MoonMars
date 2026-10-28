@@ -1,0 +1,149 @@
+using System.Collections.Generic;
+
+namespace Regolith.Sim
+{
+    public enum Resource
+    {
+        Oxygen,
+        Water,
+        Food,
+        Materials,
+    }
+
+    public sealed class Stockpile
+    {
+        public const int Count = 4;
+        readonly double[] _amounts = new double[Count];
+
+        public double this[Resource r]
+        {
+            get => _amounts[(int)r];
+            set => _amounts[(int)r] = value;
+        }
+    }
+
+    public enum ModuleType
+    {
+        HabCore,
+        Habitat,
+        SolarArray,
+        FissionReactor,
+        IceMine,
+        OxygenPlant,
+        Greenhouse,
+        Foundry,
+    }
+
+    public readonly struct Flow
+    {
+        public readonly Resource Resource;
+        public readonly double PerDay;
+
+        public Flow(Resource resource, double perDay)
+        {
+            Resource = resource;
+            PerDay = perDay;
+        }
+    }
+
+    public sealed class ModuleDef
+    {
+        public ModuleType Type;
+        public string Name;
+        public string Description;
+        public int MaterialCost;
+        public int BuildDays;
+        public int Jobs;
+        public int Housing;
+        /// <summary>Lower runs first: gets workers first and produces first each day.</summary>
+        public int Priority;
+        public bool Buildable = true;
+        public double EnergyOutput;
+        public double EnergyDraw;
+        public bool IsSolar;
+        public Flow[] Inputs = new Flow[0];
+        public Flow[] Outputs = new Flow[0];
+    }
+
+    /// <summary>
+    /// Colony modules (Civ6-style districts: one per hex). Hard-coded while prototyping.
+    /// Numbers are per day at full staffing and full power.
+    /// </summary>
+    public static class ModuleCatalog
+    {
+        static readonly Dictionary<ModuleType, ModuleDef> Defs = new Dictionary<ModuleType, ModuleDef>();
+
+        static ModuleCatalog()
+        {
+            Add(new ModuleDef
+            {
+                Type = ModuleType.HabCore, Name = "Hab Core", Buildable = false, Priority = 0,
+                Description = "The landed base: crew quarters, fuel cells and life-support recyclers.",
+                Housing = 6, EnergyOutput = 3, EnergyDraw = 2,
+                Outputs = new[] { new Flow(Resource.Oxygen, 1), new Flow(Resource.Water, 3) },
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.IceMine, Name = "Ice Mine", MaterialCost = 30, BuildDays = 10, Jobs = 2, Priority = 1,
+                Description = "Excavates and heats icy regolith. Output scales with the tile's ice.",
+                EnergyDraw = 3, Outputs = new[] { new Flow(Resource.Water, 10) },
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.OxygenPlant, Name = "Oxygen Plant", MaterialCost = 35, BuildDays = 12, Jobs = 2, Priority = 2,
+                Description = "Extracts oxygen from regolith, which is about 40% oxygen by mass.",
+                EnergyDraw = 4, Outputs = new[] { new Flow(Resource.Oxygen, 8) },
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.Greenhouse, Name = "Greenhouse", MaterialCost = 30, BuildDays = 12, Jobs = 2, Priority = 3,
+                Description = "Hydroponic farm under grow lights.",
+                EnergyDraw = 3,
+                Inputs = new[] { new Flow(Resource.Water, 2) },
+                Outputs = new[] { new Flow(Resource.Food, 8) },
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.SolarArray, Name = "Solar Array", MaterialCost = 20, BuildDays = 6, Priority = 4,
+                Description = "Cheap power, but only while the Sun is up.",
+                EnergyOutput = 6, IsSolar = true,
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.FissionReactor, Name = "Fission Reactor", MaterialCost = 80, BuildDays = 25, Jobs = 1, Priority = 5,
+                Description = "Compact reactor shipped from Earth. Steady power through the lunar night.",
+                EnergyOutput = 12,
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.Foundry, Name = "Regolith Foundry", MaterialCost = 30, BuildDays = 10, Jobs = 2, Priority = 6,
+                Description = "Sinters and smelts regolith into building materials. Better on mineral-rich ground.",
+                EnergyDraw = 3, Outputs = new[] { new Flow(Resource.Materials, 2) },
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.Habitat, Name = "Habitat", MaterialCost = 25, BuildDays = 10, Priority = 7,
+                Description = "Regolith-shielded living space for more crew.",
+                Housing = 6, EnergyDraw = 1,
+            });
+        }
+
+        static void Add(ModuleDef def) => Defs[def.Type] = def;
+
+        public static ModuleDef Get(ModuleType type) => Defs[type];
+
+        public static IEnumerable<ModuleDef> All => Defs.Values;
+
+        /// <summary>Why this module can't go on this tile, or null if it can.</summary>
+        public static string PlacementError(ModuleType type, Tile tile)
+        {
+            if (type == ModuleType.IceMine)
+                return tile.Ice >= 0.4f ? null : "Not enough ice here";
+
+            if (tile.Terrain == TerrainType.ShadowedCrater)
+                return "Too cold and dark for anything but an ice mine";
+
+            return null;
+        }
+    }
+}

@@ -4,7 +4,7 @@ using Regolith.Sim;
 
 namespace Regolith.Sim.Tests
 {
-    public class MapGeneratorTests
+    public class MarsMapGeneratorTests
     {
         const int Width = 64;
         const int Height = 40;
@@ -12,8 +12,8 @@ namespace Regolith.Sim.Tests
         [Test]
         public void SameSeedProducesIdenticalMap()
         {
-            var a = MapGenerator.Generate(Width, Height, 1234);
-            var b = MapGenerator.Generate(Width, Height, 1234);
+            var a = MarsMapGenerator.Generate(Width, Height, 1234);
+            var b = MarsMapGenerator.Generate(Width, Height, 1234);
 
             foreach (var tile in a.Tiles)
             {
@@ -28,15 +28,15 @@ namespace Regolith.Sim.Tests
         [Test]
         public void DifferentSeedsProduceDifferentMaps()
         {
-            var a = MapGenerator.Generate(Width, Height, 1);
-            var b = MapGenerator.Generate(Width, Height, 2);
+            var a = MarsMapGenerator.Generate(Width, Height, 1);
+            var b = MarsMapGenerator.Generate(Width, Height, 2);
             Assert.That(a.Tiles.Any(t => b.GetTile(t.Coord).Terrain != t.Terrain));
         }
 
         [Test]
         public void FillsEveryOffsetCell()
         {
-            var map = MapGenerator.Generate(Width, Height, 7);
+            var map = MarsMapGenerator.Generate(Width, Height, 7);
             Assert.That(map.TileCount, Is.EqualTo(Width * Height));
             for (int row = 0; row < Height; row++)
             for (int col = 0; col < Width; col++)
@@ -48,7 +48,7 @@ namespace Regolith.Sim.Tests
         [TestCase(9001)]
         public void HasMarsGeography(int seed)
         {
-            var map = MapGenerator.Generate(Width, Height, seed);
+            var map = MarsMapGenerator.Generate(Width, Height, seed);
 
             // Poles are ice caps.
             for (int col = 0; col < Width; col++)
@@ -65,7 +65,7 @@ namespace Regolith.Sim.Tests
         [Test]
         public void ValuesStayInRange()
         {
-            var map = MapGenerator.Generate(Width, Height, 99);
+            var map = MarsMapGenerator.Generate(Width, Height, 99);
             foreach (var t in map.Tiles)
             {
                 Assert.That(t.Elevation, Is.InRange(-1f, 1f));

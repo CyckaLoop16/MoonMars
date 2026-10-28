@@ -35,6 +35,7 @@ namespace Regolith.Sim
                 }
                 if (Minerals >= 0.7f) y.Materials += 1;
                 if (Feature == TileFeature.CraterRim) y.Science += 1;
+                if (Feature == TileFeature.PeakOfLight) y.Energy += 2;
                 return y;
             }
         }
@@ -45,14 +46,16 @@ namespace Regolith.Sim
         public int Width { get; }
         public int Height { get; }
         public int Seed { get; }
+        public BodyId Body { get; }
 
         readonly Dictionary<HexCoord, Tile> _tiles = new Dictionary<HexCoord, Tile>();
 
-        public WorldMap(int width, int height, int seed)
+        public WorldMap(int width, int height, int seed, BodyId body)
         {
             Width = width;
             Height = height;
             Seed = seed;
+            Body = body;
         }
 
         public IEnumerable<Tile> Tiles => _tiles.Values;

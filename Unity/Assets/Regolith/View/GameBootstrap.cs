@@ -51,7 +51,7 @@ namespace Regolith.View
 
         void Regenerate(int seed)
         {
-            _map = MapGenerator.Generate(MapWidth, MapHeight, seed);
+            _map = MarsMapGenerator.Generate(MapWidth, MapHeight, seed);
             _mapRenderer.Build(_map);
             _hovered = null;
 

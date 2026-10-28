@@ -11,6 +11,11 @@ namespace Regolith.Sim
         CraterFloor,
         Canyon,
         PolarIce,
+
+        // Moon
+        LunarHighlands,
+        LunarMare,
+        ShadowedCrater,
     }
 
     public enum TileFeature
@@ -18,6 +23,8 @@ namespace Regolith.Sim
         None,
         CraterRim,
         LavaTube,
+        /// <summary>Moon: a high rim near the pole that sees the Sun almost constantly.</summary>
+        PeakOfLight,
     }
 
     public struct Yields
@@ -77,6 +84,13 @@ namespace Regolith.Sim
                 "Exposed strata reveal billions of years of history.");
             Add(TerrainType.PolarIce, "Polar Ice Cap", "#e8e2da", new Yields(0, 0, 3, 0), 3,
                 "Water and CO₂ ice. Endless water, brutal cold.");
+
+            Add(TerrainType.LunarHighlands, "Lunar Highlands", "#a9a6a0", new Yields(1, 0, 0, 0), 2,
+                "Bright, ancient anorthosite crust. Rugged but solid ground.");
+            Add(TerrainType.LunarMare, "Mare Basalt", "#62605c", new Yields(2, 0, 0, 0), 1,
+                "Dark plains of ancient lava. Smooth, rich in iron and titanium.");
+            Add(TerrainType.ShadowedCrater, "Permanently Shadowed Crater", "#2c303a", new Yields(0, 0, 3, 1), 3,
+                "Has not seen sunlight in two billion years. −230 °C and full of water ice.");
         }
 
         static void Add(TerrainType type, string name, string color, Yields yields, int moveCost, string description)

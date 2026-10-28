@@ -7,7 +7,7 @@ namespace Regolith.Sim
     /// Procedural Mars-like map. Deterministic: the same (width, height, seed) always yields the same map.
     /// Row 0 is the north pole, the last row the south pole.
     /// </summary>
-    public static class MapGenerator
+    public static class MarsMapGenerator
     {
         public const float PolarLatitude = 0.86f;
 
@@ -27,7 +27,7 @@ namespace Regolith.Sim
         {
             if (width < 8 || height < 8) throw new ArgumentException("Map must be at least 8x8.");
 
-            var map = new WorldMap(width, height, seed);
+            var map = new WorldMap(width, height, seed, BodyId.Mars);
             var rng = new Random(seed);
             var elevationNoise = new PerlinNoise(seed);
             var iceNoise = new PerlinNoise(seed + 1);

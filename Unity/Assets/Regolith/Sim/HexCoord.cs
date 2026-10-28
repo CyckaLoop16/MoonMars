@@ -39,6 +39,18 @@ namespace Regolith.Sim
                 yield return Neighbor(i);
         }
 
+        /// <summary>Every hex within <paramref name="radius"/> steps, including this one.</summary>
+        public IEnumerable<HexCoord> WithinRange(int radius)
+        {
+            for (int dq = -radius; dq <= radius; dq++)
+            {
+                int minR = Math.Max(-radius, -dq - radius);
+                int maxR = Math.Min(radius, -dq + radius);
+                for (int dr = minR; dr <= maxR; dr++)
+                    yield return new HexCoord(Q + dq, R + dr);
+            }
+        }
+
         public int DistanceTo(HexCoord other)
         {
             var d = this - other;
