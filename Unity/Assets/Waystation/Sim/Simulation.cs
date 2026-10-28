@@ -75,11 +75,11 @@ namespace Waystation.Sim
         public void Apply(Station s)
         {
             var def = BuildingCatalog.Get(Type);
-            s.Spend(def.Cost);
+            s.Spend(def.Cost, LedgerLine.Construction);
             s.Buildings.Add(new Building { Id = s.NextBuildingId++, Type = Type, Origin = Origin });
             s.RecomputeConnections();
             s.Revision++;
-            if (!def.IsPaintable) s.Report($"{def.Name} built.");
+            if (!def.IsPaintable) s.Report($"{def.Name} built.", EventKind.Construction);
         }
     }
 
@@ -105,7 +105,7 @@ namespace Waystation.Sim
         {
             var b = s.GetBuilding(BuildingId);
             s.Buildings.Remove(b);
-            s.Money += b.Def.Cost * Rules.DemolishRefund;
+            s.Earn(b.Def.Cost * Rules.DemolishRefund, LedgerLine.Refunds);
             s.RecomputeConnections();
             s.Revision++;
         }
@@ -130,7 +130,9 @@ namespace Waystation.Sim
             var ship = s.GetShip(ShipId);
             var b = s.GetBuilding(BuildingId);
             Simulation.ClearToLand(ship, b);
-            s.Report($"{ship.Name} cleared to land on {s.Label(b)}.");
+            s.HailsAnswered++;
+            s.HailWaitTicks += s.Tick - ship.HailedTick;
+            s.Report($"{ship.Name} cleared to land on {s.Label(b)}.", EventKind.Info, b.Id);
         }
     }
 
@@ -152,7 +154,7 @@ namespace Waystation.Sim
             var ship = s.GetShip(ShipId);
             s.Reputation -= Rules.ReputationLostWhenWavedOff;
             s.ShipsDiverted++;
-            s.Report($"{ship.Name} waved off. Reputation −{Rules.ReputationLostWhenWavedOff:0}.");
+            s.Report($"{ship.Name} waved off. Reputation −{Rules.ReputationLostWhenWavedOff:0}.", EventKind.Warning);
             ship.Enter(ShipState.Departing, Rules.Ticks(Rules.DepartingSeconds));
         }
     }
@@ -216,7 +218,7 @@ namespace Waystation.Sim
             if (waiting >= Rules.MaxHolding)
             {
                 s.ShipsDiverted++;
-                s.Report($"{name} diverted: the holding pattern is full.");
+                s.Report($"{name} diverted: the holding pattern is full.", EventKind.Warning);
                 return;
             }
 
@@ -244,8 +246,9 @@ namespace Waystation.Sim
                     if (--ship.StateTicks <= 0)
                     {
                         ship.Enter(ShipState.Hailing, 0);
+                        ship.HailedTick = s.Tick;
                         var def = ShipCatalog.Get(ship.Class);
-                        s.Report($"{ship.Name} ({def.Name.ToLowerInvariant()}, {ship.FuelNeeded:0} fuel{(ship.NeedsRepair ? ", needs repairs" : "")}) is hailing for a landing spot.");
+                        s.Report($"{ship.Name} ({def.Name.ToLowerInvariant()}, {ship.FuelNeeded:0} fuel{(ship.NeedsRepair ? ", needs repairs" : "")}) is hailing for a landing spot.", EventKind.Hail);
                     }
                     break;
 
@@ -301,12 +304,16 @@ namespace Waystation.Sim
 
             // 3. Pay and go.
             var def = ShipCatalog.Get(ship.Class);
-            double bill = def.LandingFee + ship.FuelLoaded * Rules.FuelSellPrice + (ship.Repaired ? def.RepairFee : 0);
-            s.Earn(bill, building);
+            double fuel = ship.FuelLoaded * Rules.FuelSellPrice;
+            double repairs = ship.Repaired ? def.RepairFee : 0;
+            double bill = def.LandingFee + fuel + repairs;
+            s.Earn(def.LandingFee, LedgerLine.LandingFees, building);
+            s.Earn(fuel, LedgerLine.FuelSales, building);
+            if (repairs > 0) s.Earn(repairs, LedgerLine.Repairs, building);
             s.ShipsServed++;
             s.Reputation += def.ReputationOnServed;
             if (building != null) building.ShipsServed++;
-            s.Report($"{ship.Name} paid {bill:0} cr{(ship.Repaired ? " (refuel + repairs)" : "")}.");
+            s.Report($"{ship.Name} paid {bill:0} cr{(ship.Repaired ? " (refuel + repairs)" : "")}.", EventKind.Revenue, building?.Id, bill);
             ship.Enter(ShipState.Departing, Rules.Ticks(Rules.DepartingSeconds));
         }
 
@@ -315,7 +322,7 @@ namespace Waystation.Sim
             ship.Angry = true;
             s.ShipsLostAngry++;
             s.Reputation -= Rules.ReputationLostWhenAngry;
-            s.Report($"{ship.Name} {why}. Reputation −{Rules.ReputationLostWhenAngry:0}.");
+            s.Report($"{ship.Name} {why}. Reputation −{Rules.ReputationLostWhenAngry:0}.", EventKind.Alert, ship.BuildingId);
             ship.Enter(ShipState.Departing, Rules.Ticks(Rules.DepartingSeconds));
         }
 
@@ -361,16 +368,16 @@ namespace Waystation.Sim
             double amount = Math.Floor(Math.Min(capacity - s.FuelStock, Math.Max(0, s.Money) / Rules.FuelBuyPrice));
             if (amount < 10) return; // can't afford a useful load
 
-            s.Spend(amount * Rules.FuelBuyPrice);
+            s.Spend(amount * Rules.FuelBuyPrice, LedgerLine.FuelPurchases);
             s.FuelDeliveryAmount = amount;
             s.FuelDeliveryTick = s.Tick + Rules.Ticks(Rules.FuelDeliverySeconds);
-            s.Report($"Fuel running low: tanker ordered ({amount:0} units, {amount * Rules.FuelBuyPrice:0} cr).");
+            s.Report($"Fuel running low: tanker ordered ({amount:0} units, {amount * Rules.FuelBuyPrice:0} cr).", EventKind.Warning);
         }
 
         static void Upkeep(Station s)
         {
             double upkeep = s.Buildings.Sum(b => b.Def.UpkeepPerMinute);
-            s.Spend(upkeep);
+            s.Spend(upkeep, LedgerLine.Upkeep);
         }
     }
 

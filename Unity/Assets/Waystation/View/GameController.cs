@@ -34,7 +34,7 @@ namespace Waystation.View
         WorldRenderer _world;
         BuildingRenderer _buildings;
         ShipRenderer _ships;
-        Hud _hud;
+        UiRoot _ui;
         LineRenderer _ghostOutline;
         MeshFilter _ghostFill;
         Material _ghostMaterial;
@@ -50,6 +50,11 @@ namespace Waystation.View
         public BuildingType BuildType { get; private set; } = BuildingType.LandingPad;
         public Cell? HoverCell { get; private set; }
         public Building Selected { get; private set; }
+        /// <summary>The ship shown in the inspector (picked on the map or in the comms panel).</summary>
+        public Ship SelectedShip { get; private set; }
+        /// <summary>Pause menu open: the sim is paused and the map ignores input.</summary>
+        public bool MenuOpen { get; private set; }
+        int _speedBeforeMenu = 1;
         /// <summary>The hailing ship being cleared to land (Tool.ClearToLand).</summary>
         public Ship ClearingShip { get; private set; }
         /// <summary>Why the current placement or clearance isn't allowed, for the HUD; null when it is.</summary>
@@ -83,8 +88,8 @@ namespace Waystation.View
             _buildings = new GameObject("Buildings").AddComponent<BuildingRenderer>();
             _ships = new GameObject("Ships").AddComponent<ShipRenderer>();
             CreateGhost();
-            _hud = gameObject.AddComponent<Hud>();
-            _hud.Init(this);
+            _ui = gameObject.AddComponent<UiRoot>();
+            _ui.Init(this);
 
             NewGame(Seed != 0 ? Seed : System.Environment.TickCount);
         }
@@ -114,6 +119,8 @@ namespace Waystation.View
         {
             Sim = GameSetup.NewStation(seed);
             Selected = null;
+            SelectedShip = null;
+            MenuOpen = false;
             ClearingShip = null;
             Tool = Tool.Select;
             Speed = 1;
@@ -125,6 +132,7 @@ namespace Waystation.View
             _ships.Bind(Station);
             float half = Station.Width / 2f + 6f;
             _cameraRig.Init(_camera, Vector3.zero, Rect.MinMaxRect(-half, -half, half, half));
+            if (_ui != null) _ui.OnNewGame();
         }
 
         void Update()
@@ -137,6 +145,7 @@ namespace Waystation.View
                 _renderedRevision = Station.Revision;
                 if (Selected != null && !Station.Buildings.Contains(Selected)) Selected = null;
             }
+            if (SelectedShip != null && !Station.Ships.Contains(SelectedShip)) SelectedShip = null;
 
             // A ship that stopped hailing (gave up, or was cleared elsewhere) ends clearance mode.
             if (Tool == Tool.ClearToLand && (ClearingShip == null || ClearingShip.State != ShipState.Hailing))
@@ -149,10 +158,12 @@ namespace Waystation.View
 
         void HandleKeys()
         {
+            if (InputShim.CancelPressed()) Cancel();
+            if (MenuOpen) return;
+
             if (InputShim.PausePressed()) TogglePause();
             int speed = InputShim.SpeedPressed();
             if (speed > 0) SetSpeed(speed);
-            if (InputShim.CancelPressed()) { SetTool(Tool.Select); Selected = null; }
 
             switch (InputShim.ToolPressed())
             {
@@ -162,8 +173,68 @@ namespace Waystation.View
                 case 'F': StartBuilding(BuildingType.Foundation); break;
                 case 'X': SetTool(Tool.Demolish); break;
                 case 'T': ClearNextHail(); break;
+                case 'L': _ui.ToggleWindow(UiWindow.Log); break;
+                case 'M': _ui.ToggleWindow(UiWindow.Ledger); break;
             }
         }
+
+        /// <summary>Esc: close a window, else cancel the tool, else clear the selection, else open/close the menu.</summary>
+        public void Cancel()
+        {
+            if (_ui.CloseWindow()) return;
+            if (MenuOpen) { SetMenuOpen(false); return; }
+            if (Tool != Tool.Select) { SetTool(Tool.Select); return; }
+            if (Selected != null || SelectedShip != null) { ClearSelection(); return; }
+            SetMenuOpen(true);
+        }
+
+        public void SetMenuOpen(bool open)
+        {
+            if (open == MenuOpen) return;
+            MenuOpen = open;
+            if (open)
+            {
+                _speedBeforeMenu = Speed;
+                Speed = 0;
+                SetTool(Tool.Select);
+            }
+            else
+            {
+                Speed = _speedBeforeMenu;
+            }
+        }
+
+        public void ClearSelection()
+        {
+            Selected = null;
+            SelectedShip = null;
+        }
+
+        public void SelectBuilding(Building b)
+        {
+            Selected = b;
+            SelectedShip = null;
+        }
+
+        public void SelectShip(Ship ship)
+        {
+            SelectedShip = ship;
+            Selected = null;
+        }
+
+        public void FocusOn(Vector3 world) => _cameraRig.FocusOn(world);
+
+        public void FocusOnShip(Ship ship)
+        {
+            if (ship != null && _ships.TryGetPosition(ship.Id, out var p)) FocusOn(p);
+        }
+
+        public void FocusOnBuilding(Building b)
+        {
+            if (b != null) FocusOn(BuildingRenderer.Center(b, Station.Width, Station.Height));
+        }
+
+        public bool TryGetShipWorldPosition(int shipId, out Vector3 world) => _ships.TryGetPosition(shipId, out world);
 
         public void TogglePause() => SetSpeed(Speed == 0 ? _resumeSpeed : 0);
 
@@ -226,7 +297,13 @@ namespace Waystation.View
         {
             PlacementError = null;
             var mouse = InputShim.MousePosition();
-            bool overHud = _hud.IsPointerOver(mouse);
+            if (MenuOpen)
+            {
+                HoverCell = null;
+                HideGhost();
+                return;
+            }
+            bool overHud = _ui.IsPointerOver(mouse);
             HoverCell = overHud ? null : CellUnder(mouse);
 
             switch (Tool)
@@ -244,11 +321,12 @@ namespace Waystation.View
 
             if (Tool == Tool.Select)
             {
-                // Clicking near a hailing ship starts clearing it.
-                var ship = HailingShipNear(mouse);
+                // Clicking near a ship selects it; a hailing ship also starts clearance.
+                var ship = ShipNear(mouse);
                 if (ship != null)
                 {
-                    BeginClearance(ship);
+                    SelectShip(ship);
+                    if (ship.State == ShipState.Hailing) BeginClearance(ship);
                     return;
                 }
             }
@@ -261,7 +339,7 @@ namespace Waystation.View
             }
             else
             {
-                Selected = building;
+                SelectBuilding(building);
             }
         }
 
@@ -299,11 +377,11 @@ namespace Waystation.View
                 SetTool(Tool.Select);
         }
 
-        Ship HailingShipNear(Vector2 mouse)
+        Ship ShipNear(Vector2 mouse)
         {
             Ship best = null;
             float bestDistance = ShipPickRadius;
-            foreach (var ship in Station.Hailing)
+            foreach (var ship in Station.Ships)
             {
                 if (!TryGetShipScreenPosition(ship.Id, out var sp) || sp.z <= 0f) continue;
                 float d = Vector2.Distance(mouse, new Vector2(sp.x, sp.y));

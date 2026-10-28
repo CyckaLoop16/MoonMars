@@ -133,7 +133,7 @@ namespace Waystation.View
 #endif
         }
 
-        /// <summary>Hotkeys: P pad, H hangar, C walkway (catwalk), F foundation, X demolish, T clear next hail. Returns the letter, or '\0'.</summary>
+        /// <summary>Hotkeys: P pad, H hangar, C walkway (catwalk), F foundation, X demolish, T clear next hail, L log, M ledger. Returns the letter, or '\0'.</summary>
         public static char ToolPressed()
         {
 #if ENABLE_INPUT_SYSTEM
@@ -145,6 +145,8 @@ namespace Waystation.View
             if (k.xKey.wasPressedThisFrame) return 'X';
             if (k.fKey.wasPressedThisFrame) return 'F';
             if (k.tKey.wasPressedThisFrame) return 'T';
+            if (k.lKey.wasPressedThisFrame) return 'L';
+            if (k.mKey.wasPressedThisFrame) return 'M';
 #else
             if (Input.GetKeyDown(KeyCode.P)) return 'P';
             if (Input.GetKeyDown(KeyCode.H)) return 'H';
@@ -152,6 +154,8 @@ namespace Waystation.View
             if (Input.GetKeyDown(KeyCode.X)) return 'X';
             if (Input.GetKeyDown(KeyCode.F)) return 'F';
             if (Input.GetKeyDown(KeyCode.T)) return 'T';
+            if (Input.GetKeyDown(KeyCode.L)) return 'L';
+            if (Input.GetKeyDown(KeyCode.M)) return 'M';
 #endif
             return '\0';
         }

@@ -4,15 +4,35 @@ using System.Linq;
 
 namespace Waystation.Sim
 {
+    public enum EventKind
+    {
+        Info,
+        /// <summary>A ship is calling for clearance.</summary>
+        Hail,
+        /// <summary>Money came in (carries the building, so the view can float the amount over it).</summary>
+        Revenue,
+        Construction,
+        /// <summary>Something needs attention soon (low fuel, diversions, waving off).</summary>
+        Warning,
+        /// <summary>Something went wrong (a ship left angry).</summary>
+        Alert,
+    }
+
     public readonly struct StationEvent
     {
         public readonly long Tick;
         public readonly string Text;
+        public readonly EventKind Kind;
+        public readonly int? BuildingId;
+        public readonly double Amount;
 
-        public StationEvent(long tick, string text)
+        public StationEvent(long tick, string text, EventKind kind = EventKind.Info, int? buildingId = null, double amount = 0)
         {
             Tick = tick;
             Text = text;
+            Kind = kind;
+            BuildingId = buildingId;
+            Amount = amount;
         }
     }
 
@@ -52,6 +72,12 @@ namespace Waystation.Sim
         public int ShipsDiverted;
         public double Revenue;
         public double Expenses;
+        public readonly Ledger Ledger = new Ledger();
+        /// <summary>Hails answered (cleared to land) and how long they waited in total, for the stats.</summary>
+        public int HailsAnswered;
+        public long HailWaitTicks;
+
+        public double AverageHailWaitSeconds => HailsAnswered == 0 ? 0 : HailWaitTicks / (double)HailsAnswered / TicksPerSecond;
 
         public Station(int width, int height, int seed)
         {
@@ -98,19 +124,22 @@ namespace Waystation.Sim
             return null;
         }
 
-        public void Report(string text) => Log.Add(new StationEvent(Tick, text));
+        public void Report(string text, EventKind kind = EventKind.Info, int? buildingId = null, double amount = 0) =>
+            Log.Add(new StationEvent(Tick, text, kind, buildingId, amount));
 
-        public void Earn(double amount, Building building)
+        public void Earn(double amount, LedgerLine line, Building building = null)
         {
             Money += amount;
             Revenue += amount;
+            Ledger.Record(Tick, line, amount);
             if (building != null) building.Earned += amount;
         }
 
-        public void Spend(double amount)
+        public void Spend(double amount, LedgerLine line)
         {
             Money -= amount;
             Expenses += amount;
+            Ledger.Record(Tick, line, amount);
         }
 
         /// <summary>

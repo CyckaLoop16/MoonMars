@@ -16,7 +16,14 @@
 - Lamp system: sodium floods, failing flickers, beacons, work lights, emergency lamps; dark ambient
 - FX: engine plumes and burns, damaged-ship smoke and sparks, refuel venting, welding sparks + arc light
 - Grim backdrop (dying red star, dark planet, wrecks, drifting scrap), grim palette, amber terminal HUD
-- [ ] Terminal HUD: scanlines, glow, glitch on alerts; camera shake; audio (drones, klaxons, radio static)
+- [ ] Glitch on alerts; camera shake; audio (drones, klaxons, radio static)
+
+## P0.9: Proper HUD ✅
+- UI Toolkit HUD in code with a USS theme (amber terminal, scanlines)
+- Top bar (credits trend, reputation, fuel, traffic, ATC mode, clock, speed), tabbed build bar with cards
+- Comms panel with one-click pad clearance; inspector for buildings and ships; toasts; world labels and floating income
+- Station log (L) with filters, ledger (M) with per-minute chart and books; pause menu (Esc)
+- Sim: typed events (`EventKind`), ledger lines, hail-wait stats
 
 ## P1: Feel & feedback
 - Playtest and tune the first 15 minutes

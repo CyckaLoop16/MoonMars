@@ -53,11 +53,19 @@ namespace Waystation.Sim
         Foundation,
     }
 
+    /// <summary>Build-menu tabs. New categories (services, utilities…) slot in here.</summary>
+    public enum BuildCategory
+    {
+        Landing,
+        Structure,
+    }
+
     public sealed class BuildingDef
     {
         public BuildingType Type;
         public string Name;
         public string Description;
+        public BuildCategory Category;
         public int Width;
         public int Height;
         public double Cost;
@@ -93,27 +101,27 @@ namespace Waystation.Sim
             {
                 Type = BuildingType.LandingPad, Name = "Landing Pad", Width = 3, Height = 3, Cost = 900,
                 Description = "Another place for shuttles to set down and refuel. Must be connected to the station.",
-                Label = "Pad",
+                Label = "Pad", Category = BuildCategory.Landing,
                 UpkeepPerMinute = 8, Serves = new[] { ShipClass.Shuttle },
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.Hangar, Name = "Hangar", Width = 4, Height = 4, Cost = 2600,
                 Description = "Open repair bay with a gantry crane. Takes haulers (and shuttles). Must be connected to the station.",
-                Label = "Hangar",
+                Label = "Hangar", Category = BuildCategory.Landing,
                 UpkeepPerMinute = 25, Repairs = true, Serves = new[] { ShipClass.Hauler, ShipClass.Shuttle },
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.Walkway, Name = "Walkway", Width = 1, Height = 1, Cost = 25,
                 Description = "Open-air grated catwalk with railings and fuel lines underneath. Links modules to the station.",
-                UpkeepPerMinute = 0.3, IsPaintable = true,
+                UpkeepPerMinute = 0.3, IsPaintable = true, Category = BuildCategory.Structure,
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.Foundation, Name = "Foundation", Width = 1, Height = 1, Cost = 60,
                 Description = "Heavy deck plate. Extends the station; future buildings will be placed on foundations.",
-                UpkeepPerMinute = 0.5, IsPaintable = true,
+                UpkeepPerMinute = 0.5, IsPaintable = true, Category = BuildCategory.Structure,
             });
         }
 

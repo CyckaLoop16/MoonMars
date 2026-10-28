@@ -37,6 +37,8 @@ namespace Waystation.Sim
         /// <summary>Left without being served; hurts reputation.</summary>
         public bool Angry;
         public long ArrivedTick;
+        /// <summary>When the ship started hailing, to measure how long clearance took.</summary>
+        public long HailedTick;
 
         /// <summary>0 at the start of the current timed state, 1 at its end.</summary>
         public double StateProgress => StateDuration <= 0 ? 1.0 : 1.0 - StateTicks / (double)StateDuration;

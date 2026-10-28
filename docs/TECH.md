@@ -7,7 +7,7 @@
 | Engine | Unity 6 |
 | Language | C# (the sim stays .NET Standard 2.1-compatible for Unity) |
 | Input | Input System package (code also compiles under the legacy Input Manager) |
-| UI | IMGUI placeholder HUD, then UI Toolkit for the real UI |
+| UI | UI Toolkit, built in code, styled with USS |
 | Tests | NUnit via `dotnet test` (no Unity licence needed) |
 | Version control | Git + Git LFS for binary art (see `.gitattributes`) |
 
@@ -16,7 +16,7 @@
 - `Waystation.Sim` has **no UnityEngine references** (enforced by its asmdef). It holds the
   station, buildings, ships and all rules, and runs in fixed ticks (10 per game second).
 - `Waystation.View` reads sim state and renders it, and turns input into **commands**
-  (`PlaceBuilding`, `Demolish`). It never changes sim state directly.
+  (`PlaceBuilding`, `Demolish`, `AssignLanding`, `WaveOff`). It never changes sim state directly.
 - Real time is just "how many ticks per frame": pause = 0, speed ×1/×2/×4. The sim never reads
   the clock and all randomness comes from a seeded RNG, so runs are reproducible (useful for
   balancing, bug reports and save files via the command log).
@@ -76,3 +76,37 @@ so match those spots with lamp heads in the models.
   smoke, sparks, venting vapour, welding.
 - The view watches sim state to trigger FX (refuelling, repairs, damage, landing burns); the sim
   itself knows nothing about FX.
+
+## UI (UI Toolkit)
+
+The whole HUD is one runtime `UIDocument` built in code by `View/UI/UiRoot.cs`. No UXML, no scene
+setup: `PanelSettings` are created at runtime (scale with screen size, 1920×1080 reference).
+
+- **Styles:** `Resources/UI/Waystation.uss` (classes all start with `ws-`), loaded through the theme
+  `Resources/UI/WaystationTheme.tss`, which imports Unity's default runtime theme first. Colour means
+  something: green good, amber warning, red bad, cyan comms. Use `Ui.Tone(label, "ws-bad")` to switch.
+- **Helpers:** `View/UI/Ui.cs`: `Ui.El`, `Ui.Text`, `Ui.Button`, `.AddTo(parent)`, `Ui.Show`,
+  `Ui.Set` (only touches text that changed), `Ui.Money`, `Ui.Clock`, and a `Bar` progress bar.
+- **Widgets** (one class each in `View/UI/`, each with a `Root` element and an `Update()` that UiRoot
+  calls every frame):
+
+| Widget | What it shows |
+|---|---|
+| `TopBar` | credits and per-minute trend, reputation, fuel and tanker ETA, traffic stats, ATC mode, Log/Ledger buttons, clock, speed |
+| `BuildBar` | hint line (errors, tool help), Select/Demolish, a tab per `BuildCategory`, a card per buildable module |
+| `CommsPanel` | a card per hailing ship (patience, needs, one-click pad buttons, pick on map, wave off) and the traffic board |
+| `Inspector` | the selected building or ship, with actions (focus, demolish, clear, wave off) |
+| `ToastFeed` | pop-ups for `EventKind` Hail / Warning / Alert / Construction and refused commands |
+| `WorldLabels` | pad names over the map (green/red while clearing a ship), ship status tags, floating `+N cr` |
+| `LogWindow` (L) | the full station log, filterable |
+| `LedgerWindow` (M) | income/expense chart per minute and the books per `LedgerLine` |
+| `PauseMenu` (Esc) | resume, new station, quit |
+
+- **Events:** the sim tags every `Station.Report` with an `EventKind` (and a building id and amount for
+  revenue), so the UI decides how to present it without parsing text.
+- **Money:** every credit goes through `Station.Earn/Spend` with a `LedgerLine`, so the ledger always
+  balances (`LedgerTests`).
+- **Map clicks vs UI:** `UiRoot.IsPointerOver` picks the panel; anything pickable blocks the map.
+  Purely decorative layers (world labels, toasts, scanlines) use `PickingMode.Ignore`.
+- **Adding a screen:** write a class with `Root` + `Update()`, add it in `UiRoot.Init` at the right layer
+  (or as a `UiWindow` for a centred window with a hotkey), style it in `Waystation.uss`.

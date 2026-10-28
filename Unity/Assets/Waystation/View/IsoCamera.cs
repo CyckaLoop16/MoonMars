@@ -34,6 +34,14 @@ namespace Waystation.View
             Apply();
         }
 
+        /// <summary>Centre the view on a world position (zooming in a little if far out).</summary>
+        public void FocusOn(Vector3 world)
+        {
+            _pivot = new Vector3(world.x, 0f, world.z);
+            _size = Mathf.Min(_size, 9f);
+            if (_camera != null) Apply();
+        }
+
         void LateUpdate()
         {
             if (_camera == null) return;

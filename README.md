@@ -17,7 +17,7 @@ new landing pads.
 
 - **Real-time with pause** and 1×/2×/4× speed
 - **Ship flow:** inbound → **hailing** (patience runs down until you clear it to a pad) → landing → refuel (→ repairs) → pay → depart
-- **Manual clearance** until you own air traffic control (coming later): click a hailing ship or use the Comms panel, or wave it off
+- **Manual clearance** until you own air traffic control (coming later): one click on a pad button in the Comms panel, click a hailing ship and then a pad, or wave it off
 - **Shuttles** use landing pads; **haulers** need a hangar and often pay for repairs
 - **Build:** landing pads, hangars, open-air **walkways** with railings and **foundation** platforms (drag to
   paint; railings and trims join up automatically), demolish for a 50% refund
@@ -26,6 +26,8 @@ new landing pads.
 - **Economy:** fuel margins, landing and repair fees, upkeep, automatic tanker restocks, reputation-driven traffic
 - **Grim-dark look:** URP (set up automatically), bloom/vignette/grain/grade, pools of sodium light,
   failing lamps, red beacons, engine plumes, smoking damaged ships, welding sparks, venting fuel lines
+- **HUD (UI Toolkit):** top bar, tabbed build bar, comms panel, inspector, toasts, labels over pads and
+  ships, floating income, station log (`L`), ledger with charts (`M`), pause menu (`Esc`)
 - **Visuals:** placeholder models only; art is made separately and dropped in (see [TECH.md](docs/TECH.md#art-pipeline))
 
 ## Layout
@@ -33,8 +35,9 @@ new landing pads.
 ```
 Unity/                          Unity 6 project
   Assets/Waystation/Sim/        pure C# simulation (no UnityEngine; asmdef enforces it)
-  Assets/Waystation/View/       rendering, camera, input, HUD
-  Assets/Waystation/Resources/  runtime-loaded assets (shader; art drop-in folders)
+  Assets/Waystation/View/       rendering, camera, input
+  Assets/Waystation/View/UI/    HUD (UI Toolkit, built in code)
+  Assets/Waystation/Resources/  runtime-loaded assets (shaders, UI styles, art drop-in folders)
 Tests/Waystation.Sim.Tests/     NUnit tests for the sim, run with plain `dotnet test`
 docs/                           design, tech, roadmap
 ```
@@ -48,9 +51,11 @@ docs/                           design, tech, roadmap
    [TECH.md](docs/TECH.md#rendering-lighting-and-fx).
 3. Press **Play** in any scene (even an empty one). The game boots itself.
 
-Controls: `T` or click a hailing ship → click a pad to clear it · build with the toolbar or `P` pad ·
-`H` hangar · `C` walkway · `F` foundation · `X` demolish · `Esc` cancel · drag to paint walkways and
-foundations · `Space` pause · `1`/`2`/`3` speed · `WASD`/right-drag pan · wheel zoom · `Q`/`E` rotate.
+Controls: clear a hailing ship with its pad button in the **Comms** panel (right), or `T` / click the
+ship, then click a pad · click a pad or ship to **inspect** it · build with the cards at the bottom or
+`P` pad · `H` hangar · `C` walkway · `F` foundation · `X` demolish · drag to paint walkways and
+foundations · `L` log · `M` ledger · `Esc` closes a window, then the tool, then the selection, then
+opens the menu · `Space` pause · `1`/`2`/`3` speed · `WASD`/right-drag pan · wheel zoom · `Q`/`E` rotate.
 
 **First steps:** when a ship hails (blinking cyan beacon, Comms panel), clear it to Pad 1. When you
 can afford it, build a second landing pad touching the first, or anywhere with a walkway linking it

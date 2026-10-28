@@ -1,0 +1,137 @@
+/*
+ * Waystation HUD: a grim amber terminal. Dark translucent panels, hairline amber borders,
+ * small spaced caps for headings, colour reserved for meaning (green good, amber warning,
+ * red bad, cyan comms).
+ */
+
+.ws-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+
+.ws-panel {
+    background-color: rgba(9, 10, 12, 0.92);
+    border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px;
+    border-left-color: rgba(201, 138, 43, 0.38); border-right-color: rgba(201, 138, 43, 0.38);
+    border-top-color: rgba(201, 138, 43, 0.6); border-bottom-color: rgba(201, 138, 43, 0.25);
+    padding-left: 10px; padding-right: 10px; padding-top: 8px; padding-bottom: 8px;
+}
+
+.ws-heading {
+    color: #ffcf8a; font-size: 12px; -unity-font-style: bold; letter-spacing: 3px;
+    margin-bottom: 6px; padding-bottom: 3px;
+    border-bottom-width: 1px; border-bottom-color: rgba(201, 138, 43, 0.25);
+}
+.ws-subheading { color: #c9a66b; font-size: 11px; -unity-font-style: bold; letter-spacing: 2px; margin-top: 8px; margin-bottom: 3px; }
+.ws-text { color: #e6d3ad; font-size: 12px; white-space: normal; margin: 1px 0; padding: 0; }
+.ws-small { font-size: 11px; }
+.ws-muted { color: #8b8170; }
+.ws-big { font-size: 16px; -unity-font-style: bold; color: #ffd38a; }
+.ws-good { color: #6dff9a; }
+.ws-warn { color: #ffb020; }
+.ws-bad { color: #ff4a5a; }
+.ws-comms { color: #4fe3ff; }
+
+.ws-row { flex-direction: row; align-items: center; }
+.ws-grow { flex-grow: 1; }
+.ws-spacer { flex-grow: 1; }
+.ws-divider { width: 1px; height: 22px; background-color: rgba(201, 138, 43, 0.25); margin: 0 10px; }
+
+/* Buttons */
+.ws-button {
+    background-color: rgba(38, 33, 26, 0.95); color: #ffcf8a;
+    border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px;
+    border-left-color: rgba(201, 138, 43, 0.55); border-right-color: rgba(201, 138, 43, 0.55);
+    border-top-color: rgba(201, 138, 43, 0.55); border-bottom-color: rgba(201, 138, 43, 0.55);
+    border-top-left-radius: 1px; border-top-right-radius: 1px; border-bottom-left-radius: 1px; border-bottom-right-radius: 1px;
+    padding: 3px 8px; margin: 2px; font-size: 11px; letter-spacing: 1px; -unity-text-align: middle-center;
+}
+.ws-button:hover { background-color: rgba(92, 64, 24, 0.95); color: #ffe2b0; }
+.ws-button:active { background-color: rgba(150, 98, 28, 1); }
+.ws-button:disabled { opacity: 0.35; }
+.ws-button--on { background-color: rgba(120, 78, 20, 0.95); color: #fff0cc; border-left-color: #ffcf8a; border-right-color: #ffcf8a; border-top-color: #ffcf8a; border-bottom-color: #ffcf8a; }
+.ws-button--danger { border-left-color: rgba(255, 74, 90, 0.6); border-right-color: rgba(255, 74, 90, 0.6); border-top-color: rgba(255, 74, 90, 0.6); border-bottom-color: rgba(255, 74, 90, 0.6); color: #ff8a8a; }
+.ws-button--comms { border-left-color: rgba(79, 227, 255, 0.55); border-right-color: rgba(79, 227, 255, 0.55); border-top-color: rgba(79, 227, 255, 0.55); border-bottom-color: rgba(79, 227, 255, 0.55); color: #9eeeff; }
+
+/* Bars and gauges */
+.ws-bar { height: 6px; background-color: rgba(255, 255, 255, 0.07); margin: 2px 0; }
+.ws-bar__fill { height: 100%; background-color: #ffb020; }
+.ws-gauge { flex-direction: column; min-width: 120px; }
+
+/* Top bar */
+.ws-topbar { position: absolute; left: 0; right: 0; top: 0; height: 46px; flex-direction: row; align-items: center; padding: 4px 14px; }
+.ws-brand { color: #ffcf8a; font-size: 14px; -unity-font-style: bold; letter-spacing: 4px; }
+.ws-brand-sub { color: #8b8170; font-size: 9px; letter-spacing: 3px; }
+.ws-stat-label { color: #8b8170; font-size: 9px; letter-spacing: 2px; }
+.ws-stat-value { color: #ffd38a; font-size: 14px; -unity-font-style: bold; }
+
+/* Build bar */
+.ws-bottom { position: absolute; left: 0; right: 0; bottom: 10px; align-items: center; }
+.ws-hint { color: #c9a66b; font-size: 12px; margin-bottom: 6px; -unity-text-align: middle-center; }
+.ws-buildbar { flex-direction: column; }
+.ws-tabs { flex-direction: row; margin-bottom: 4px; }
+.ws-cards { flex-direction: row; }
+.ws-card {
+    width: 132px; height: 74px; margin: 3px; padding: 6px 8px;
+    background-color: rgba(22, 20, 17, 0.95);
+    border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px;
+    border-left-color: rgba(201, 138, 43, 0.35); border-right-color: rgba(201, 138, 43, 0.35);
+    border-top-color: rgba(201, 138, 43, 0.35); border-bottom-color: rgba(201, 138, 43, 0.35);
+}
+.ws-card:hover { background-color: rgba(60, 44, 20, 0.95); border-left-color: #ffcf8a; border-right-color: #ffcf8a; border-top-color: #ffcf8a; border-bottom-color: #ffcf8a; }
+.ws-card--on { background-color: rgba(96, 64, 18, 0.95); border-left-color: #ffcf8a; border-right-color: #ffcf8a; border-top-color: #ffcf8a; border-bottom-color: #ffcf8a; }
+.ws-card--poor { opacity: 0.55; }
+.ws-card-name { color: #ffd38a; font-size: 12px; -unity-font-style: bold; }
+.ws-card-meta { color: #8b8170; font-size: 10px; }
+.ws-card-cost { color: #ffcf8a; font-size: 11px; }
+.ws-key { color: #4fe3ff; font-size: 10px; position: absolute; right: 6px; top: 5px; }
+
+/* Side panels */
+.ws-comms-panel { position: absolute; right: 10px; top: 56px; width: 350px; max-height: 70%; }
+.ws-inspector { position: absolute; left: 10px; top: 56px; width: 320px; }
+.ws-card-hail {
+    margin-bottom: 6px; padding: 6px 8px; background-color: rgba(10, 30, 36, 0.85);
+    border-left-width: 2px; border-left-color: #4fe3ff;
+}
+.ws-card-hail--urgent { border-left-color: #ff4a5a; background-color: rgba(40, 12, 14, 0.85); }
+.ws-card-hail--picking { background-color: rgba(18, 52, 62, 0.95); }
+.ws-traffic-row { flex-direction: row; justify-content: space-between; padding: 1px 0; }
+
+/* Toasts */
+.ws-toasts { position: absolute; left: 0; right: 0; top: 56px; align-items: center; }
+.ws-toast {
+    padding: 5px 14px; margin-bottom: 4px; background-color: rgba(9, 10, 12, 0.9);
+    border-left-width: 3px; border-left-color: #c9a66b; color: #e6d3ad; font-size: 12px;
+}
+.ws-toast--hail { border-left-color: #4fe3ff; color: #bff4ff; }
+.ws-toast--warning { border-left-color: #ffb020; color: #ffd38a; }
+.ws-toast--alert { border-left-color: #ff4a5a; color: #ffb3b9; background-color: rgba(36, 8, 10, 0.92); }
+.ws-toast--build { border-left-color: #6dff9a; }
+
+/* World labels */
+.ws-world-label { position: absolute; font-size: 11px; -unity-font-style: bold; color: #e6d3ad; -unity-text-align: middle-center; width: 140px; margin-left: -70px; }
+.ws-float-money { position: absolute; font-size: 14px; -unity-font-style: bold; color: #6dff9a; -unity-text-align: middle-center; width: 120px; margin-left: -60px; }
+
+/* Windows and menus */
+.ws-window-layer { position: absolute; left: 0; right: 0; top: 0; bottom: 0; align-items: center; justify-content: center; }
+.ws-window { width: 640px; max-height: 76%; }
+.ws-window-header { flex-direction: row; align-items: center; justify-content: space-between; }
+.ws-menu-layer { position: absolute; left: 0; right: 0; top: 0; bottom: 0; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.6); }
+.ws-menu { width: 300px; align-items: stretch; }
+.ws-menu .ws-button { height: 30px; font-size: 13px; }
+.ws-table-row { flex-direction: row; justify-content: space-between; padding: 1px 0; }
+.ws-chart { flex-direction: row; align-items: flex-end; height: 120px; margin: 6px 0; border-bottom-width: 1px; border-bottom-color: rgba(201, 138, 43, 0.3); }
+.ws-chart-column { flex-grow: 1; flex-direction: row; align-items: flex-end; height: 100%; margin: 0 1px; }
+.ws-chart-in { flex-grow: 1; background-color: #3fbf6a; margin-right: 1px; }
+.ws-chart-out { flex-grow: 1; background-color: #b8402e; }
+
+/* Tooltip */
+.ws-tooltip { position: absolute; max-width: 280px; padding: 6px 9px; background-color: rgba(14, 12, 10, 0.97); border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; border-left-color: #c98a2b; border-right-color: #c98a2b; border-top-color: #c98a2b; border-bottom-color: #c98a2b; }
+
+/* Scroll views inside panels */
+.ws-scroll { flex-shrink: 1; }
+
+/* Meaning colours win over per-widget text colours (stat values, world labels, toasts). */
+.ws-text.ws-muted { color: #8b8170; }
+.ws-text.ws-good { color: #6dff9a; }
+.ws-text.ws-warn { color: #ffb020; }
+.ws-text.ws-bad { color: #ff4a5a; }
+.ws-text.ws-comms { color: #4fe3ff; }
+.ws-card-hail .ws-text.ws-comms { -unity-font-style: bold; }
