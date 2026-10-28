@@ -7,8 +7,9 @@ using UnityEngine.Rendering.Universal;
 namespace Waystation.View
 {
     /// <summary>
-    /// The grim-dark camera look: ACES tonemapping, bloom on emissives, heavy vignette, film grain,
-    /// desaturated grade with teal shadows and sodium highlights, slight chromatic aberration.
+    /// The camera look: ACES tonemapping, bloom on emissives, a light vignette, a desaturated grade with
+    /// teal shadows and sodium highlights, and a trace of chromatic aberration at the edges. (No film
+    /// grain: it read as noise on the dark scene.)
     /// Needs URP (installed automatically by the editor setup); under the Built-in pipeline it does nothing.
     /// </summary>
     public static class GrimPostFx
@@ -52,7 +53,7 @@ namespace Waystation.View
 
             var cameraData = camera.GetUniversalAdditionalCameraData();
             cameraData.renderPostProcessing = true;
-            cameraData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
+            cameraData.antialiasing = AntialiasingMode.None; // MSAA (URP asset) keeps edges clean without FXAA's blur
 
             var go = new GameObject("Grim Post FX");
             var volume = go.AddComponent<Volume>();
@@ -74,10 +75,6 @@ namespace Waystation.View
             vignette.smoothness.Override(0.42f);
             vignette.color.Override(Color.black);
 
-            var grain = profile.Add<FilmGrain>(true);
-            grain.type.Override(FilmGrainLookup.Medium3);
-            grain.intensity.Override(0.3f);
-            grain.response.Override(0.75f);
 
             var grade = profile.Add<ColorAdjustments>(true);
             grade.saturation.Override(-30f);
@@ -91,7 +88,7 @@ namespace Waystation.View
             toning.highlights.Override(new Color(1f, 0.68f, 0.42f));
             toning.balance.Override(-15f);
 
-            profile.Add<ChromaticAberration>(true).intensity.Override(0.2f);
+            profile.Add<ChromaticAberration>(true).intensity.Override(0.05f);
 #endif
         }
     }

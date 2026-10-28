@@ -100,7 +100,7 @@ namespace Waystation.View
 
         /// <summary>
         /// The lamp rig that feeds the placeholder shader, the sun and the day/night cycle (SkyCycle),
-        /// and URP post-processing (bloom, vignette, grain, grade).
+        /// and URP post-processing (bloom, vignette, grade).
         /// </summary>
         void SetUpLighting()
         {

@@ -119,6 +119,12 @@ namespace Waystation.EditorTools
 
             var pipeline = UniversalRenderPipelineAsset.Create(renderer);
             pipeline.supportsHDR = true;
+            // Clean edges on thin railings and cables; shadows reach the station (the camera sits ~100 units back).
+            pipeline.msaaSampleCount = 4;
+            pipeline.shadowDistance = 160f;
+            var so = new SerializedObject(pipeline);
+            so.FindProperty("m_SoftShadowsSupported").boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.CreateAsset(pipeline, PipelinePath);
             AssetDatabase.SaveAssets();
             return pipeline;

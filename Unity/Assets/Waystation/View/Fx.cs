@@ -118,7 +118,7 @@ namespace Waystation.View
                     main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
                     main.maxParticles = 500;
                     main.prewarm = true;
-                    Rate(ps, 26f);
+                    Rate(ps, 10f);
                     shape.shapeType = ParticleSystemShapeType.Box;
                     shape.scale = new Vector3(40f, 6f, 40f);
                     shape.randomDirectionAmount = 1f;
