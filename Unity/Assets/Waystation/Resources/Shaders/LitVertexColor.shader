@@ -1,5 +1,6 @@
-// Grim-dark placeholder lighting. Form shading is baked into the vertex colours; on top of that the
-// station's own lamps (sodium floods, beacons, weld flashes) are applied from LightRig's global arrays.
+// Placeholder lighting. Form shading is baked into the vertex colours; on top of that come the sun
+// (SkyCycle: direction and colour change over the orbit, black during the eclipse) and the station's
+// own lamps (sodium floods, beacons, weld flashes) from LightRig's global arrays.
 // Vertex alpha marks emissive parts (lamp heads, screens, engine glow): they ignore lighting and are
 // pushed above 1.0 so bloom catches them. No LightMode tag, so it renders in Built-in and URP alike.
 Shader "Waystation/Lit Vertex Color"
@@ -23,6 +24,8 @@ Shader "Waystation/Lit Vertex Color"
             float _WS_LightCount;
             float4 _WS_Ambient;
             float _WS_Emission;
+            float4 _WS_SunDir;   // xyz: world direction towards the sun
+            float4 _WS_SunColor; // rgb: colour x intensity (zero in the planet's shadow)
 
             struct appdata
             {
@@ -53,6 +56,8 @@ Shader "Waystation/Lit Vertex Color"
             {
                 float3 n = normalize(i.worldNormal);
                 float3 light = _WS_Ambient.rgb;
+                // Hard vacuum sunlight: a sharp terminator with only a little wrap.
+                light += _WS_SunColor.rgb * saturate(dot(n, _WS_SunDir.xyz) * 0.9 + 0.1);
                 int count = (int)_WS_LightCount;
 
                 for (int k = 0; k < WS_MAX_LIGHTS; k++)

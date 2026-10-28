@@ -62,6 +62,8 @@ namespace Waystation.Sim
         public double RepairFee;
         public double PatienceSeconds;
         public double ReputationOnServed;
+        /// <summary>What the crew spends in a pilot lounge while docked.</summary>
+        public double ServicesFee;
     }
 
     public static class ShipCatalog
@@ -71,13 +73,13 @@ namespace Waystation.Sim
         static readonly ShipClassDef Shuttle = new ShipClassDef
         {
             Class = ShipClass.Shuttle, Name = "Shuttle", MinFuel = 20, MaxFuel = 45, LandingFee = 25,
-            RepairChance = 0, RepairFee = 0, PatienceSeconds = 60, ReputationOnServed = 0.6,
+            RepairChance = 0, RepairFee = 0, PatienceSeconds = 60, ReputationOnServed = 0.6, ServicesFee = 20,
         };
 
         static readonly ShipClassDef Hauler = new ShipClassDef
         {
             Class = ShipClass.Hauler, Name = "Hauler", MinFuel = 70, MaxFuel = 130, LandingFee = 80,
-            RepairChance = 0.45, RepairFee = 250, PatienceSeconds = 90, ReputationOnServed = 1.2,
+            RepairChance = 0.45, RepairFee = 250, PatienceSeconds = 90, ReputationOnServed = 1.2, ServicesFee = 45,
         };
 
         static readonly string[] Prefixes =

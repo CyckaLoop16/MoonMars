@@ -53,6 +53,7 @@ namespace Waystation.View
             int inbound = s.Ships.Count(x => x.State == ShipState.Approaching);
             Ui.Set(_header, hailing.Count > 0 ? $"COMMS · {hailing.Count} HAILING · {inbound} INBOUND" : $"COMMS · {inbound} INBOUND");
             Ui.Show(_empty, hailing.Count == 0);
+            Ui.Set(_empty, s.AutoClearance ? "Traffic control is clearing ships to free pads." : "No ships calling. Channel open.");
 
             // Hail cards: drop the ones that stopped hailing, add new ones in order, update the rest.
             foreach (var id in _cards.Keys.Where(id => hailing.All(h => h.Id != id)).ToList())

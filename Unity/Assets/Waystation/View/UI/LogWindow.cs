@@ -92,6 +92,7 @@ namespace Waystation.View
                 case EventKind.Revenue: return "ws-good";
                 case EventKind.Warning: return "ws-warn";
                 case EventKind.Alert: return "ws-bad";
+                case EventKind.Orbit: return "ws-warn";
                 default: return null;
             }
         }

@@ -1,0 +1,4 @@
+PASS: modelled pad spotlights and emission bindings preserved.
+PASS: all 64 walkway/foundation connection and power cases.
+PASS: spot aiming, daylight dimming and brownout controls coexist.
+Signature: 8B-46-1D-3A-EF-A2-5C-DF-B5-8D-84-0E-75-B2-5D-32-E7-5B-C4-A6-B5-30-23-57-B4-C0-30-24-D7-80-1C-A9

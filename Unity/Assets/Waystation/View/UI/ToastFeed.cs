@@ -55,6 +55,7 @@ namespace Waystation.View
                     case EventKind.Warning: Add(e.Text, "ws-toast--warning"); break;
                     case EventKind.Alert: Add(e.Text, "ws-toast--alert"); break;
                     case EventKind.Construction: Add(e.Text, "ws-toast--build"); break;
+                    case EventKind.Orbit: Add(e.Text, "ws-toast--orbit"); break;
                 }
             }
 

@@ -49,8 +49,18 @@ namespace Waystation.Sim
         Hangar,
         /// <summary>Open-air grated catwalk with railings; links modules to the station.</summary>
         Walkway,
-        /// <summary>Structural deck plate; future buildings will stand on these.</summary>
+        /// <summary>Structural deck plate; modules are built on top of these.</summary>
         Foundation,
+
+        // Modules: built on foundations.
+        SolarArray,
+        BatteryBank,
+        FuelCellGenerator,
+        FuelTank,
+        IceRefinery,
+        PilotLounge,
+        CommsArray,
+        AtcTower,
     }
 
     /// <summary>Build-menu tabs. New categories (services, utilities…) slot in here.</summary>
@@ -58,6 +68,9 @@ namespace Waystation.Sim
     {
         Landing,
         Structure,
+        Power,
+        Fuel,
+        Services,
     }
 
     public sealed class BuildingDef
@@ -81,7 +94,36 @@ namespace Waystation.Sim
         public bool Repairs;
         public double FuelCapacity;
 
+        /// <summary>A floor (foundation) that modules stand on; it shares its cells with the module on top.</summary>
+        public bool IsFloor;
+        /// <summary>Must be placed entirely on foundations.</summary>
+        public bool RequiresFoundation;
+
+        // Power, in kW (energy in kJ, i.e. kW·s).
+        /// <summary>Constant draw while connected and switched on.</summary>
+        public double PowerUse;
+        /// <summary>Constant output, sun or shadow (the hub's radioisotope generator).</summary>
+        public double PowerOutput;
+        /// <summary>Output in full sunlight; scales with sun exposure and drops to zero in the planet's shadow.</summary>
+        public double SolarOutput;
+        /// <summary>Backup output while running; burns <see cref="FuelBurn"/> station fuel per second.</summary>
+        public double GeneratorOutput;
+        public double FuelBurn;
+        public double BatteryCapacity;
+
+        /// <summary>Fuel made per second while running (refineries).</summary>
+        public double RefineRate;
+        /// <summary>Docked crews this module can look after at once (pilot lounges).</summary>
+        public int LoungeSeats;
+        /// <summary>Boosts traffic and the holding pattern (comms arrays).</summary>
+        public bool Comms;
+        /// <summary>Clears hailing ships to free pads automatically (air traffic control).</summary>
+        public bool Atc;
+
         public bool CanServe(ShipClass c) => Array.IndexOf(Serves, c) >= 0;
+
+        /// <summary>Can the player switch it off (to save power)?</summary>
+        public bool CanToggle => !IsHub && (PowerUse > 0 || SolarOutput > 0 || GeneratorOutput > 0);
     }
 
     public static class BuildingCatalog
@@ -96,20 +138,22 @@ namespace Waystation.Sim
                 Description = "Where it all started: a landing platform with the station's fuel tank and comms mast.",
                 Label = "Pad", Buildable = false, IsHub = true, UpkeepPerMinute = 5, FuelCapacity = 800,
                 Serves = new[] { ShipClass.Shuttle },
+                // A radioisotope generator and a small battery keep the lights on from day one.
+                PowerUse = 2, PowerOutput = 8, BatteryCapacity = 400,
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.LandingPad, Name = "Landing Pad", Width = 3, Height = 3, Cost = 900,
                 Description = "Another place for shuttles to set down and refuel. Must be connected to the station.",
                 Label = "Pad", Category = BuildCategory.Landing,
-                UpkeepPerMinute = 8, Serves = new[] { ShipClass.Shuttle },
+                UpkeepPerMinute = 8, Serves = new[] { ShipClass.Shuttle }, PowerUse = 2,
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.Hangar, Name = "Hangar", Width = 4, Height = 4, Cost = 2600,
                 Description = "Open repair bay with a gantry crane. Takes haulers (and shuttles). Must be connected to the station.",
                 Label = "Hangar", Category = BuildCategory.Landing,
-                UpkeepPerMinute = 25, Repairs = true, Serves = new[] { ShipClass.Hauler, ShipClass.Shuttle },
+                UpkeepPerMinute = 25, Repairs = true, Serves = new[] { ShipClass.Hauler, ShipClass.Shuttle }, PowerUse = 6,
             });
             Add(new BuildingDef
             {
@@ -120,8 +164,58 @@ namespace Waystation.Sim
             Add(new BuildingDef
             {
                 Type = BuildingType.Foundation, Name = "Foundation", Width = 1, Height = 1, Cost = 60,
-                Description = "Heavy deck plate. Extends the station; future buildings will be placed on foundations.",
-                UpkeepPerMinute = 0.5, IsPaintable = true, Category = BuildCategory.Structure,
+                Description = "Heavy deck plate. Extends the station, and every module (power, fuel, services) is built on top of foundations.",
+                UpkeepPerMinute = 0.5, IsPaintable = true, IsFloor = true, Category = BuildCategory.Structure,
+            });
+
+            // ---- Modules (on foundations)
+            Add(new BuildingDef
+            {
+                Type = BuildingType.SolarArray, Name = "Solar Array", Width = 2, Height = 2, Cost = 450,
+                Description = "Sun-tracking photovoltaic wings. Free power in sunlight, nothing at all in the planet's shadow.",
+                Category = BuildCategory.Power, RequiresFoundation = true, UpkeepPerMinute = 1, SolarOutput = 10,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.BatteryBank, Name = "Battery Bank", Width = 1, Height = 2, Cost = 350,
+                Description = "Stores surplus power by day to carry the station through the eclipse.",
+                Category = BuildCategory.Power, RequiresFoundation = true, UpkeepPerMinute = 1, BatteryCapacity = 900,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.FuelCellGenerator, Name = "Fuel Cell Generator", Width = 1, Height = 2, Cost = 700,
+                Description = "Backup power. Starts by itself when the batteries run low, and burns station fuel while it runs.",
+                Category = BuildCategory.Power, RequiresFoundation = true, UpkeepPerMinute = 4, GeneratorOutput = 12, FuelBurn = 0.3,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.FuelTank, Name = "Fuel Tank", Width = 2, Height = 2, Cost = 500,
+                Description = "Pressurised propellant sphere. More fuel on hand, fewer tanker runs.",
+                Category = BuildCategory.Fuel, RequiresFoundation = true, UpkeepPerMinute = 2, FuelCapacity = 600,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.IceRefinery, Name = "Ice Refinery", Width = 2, Height = 3, Cost = 2200,
+                Description = "Cracks tethered comet ice into propellant. Power-hungry: it only runs on spare power or a healthy battery.",
+                Category = BuildCategory.Fuel, RequiresFoundation = true, UpkeepPerMinute = 18, PowerUse = 14, RefineRate = 1,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.PilotLounge, Name = "Pilot Lounge", Width = 2, Height = 2, Cost = 1400,
+                Description = "Bunks, a bar and bad coffee. Docked crews spend money here (3 crews at a time) and leave happier.",
+                Category = BuildCategory.Services, RequiresFoundation = true, UpkeepPerMinute = 10, PowerUse = 3, LoungeSeats = 3,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.CommsArray, Name = "Comms Array", Width = 2, Height = 2, Cost = 1800,
+                Description = "Long-range dish broadcasting the station's beacon. More traffic, and room for more ships in the holding pattern.",
+                Category = BuildCategory.Services, RequiresFoundation = true, UpkeepPerMinute = 12, PowerUse = 4, Comms = true,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.AtcTower, Name = "Traffic Control", Width = 2, Height = 2, Cost = 4000,
+                Description = "Air traffic control tower. Clears hailing ships to free pads automatically while it has power.",
+                Category = BuildCategory.Services, RequiresFoundation = true, UpkeepPerMinute = 30, PowerUse = 5, Atc = true,
             });
         }
 
@@ -143,8 +237,15 @@ namespace Waystation.Sim
         public int? ShipId;
         public double Earned;
         public int ShipsServed;
+        /// <summary>Switched on by the player (see <see cref="BuildingDef.CanToggle"/>).</summary>
+        public bool Enabled = true;
+        /// <summary>Doing its job this tick: a generator burning fuel, a refinery cracking ice.</summary>
+        public bool Running;
 
         public BuildingDef Def => BuildingCatalog.Get(Type);
+
+        /// <summary>Connected and switched on.</summary>
+        public bool Operating => Connected && Enabled;
 
         public bool Contains(Cell c) =>
             c.X >= Origin.X && c.X < Origin.X + Def.Width && c.Y >= Origin.Y && c.Y < Origin.Y + Def.Height;

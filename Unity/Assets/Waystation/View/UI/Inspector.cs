@@ -60,8 +60,10 @@ namespace Waystation.View
             var status = Ui.Text("", "ws-small").AddTo(Root);
             _updaters.Add(() =>
             {
-                Ui.Set(status, b.Connected ? "● Connected to the station" : "● Not connected: link it with walkways or foundations");
-                Ui.Tone(status, b.Connected ? "ws-good" : "ws-bad");
+                Ui.Set(status, !b.Connected ? "● Not connected: link it with walkways or foundations"
+                    : !b.Enabled ? "● Switched off"
+                    : "● Connected to the station");
+                Ui.Tone(status, !b.Connected ? "ws-bad" : !b.Enabled ? "ws-warn" : "ws-good");
             });
 
             if (def.Serves.Length > 0)
@@ -103,6 +105,9 @@ namespace Waystation.View
                 });
             }
 
+            BuildPower(b);
+            BuildOperation(b);
+
             Ui.Text("COSTS", "ws-subheading").AddTo(Root);
             Row("Upkeep", () => $"{def.UpkeepPerMinute:0.#} cr/min");
 
@@ -110,10 +115,96 @@ namespace Waystation.View
             actions.style.marginTop = 8;
             Ui.Button("FOCUS", () => _game.FocusOnBuilding(b)).AddTo(actions);
             Ui.El("ws-spacer").AddTo(actions);
+            if (def.CanToggle)
+            {
+                var toggle = Ui.Button("", () => _game.TryExecute(new SetEnabled(b.Id, !b.Enabled))).AddTo(actions);
+                _ui.Tooltip(toggle, () => "Switched-off modules use no power and do nothing (upkeep is still paid).");
+                _updaters.Add(() =>
+                {
+                    string text = b.Enabled ? "SWITCH OFF" : "SWITCH ON";
+                    if (toggle.text != text) toggle.text = text;
+                });
+            }
             if (!def.IsHub)
             {
                 var demolish = Ui.Button($"DEMOLISH (+{def.Cost * Rules.DemolishRefund:N0})", () => _game.TryExecute(new Demolish(b.Id)), "ws-button--danger").AddTo(actions);
                 _ui.Tooltip(demolish, () => b.ShipId != null ? "A ship is using it right now." : $"Refunds {Rules.DemolishRefund:P0} of the build cost.");
+            }
+        }
+
+        void BuildPower(Building b)
+        {
+            var s = _game.Station;
+            var def = b.Def;
+            if (def.PowerUse <= 0 && def.PowerOutput <= 0 && def.SolarOutput <= 0 && def.GeneratorOutput <= 0 && def.BatteryCapacity <= 0) return;
+
+            Ui.Text("POWER", "ws-subheading").AddTo(Root);
+            if (def.PowerOutput > 0) Row("Radioisotope generator", () => $"+{def.PowerOutput:0.#} kW");
+            if (def.SolarOutput > 0)
+                Row("Solar output", () => b.Operating ? $"+{def.SolarOutput * s.SunExposure:0.#} of {def.SolarOutput:0} kW" : "off");
+            if (def.GeneratorOutput > 0)
+                Row("Generator", () => b.Running ? $"running · +{def.GeneratorOutput:0} kW · {def.FuelBurn * 60:0} fuel/min"
+                    : !b.Operating ? "off"
+                    : s.GeneratorsOn ? "no fuel!"
+                    : $"standby (starts below {Rules.GeneratorStartCharge:P0} battery)");
+            if (def.BatteryCapacity > 0)
+            {
+                Row("Capacity", () => $"{def.BatteryCapacity / 1000:0.#} MJ");
+                var bar = new Bar().AddTo(Root);
+                Row("Station charge", () => $"{s.BatteryCharge / 1000:0.0} / {s.BatteryCapacity / 1000:0.0} MJ");
+                _updaters.Add(() => bar.Set(s.BatteryFraction, Bar.Health(s.BatteryFraction)));
+            }
+            if (def.PowerUse > 0)
+                Row("Draw", () => b.Operating && (def.RefineRate <= 0 || b.Running) ? $"{def.PowerUse:0.#} kW" : "0 kW");
+            Row("Station grid", () => s.Brownout ? $"BROWNOUT · {s.PowerSatisfaction:P0}" : $"{s.PowerSupply:0.#} kW made · {s.PowerDemand:0.#} kW used");
+        }
+
+        /// <summary>What a module is doing right now.</summary>
+        void BuildOperation(Building b)
+        {
+            var s = _game.Station;
+            var def = b.Def;
+            if (def.RefineRate > 0)
+            {
+                Ui.Text("REFINERY", "ws-subheading").AddTo(Root);
+                Row("Status", () => b.Running ? $"cracking ice · +{def.RefineRate * 60 * s.PowerSatisfaction:0} fuel/min"
+                    : !b.Operating ? "off"
+                    : s.FuelStock >= s.FuelCapacity - 0.5 ? "idle: tanks full"
+                    : "waiting for spare power");
+                Row("Station fuel", () => $"{s.FuelStock:0} / {s.FuelCapacity:0}");
+            }
+            if (def.FuelCapacity > 0 && !def.IsHub)
+            {
+                Ui.Text("FUEL", "ws-subheading").AddTo(Root);
+                Row("Holds", () => $"{def.FuelCapacity:0} units");
+                Row("Station fuel", () => $"{s.FuelStock:0} / {s.FuelCapacity:0}");
+            }
+            if (def.LoungeSeats > 0)
+            {
+                Ui.Text("LOUNGE", "ws-subheading").AddTo(Root);
+                Row("Docked crews", () => $"{s.Ships.Count(x => x.State == ShipState.Servicing)} / {s.LoungeSeats} seats");
+                Row("Crews spend", () => $"{ShipCatalog.Get(ShipClass.Shuttle).ServicesFee:0} cr (shuttle) · {ShipCatalog.Get(ShipClass.Hauler).ServicesFee:0} cr (hauler)");
+                Row("Earned (station)", () => Ui.Money(s.Ledger.Totals[(int)LedgerLine.Services]));
+            }
+            if (def.Comms)
+            {
+                Ui.Text("BEACON", "ws-subheading").AddTo(Root);
+                Row("Status", () =>
+                {
+                    int n = s.CommsArraysOnline;
+                    if (n == 0) return b.Operating ? "offline: not enough power" : "off";
+                    return $"{1 / Math.Pow(Rules.CommsTrafficFactor, n):0.00}× traffic · +{Rules.CommsHoldingSlots * n} holding slots";
+                });
+            }
+            if (def.Atc)
+            {
+                Ui.Text("TRAFFIC CONTROL", "ws-subheading").AddTo(Root);
+                var status = Ui.Text("", "ws-small").AddTo(Root);
+                _updaters.Add(() =>
+                {
+                    Ui.Set(status, s.AtcOnline ? "Online: clearing hailing ships to free pads." : b.Operating ? "Offline: not enough power." : "Switched off: clear ships by hand.");
+                    Ui.Tone(status, s.AtcOnline ? "ws-good" : "ws-warn");
+                });
             }
         }
 

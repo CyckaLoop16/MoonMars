@@ -69,7 +69,7 @@
 .ws-tabs { flex-direction: row; margin-bottom: 4px; }
 .ws-cards { flex-direction: row; }
 .ws-card {
-    width: 132px; height: 74px; margin: 3px; padding: 6px 8px;
+    width: 132px; height: 86px; margin: 3px; padding: 6px 8px;
     background-color: rgba(22, 20, 17, 0.95);
     border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px;
     border-left-color: rgba(201, 138, 43, 0.35); border-right-color: rgba(201, 138, 43, 0.35);
@@ -135,3 +135,4 @@
 .ws-text.ws-bad { color: #ff4a5a; }
 .ws-text.ws-comms { color: #4fe3ff; }
 .ws-card-hail .ws-text.ws-comms { -unity-font-style: bold; }
+.ws-toast--orbit { border-left-color: #ffd08a; color: #ffe6c0; }

@@ -28,6 +28,8 @@ namespace Waystation.View
         public float Intensity = 1f;
         public float Range = 3f;
         public FxLightMode Mode;
+        /// <summary>Floodlights and walkway lamps dim in sunlight; indicators and beacons don't.</summary>
+        public bool DayDim;
 
         float _phase;
         Light _light;
@@ -36,6 +38,14 @@ namespace Waystation.View
 
         /// <summary>Animated intensity this frame (set by LightRig).</summary>
         public float Current { get; private set; }
+
+        /// <summary>A floodlight: like <see cref="Create"/>, but it dims while the sun is up.</summary>
+        public static FxLight Flood(Transform parent, Vector3 localPosition, Color color, float intensity, float range, FxLightMode mode = FxLightMode.Steady)
+        {
+            var lamp = Create(parent, localPosition, color, intensity, range, mode);
+            lamp.DayDim = true;
+            return lamp;
+        }
 
         public static FxLight Create(Transform parent, Vector3 localPosition, Color color, float intensity, float range, FxLightMode mode = FxLightMode.Steady)
         {
@@ -96,6 +106,14 @@ namespace Waystation.View
             _light.innerSpotAngle = innerAngle;
         }
 
+        /// <summary>During a brownout lamps stutter and sag (1 = full power).</summary>
+        public float Brownout(float time, float power)
+        {
+            if (power >= 0.999f) return 1f;
+            return Mathf.PerlinNoise(time * 7f, _phase + 3f) < 0.45f ? 0.08f : Mathf.Max(0.2f, power);
+
+        }
+
         public void Apply(float intensity)
         {
             Current = intensity;
@@ -119,6 +137,10 @@ namespace Waystation.View
         public static Color Ambient = new Color(0.2f, 0.21f, 0.25f);
         /// <summary>Emissive parts are multiplied by this, pushing them past 1.0 so bloom picks them up.</summary>
         public static float Emission = 2.6f;
+        /// <summary>Sunlight on the station, 0–1 (set by SkyCycle); floodlights dim as it rises.</summary>
+        public static float Daylight;
+        /// <summary>Share of power demand being met (set by SkyCycle); below 1 the lamps stutter.</summary>
+        public static float PowerLevel = 1f;
 
         readonly Vector4[] _positions = new Vector4[MaxLights];
         readonly Vector4[] _colors = new Vector4[MaxLights];
@@ -136,7 +158,8 @@ namespace Waystation.View
             _sorted.Clear();
             foreach (var lamp in FxLight.Active)
             {
-                lamp.Apply(lamp.Evaluate(time) * lamp.Intensity);
+                float dim = lamp.DayDim ? 1f - 0.75f * Daylight : 1f;
+                lamp.Apply(lamp.Evaluate(time) * lamp.Intensity * dim * lamp.Brownout(time, PowerLevel));
                 if (lamp.Current > 0.01f) _sorted.Add(lamp);
             }
 

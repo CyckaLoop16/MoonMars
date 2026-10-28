@@ -35,6 +35,8 @@ drop-in slot. Put a prefab at the path and it replaces the placeholder with no c
 | Walkway railing | `.../Resources/Buildings/Walkway_Railing.prefab` | Railing along the cell's **+Z** edge; placed (rotated) on every side with no neighbour |
 | Foundation | `.../Resources/Buildings/Foundation.prefab` | Full 1×1 heavy deck plate |
 | Foundation edge | `.../Resources/Buildings/Foundation_Edge.prefab` | Trim along the **+Z** edge; placed on every open side |
+| Modules | `.../Resources/Buildings/SolarArray.prefab`, `BatteryBank`, `FuelCellGenerator`, `FuelTank`, `IceRefinery`, `PilotLounge`, `CommsArray`, `AtcTower` | Footprint per DESIGN.md; base at Y=0 (they stand on foundations) |
+| Moving parts | `.../Resources/Buildings/SolarArray_Wing.prefab`, `CommsArray_Dish.prefab`, `AtcTower_Radar.prefab` | Wing: panels face +Y (code turns it to the sun); dish faces +Z; radar spins about Y |
 | Shuttle | `.../Resources/Ships/Shuttle.prefab` | Nose along +Z, pivot at the bottom of the gear, ~1.5 units long |
 | Hauler | `.../Resources/Ships/Hauler.prefab` | Nose along +Z, ~2.5 units long |
 
@@ -69,8 +71,17 @@ so match those spots with lamp heads in the models.
 - **Lamps** (`FxLight` + `LightRig`): every lamp feeds the placeholder shader through global arrays
   (nearest 32) *and* drives a real Unity point light, so GPT's URP-lit assets are lit by the same
   lamps. Modes: steady, flicker (failing lamp), pulse, strobe (rotating beacon).
-- **Placeholder shader** `Waystation/Lit Vertex Color`: baked form shading in vertex colours,
-  station lamps added at runtime, vertex **alpha = emissive**. Works in Built-in and URP.
+- **Day/night** (`SkyCycle`, from `Sim/Orbit.cs`): one directional light for the sun (also lights
+  URP-lit art, with soft shadows), plus shader globals `_WS_SunDir` / `_WS_SunColor` for the
+  placeholders. The sun rakes in orange from the left at sunrise, is high and white at noon and
+  sets on the right; in the eclipse it's off. Ambient rises a little by day, floodlights
+  (`FxLight.Flood`) dim in sunlight, and every lamp stutters during a brownout.
+- **Sky** (`WorldRenderer`): camera-space layers with the `Waystation/Backdrop Fade` shader (vertex
+  colour × `_Tint`, additive or alpha per material) for the sun, the planet's day side, night lights,
+  atmosphere and limb flare, faded by sun exposure in `UpdateSky`. They render at queue 2600+:
+  after the station, before particles.
+- **Placeholder shader** `Waystation/Lit Vertex Color`: baked form shading in vertex colours, the
+  sun and station lamps added at runtime, vertex **alpha = emissive**. Works in Built-in and URP.
   `Waystation/Unlit Vertex Color` is used for the backdrop and grid.
 - **Particles** (`Fx`): code-built, no textures (`Waystation/Particle Additive|Alpha`): exhaust,
   smoke, sparks, venting vapour, welding.

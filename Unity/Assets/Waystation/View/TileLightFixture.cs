@@ -24,7 +24,8 @@ namespace Waystation.View
 
         void Refresh()
         {
-            float level = !_powered ? 0f : _lamp == null ? 1f :
+            float passive = (1f - .75f * Mathf.Clamp01(LightRig.Daylight)) * Mathf.Clamp01(LightRig.PowerLevel);
+            float level = !_powered ? 0f : _lamp == null ? passive :
                 _lamp.Intensity > 0f ? _lamp.Current / _lamp.Intensity : 0f;
             if (_block == null) _block = new MaterialPropertyBlock();
             foreach (var lens in Lenses)
