@@ -115,6 +115,10 @@ Grim-dark industrial sci-fi (think *Alien*, *Dead Space*, *Blade Runner*, *Barot
   sparks and arc flashes; refuelling vents frosty vapour; engines burn hard on landing and take-off.
 - **Camera:** isometric orthographic, 90° turns; post-processing with bloom, heavy vignette, film
   grain, desaturated teal/amber grade, slight chromatic aberration.
-- **UI:** old amber terminal (scanlines and glitches to come).
+- **UI:** a clean game HUD: dark translucent panels, one amber accent, icons and numbers before words,
+  rendered building thumbnails in the build dock. Colour carries meaning (green good, amber warning,
+  red bad, cyan comms).
+- **Building feels physical:** new modules drop into place, thump down with a dust ring, sparks and
+  a flash; demolished ones leave a puff of dust.
 
 All art is produced separately (GPT) and dropped into fixed slots; code ships placeholders, lamps and FX.

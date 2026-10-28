@@ -145,6 +145,73 @@ namespace Waystation.View
             return ps;
         }
 
+        /// <summary>
+        /// One-shot ring of dust (and optionally sparks) at a world position, e.g. where a module touches
+        /// down or is torn down. Cleans itself up when done.
+        /// </summary>
+        public static void Burst(Transform parent, Vector3 position, float radius, bool sparks)
+        {
+            OneShot(parent, position, radius, false);
+            if (sparks) OneShot(parent, position, radius, true);
+        }
+
+        static void OneShot(Transform parent, Vector3 position, float radius, bool sparks)
+        {
+            var go = new GameObject(sparks ? "FX Burst Sparks" : "FX Burst Dust");
+            go.transform.SetParent(parent, false);
+            go.transform.position = position;
+            go.transform.rotation = Quaternion.LookRotation(Vector3.up); // the emitter's circle lies flat
+
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.loop = false;
+            main.duration = 0.4f;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 120;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Clamp(12 + radius * 14f, 12, 80)) });
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = radius;
+            shape.radiusThickness = 0.2f;
+
+            var color = ps.colorOverLifetime;
+            color.enabled = true;
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+
+            if (sparks)
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.5f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 3.5f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.06f);
+                color.color = Fade(Hex("#fff1c4"), Hex("#ff7a1a"), 1f, 0f);
+                size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.3f));
+                renderer.renderMode = ParticleSystemRenderMode.Stretch;
+                renderer.velocityScale = 0.05f;
+                renderer.lengthScale = 1f;
+                renderer.sharedMaterial = Additive;
+            }
+            else
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.2f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 1.4f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.15f, 0.35f);
+                main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+                color.color = Fade(Hex("#b8b4ac"), Hex("#6e6a64"), 0.55f, 0f);
+                size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 2.4f));
+                renderer.sharedMaterial = Alpha;
+            }
+            ps.Play();
+        }
+
         static void Rate(ParticleSystem ps, float rate)
         {
             var emission = ps.emission;

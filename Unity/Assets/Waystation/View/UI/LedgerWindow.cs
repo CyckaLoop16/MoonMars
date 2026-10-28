@@ -28,13 +28,13 @@ namespace Waystation.View
             Root = Ui.El("ws-panel", "ws-window");
 
             var header = Ui.El("ws-window-header").AddTo(Root);
-            Ui.Heading("LEDGER").AddTo(header).AddToClassList("ws-grow");
-            Ui.Button("×", () => ui.CloseWindow()).AddTo(header);
+            Ui.Heading("Ledger").AddTo(header).AddToClassList("ws-grow");
+            Ui.IconButton("close", () => ui.CloseWindow()).AddTo(header);
 
             var chartHeader = Ui.El("ws-row").AddTo(Root);
-            Ui.Text($"LAST {ChartMinutes} MINUTES", "ws-subheading", "ws-grow").AddTo(chartHeader);
-            Ui.Text("■ income", "ws-small", "ws-good").AddTo(chartHeader).style.marginRight = 8;
-            Ui.Text("■ expenses", "ws-small", "ws-bad").AddTo(chartHeader);
+            Ui.Text($"Last {ChartMinutes} minutes", "ws-subheading", "ws-grow").AddTo(chartHeader);
+            Ui.Text("income", "ws-small", "ws-good").AddTo(chartHeader).style.marginRight = 8;
+            Ui.Text("expenses", "ws-small", "ws-bad").AddTo(chartHeader);
             _chartScale = Ui.Text("", "ws-small", "ws-muted").AddTo(Root);
             _chart = Ui.El("ws-chart").AddTo(Root);
             for (int i = 0; i < ChartMinutes; i++)
@@ -44,10 +44,10 @@ namespace Waystation.View
             }
             ui.Tooltip(_chart, () => "Each pair of bars is one game minute; the rightmost is the minute in progress.");
 
-            TableRow("", "THIS MIN", "LAST MIN", "LIFETIME", "ws-stat-label");
-            Ui.Text("INCOME", "ws-subheading").AddTo(Root);
+            TableRow("", "This minute", "Last minute", "Total", "ws-muted");
+            Ui.Text("Income", "ws-subheading").AddTo(Root);
             foreach (var line in Ledger.IncomeLines) _lines[line] = TableRow(Ledger.Name(line), "", "", "", null);
-            Ui.Text("EXPENSES", "ws-subheading").AddTo(Root);
+            Ui.Text("Expenses", "ws-subheading").AddTo(Root);
             foreach (var line in Ledger.ExpenseLines) _lines[line] = TableRow(Ledger.Name(line), "", "", "", null);
             var rule = Ui.El().AddTo(Root);
             rule.style.height = 1;

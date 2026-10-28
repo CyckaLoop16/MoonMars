@@ -17,7 +17,7 @@ namespace Waystation.View
 
         readonly GameController _game;
         readonly WorldLabels _worldLabels;
-        readonly List<(Label label, float born)> _toasts = new List<(Label, float)>();
+        readonly List<(VisualElement label, float born)> _toasts = new List<(VisualElement, float)>();
         int _logCount;
         float _lastErrorTime;
 
@@ -51,18 +51,18 @@ namespace Waystation.View
                     case EventKind.Revenue:
                         if (e.BuildingId is int id) _worldLabels.SpawnMoney(id, e.Amount);
                         break;
-                    case EventKind.Hail: Add(e.Text, "ws-toast--hail"); break;
-                    case EventKind.Warning: Add(e.Text, "ws-toast--warning"); break;
-                    case EventKind.Alert: Add(e.Text, "ws-toast--alert"); break;
-                    case EventKind.Construction: Add(e.Text, "ws-toast--build"); break;
-                    case EventKind.Orbit: Add(e.Text, "ws-toast--orbit"); break;
+                    case EventKind.Hail: Add(e.Text, "hail", "comms"); break;
+                    case EventKind.Warning: Add(e.Text, "warning", "warn"); break;
+                    case EventKind.Alert: Add(e.Text, "warning", "bad", "ws-toast--alert"); break;
+                    case EventKind.Construction: Add(e.Text, "build", "good"); break;
+                    case EventKind.Orbit: Add(e.Text, Orbit.IsDay(e.Tick) ? "sun" : "eclipse", "warn"); break;
                 }
             }
 
             if (_game.LastErrorTime != _lastErrorTime)
             {
                 _lastErrorTime = _game.LastErrorTime;
-                if (!string.IsNullOrEmpty(_game.LastError)) Add(_game.LastError, "ws-toast--alert");
+                if (!string.IsNullOrEmpty(_game.LastError)) Add(_game.LastError, "warning", "bad", "ws-toast--alert");
             }
 
             float now = Time.unscaledTime;
@@ -79,10 +79,13 @@ namespace Waystation.View
             }
         }
 
-        void Add(string text, string cls)
+        void Add(string text, string icon, string tone, string cls = null)
         {
-            var label = Ui.Text(text, "ws-toast", cls).AddTo(Root);
-            label.pickingMode = PickingMode.Ignore;
+            var label = Ui.El("ws-toast").AddTo(Root);
+            if (cls != null) label.AddToClassList(cls);
+            Ui.IconTone(Ui.Icon(icon).AddTo(label), tone);
+            Ui.Text(text, "ws-toast-text").AddTo(label);
+            Ui.IgnorePointer(label);
             _toasts.Add((label, Time.unscaledTime));
             while (_toasts.Count > MaxToasts)
             {

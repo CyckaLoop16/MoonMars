@@ -11,11 +11,15 @@ namespace Waystation.View
     /// </summary>
     public sealed class SkyCycle : MonoBehaviour
     {
-        static readonly Color NightAmbient = new Color(0.2f, 0.21f, 0.25f);
-        static readonly Color DayAmbient = new Color(0.3f, 0.32f, 0.38f);
+        // Brightness knobs. Night is lit by the planet below (cool "planetshine"), day by the sun.
+        static readonly Color NightAmbient = new Color(0.36f, 0.39f, 0.46f);
+        static readonly Color DayAmbient = new Color(0.46f, 0.48f, 0.54f);
+        static readonly Color Planetshine = MeshBuilder.Hex("#8fb0d8");
+        /// <summary>Ambient for URP-lit art, relative to the placeholder ambient above.</summary>
+        const float ArtAmbientScale = 0.85f;
         static readonly Color LowSun = MeshBuilder.Hex("#ff7a3a");
         static readonly Color HighSun = MeshBuilder.Hex("#fff2dc");
-        const float SunStrength = 1.15f;
+        const float SunStrength = 1.4f;
 
         static readonly int SunDirId = Shader.PropertyToID("_WS_SunDir");
         static readonly int SunColorId = Shader.PropertyToID("_WS_SunColor");
@@ -26,6 +30,7 @@ namespace Waystation.View
         public static float Daylight { get; private set; } = 1f;
 
         Light _light;
+        Light _fill;
         Camera _camera;
         WorldRenderer _world;
         Station _station;
@@ -37,6 +42,14 @@ namespace Waystation.View
             _light = new GameObject("Sun").AddComponent<Light>();
             _light.type = LightType.Directional;
             _light.shadows = LightShadows.Soft;
+            _light.cullingMask = ~(1 << Thumbnails.Layer);
+
+            // Soft bluish fill from the planet below, so lit art never drops to black in the eclipse.
+            _fill = new GameObject("Planetshine").AddComponent<Light>();
+            _fill.type = LightType.Directional;
+            _fill.shadows = LightShadows.None;
+            _fill.color = Planetshine;
+            _fill.cullingMask = ~(1 << Thumbnails.Layer);
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
         }
 
@@ -63,15 +76,17 @@ namespace Waystation.View
             var color = Color.Lerp(LowSun, HighSun, Mathf.Clamp01(Mathf.Min(exposure, height * 1.6f)));
             _light.transform.rotation = Quaternion.LookRotation(-toSun);
             _light.color = color;
-            _light.intensity = 1.3f * exposure;
+            _light.intensity = 1.5f * exposure;
             _light.enabled = exposure > 0.001f;
+            _fill.transform.rotation = Quaternion.LookRotation(-(Vector3.up * 0.6f - forward).normalized);
+            _fill.intensity = Mathf.Lerp(0.55f, 0.25f, exposure);
 
             Shader.SetGlobalVector(SunDirId, toSun);
             Shader.SetGlobalColor(SunColorId, MeshBuilder.ToRenderSpace(color) * (SunStrength * exposure));
 
             var ambient = Color.Lerp(NightAmbient, DayAmbient, exposure);
             LightRig.Ambient = ambient;
-            RenderSettings.ambientLight = ambient * 0.45f;
+            RenderSettings.ambientLight = ambient * ArtAmbientScale;
             LightRig.Daylight = exposure;
             LightRig.PowerLevel = (float)_station.PowerSatisfaction;
             GrimPostFx.SetDaylight(exposure);

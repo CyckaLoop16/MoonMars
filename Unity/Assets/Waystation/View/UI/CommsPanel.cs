@@ -15,6 +15,7 @@ namespace Waystation.View
         {
             public VisualElement Root;
             public Label Name, Info, Patience;
+            public VisualElement Icon;
             public Bar PatienceBar;
             public VisualElement Pads;
             public string PadKey;
@@ -22,7 +23,7 @@ namespace Waystation.View
 
         readonly GameController _game;
         readonly UiRoot _ui;
-        readonly Label _header, _empty, _trafficHeader;
+        readonly Label _badge, _empty, _trafficHeader;
         readonly VisualElement _hails, _traffic;
         readonly Dictionary<int, HailCard> _cards = new Dictionary<int, HailCard>();
         readonly List<(VisualElement row, Label name, Label status)> _rows = new List<(VisualElement, Label, Label)>();
@@ -36,12 +37,16 @@ namespace Waystation.View
             _ui = ui;
             Root = Ui.El("ws-panel", "ws-comms-panel");
 
-            _header = Ui.Heading("COMMS").AddTo(Root);
+            var header = Ui.El("ws-row").AddTo(Root);
+            Ui.Icon("hail", "ws-icon--comms").AddTo(header).style.marginRight = 6;
+            Ui.Heading("Comms").AddTo(header).style.marginBottom = 0;
+            _badge = Ui.Text("", "ws-badge").AddTo(header);
+            header.style.marginBottom = 6;
             var scroll = new ScrollView(ScrollViewMode.Vertical).AddTo(Root);
             scroll.AddToClassList("ws-scroll");
             _hails = Ui.El().AddTo(scroll);
-            _empty = Ui.Text("No ships calling. Channel open.", "ws-small", "ws-muted").AddTo(scroll);
-            _trafficHeader = Ui.Text("TRAFFIC", "ws-subheading").AddTo(scroll);
+            _empty = Ui.Text("", "ws-small", "ws-muted").AddTo(scroll);
+            _trafficHeader = Ui.Text("Traffic", "ws-subheading").AddTo(scroll);
             _traffic = Ui.El().AddTo(scroll);
         }
 
@@ -50,10 +55,10 @@ namespace Waystation.View
             var s = _game.Station;
             var hailing = s.Hailing.ToList();
 
-            int inbound = s.Ships.Count(x => x.State == ShipState.Approaching);
-            Ui.Set(_header, hailing.Count > 0 ? $"COMMS · {hailing.Count} HAILING · {inbound} INBOUND" : $"COMMS · {inbound} INBOUND");
+            Ui.Show(_badge, hailing.Count > 0);
+            Ui.Set(_badge, hailing.Count.ToString());
             Ui.Show(_empty, hailing.Count == 0);
-            Ui.Set(_empty, s.AutoClearance ? "Traffic control is clearing ships to free pads." : "No ships calling. Channel open.");
+            Ui.Set(_empty, s.AutoClearance ? "Traffic control is handling landings." : "No ships calling.");
 
             // Hail cards: drop the ones that stopped hailing, add new ones in order, update the rest.
             foreach (var id in _cards.Keys.Where(id => hailing.All(h => h.Id != id)).ToList())
@@ -78,17 +83,17 @@ namespace Waystation.View
 
         HailCard CreateCard(Ship ship)
         {
-            var card = new HailCard { Root = Ui.El("ws-card-hail") };
+            var card = new HailCard { Root = Ui.El("ws-ship-card") };
 
             var top = Ui.El("ws-row").AddTo(card.Root);
-            card.Name = Ui.Text(ship.Name, "ws-comms", "ws-grow").AddTo(top);
-            card.Name.style.unityFontStyleAndWeight = UnityEngine.FontStyle.Bold;
+            card.Icon = Ui.Icon(ship.Class == ShipClass.Hauler ? "hauler" : "shuttle", "ws-icon--comms").AddTo(top);
+            card.Icon.style.marginRight = 6;
+            card.Name = Ui.Text(ship.Name, "ws-ship-name", "ws-grow").AddTo(top);
             card.Name.RegisterCallback<ClickEvent>(_ =>
             {
                 _game.SelectShip(ship);
                 _game.FocusOnShip(ship);
             });
-            _ui.Tooltip(card.Name, () => "Select and look at this ship");
             card.Patience = Ui.Text("", "ws-small").AddTo(top);
 
             card.Info = Ui.Text("", "ws-small").AddTo(card.Root);
@@ -96,11 +101,10 @@ namespace Waystation.View
             card.Pads = Ui.El("ws-row").AddTo(card.Root);
             card.Pads.style.flexWrap = Wrap.Wrap;
 
-            var actions = Ui.El("ws-row").AddTo(card.Root);
-            Ui.Button("PICK ON MAP", () => _game.BeginClearance(ship), "ws-button--comms").AddTo(actions);
-            Ui.El("ws-spacer").AddTo(actions);
-            var wave = Ui.Button("WAVE OFF", () => _game.TryExecute(new WaveOff(ship.Id)), "ws-button--danger").AddTo(actions);
-            _ui.Tooltip(wave, () => $"Turn the ship away. Reputation −{Rules.ReputationLostWhenWavedOff:0}, but less than letting it give up (−{Rules.ReputationLostWhenAngry:0}).");
+            var pick = Ui.IconButton("focus", () => _game.BeginClearance(ship), "ws-button--comms").AddTo(top);
+            _ui.Tooltip(pick, () => "Pick a pad on the map (T)");
+            var wave = Ui.IconButton("close", () => _game.TryExecute(new WaveOff(ship.Id)), "ws-button--danger").AddTo(top);
+            _ui.Tooltip(wave, () => $"Wave off: reputation −{Rules.ReputationLostWhenWavedOff:0} (giving up costs −{Rules.ReputationLostWhenAngry:0})");
             return card;
         }
 
@@ -111,9 +115,10 @@ namespace Waystation.View
             Ui.Set(card.Patience, $"{ship.PatienceTicks / (double)Station.TicksPerSecond:0}s");
             Ui.Tone(card.Patience, patience < 0.33 ? "ws-bad" : patience < 0.66 ? "ws-warn" : "ws-muted");
             card.PatienceBar.Set(patience, Bar.Health(patience));
-            Ui.Set(card.Info, $"{ShipCatalog.Get(ship.Class).Name} · {ship.FuelNeeded:0} fuel{(ship.NeedsRepair ? " · needs repairs" : "")}");
-            card.Root.EnableInClassList("ws-card-hail--urgent", patience < 0.33);
-            card.Root.EnableInClassList("ws-card-hail--picking", _game.ClearingShip == ship);
+            Ui.Set(card.Info, $"{ShipCatalog.Get(ship.Class).Name} · {ship.FuelNeeded:0} fuel{(ship.NeedsRepair ? " · repairs" : "")}");
+            Ui.Tone(card.Info, "ws-muted");
+            card.Root.EnableInClassList("ws-ship-card--urgent", patience < 0.33);
+            card.Root.EnableInClassList("ws-ship-card--picking", _game.ClearingShip == ship);
 
             // One button per pad that can take this ship right now; rebuilt only when that set changes.
             var free = s.Buildings.Where(b => s.LandingError(ship, b) == null).ToList();
@@ -124,16 +129,15 @@ namespace Waystation.View
             if (free.Count == 0)
             {
                 string why = ship.Class == ShipClass.Hauler && !s.Buildings.Any(b => b.Def.CanServe(ShipClass.Hauler))
-                    ? "No hangar: haulers can't land here."
-                    : "No free spot. Hold, or wave off.";
+                    ? "Needs a hangar"
+                    : "No free pad";
                 Ui.Text(why, "ws-small", "ws-warn").AddTo(card.Pads);
                 return;
             }
             foreach (var b in free)
             {
                 var target = b;
-                var button = Ui.Button(s.Label(b).ToUpperInvariant(), () => _game.TryExecute(new AssignLanding(ship.Id, target.Id)), "ws-button--comms").AddTo(card.Pads);
-                _ui.Tooltip(button, () => $"Clear to {s.Label(target)}");
+                Ui.Button(s.Label(b), () => _game.TryExecute(new AssignLanding(ship.Id, target.Id)), "ws-button--comms").AddTo(card.Pads);
             }
         }
 

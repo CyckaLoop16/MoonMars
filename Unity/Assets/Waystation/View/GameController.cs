@@ -63,6 +63,9 @@ namespace Waystation.View
         public string LastError { get; private set; }
         public float LastErrorTime { get; private set; } = -100f;
         public Camera Camera => _camera;
+        /// <summary>Build grid overlay, toggled with G or the HUD button.</summary>
+        public bool GridVisible { get; private set; }
+        public BuildingRenderer Buildings => _buildings;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void AutoBoot()
@@ -145,7 +148,7 @@ namespace Waystation.View
                 SetTool(Tool.Select);
 
             HandlePointer();
-            _world.ShowGrid(Tool == Tool.Build || Tool == Tool.Demolish);
+            _world.ShowGrid(GridVisible);
         }
 
         // ------------------------------------------------------------------ clock & keys
@@ -169,6 +172,7 @@ namespace Waystation.View
                 case 'T': ClearNextHail(); break;
                 case 'L': _ui.ToggleWindow(UiWindow.Log); break;
                 case 'M': _ui.ToggleWindow(UiWindow.Ledger); break;
+                case 'G': ToggleGrid(); break;
             }
         }
 
@@ -197,6 +201,8 @@ namespace Waystation.View
                 Speed = _speedBeforeMenu;
             }
         }
+
+        public void ToggleGrid() => GridVisible = !GridVisible;
 
         public void ClearSelection()
         {

@@ -61,7 +61,7 @@ docs/                           design, tech, roadmap
 Controls: clear a hailing ship with its pad button in the **Comms** panel (right), or `T` / click the
 ship, then click a pad · click a pad or ship to **inspect** it · build with the cards at the bottom or
 `P` pad · `H` hangar · `C` walkway · `F` foundation · `X` demolish · drag to paint walkways and
-foundations · `L` log · `M` ledger · `Esc` closes a window, then the tool, then the selection, then
+foundations · `G` build grid · `L` log · `M` ledger · `Esc` closes a window, then the tool, then the selection, then
 opens the menu · `Space` pause · `1`/`2`/`3` speed · `WASD`/right-drag pan · wheel zoom · `Q`/`E` rotate.
 
 **First steps:** when a ship hails (blinking cyan beacon, Comms panel), clear it to Pad 1. When you

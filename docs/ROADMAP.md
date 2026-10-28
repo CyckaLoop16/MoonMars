@@ -32,8 +32,14 @@
   comms array, traffic control (automatic clearance)
 - Switch modules on and off; lounge services income; comms boosts traffic
 - Space backdrop: big planet with day side, night lights, atmosphere and sunrise flare; moon;
-  distant traffic; ice dust; grid only shows while building
+  distant traffic; ice dust; build grid on a toggle (G)
 - HUD: power and orbit gauges, power stats on build cards, module details in the inspector
+
+## P1.1: Polish pass ✅
+- HUD redesign: icon chips in the top bar, build dock with rendered thumbnails, compact comms and
+  inspector, icon toasts; less text, no terminal scanlines
+- Placement animation (drop, thump, dust, sparks, flash) and a dust puff on demolish
+- Brighter scene: higher ambient, planetshine fill light, stronger sun, lighter grade
 
 ## P1: Feel & feedback
 - Playtest and tune the first 15 minutes

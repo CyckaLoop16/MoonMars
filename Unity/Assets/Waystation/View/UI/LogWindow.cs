@@ -25,13 +25,13 @@ namespace Waystation.View
             Root = Ui.El("ws-panel", "ws-window");
 
             var header = Ui.El("ws-window-header").AddTo(Root);
-            Ui.Heading("STATION LOG").AddTo(header).AddToClassList("ws-grow");
+            Ui.Heading("Station log").AddTo(header).AddToClassList("ws-grow");
             foreach (Filter f in Enum.GetValues(typeof(Filter)))
             {
                 var filter = f;
-                _filterButtons[f] = Ui.Button(f.ToString().ToUpperInvariant(), () => SetFilter(filter)).AddTo(header);
+                _filterButtons[f] = Ui.Button(f.ToString(), () => SetFilter(filter)).AddTo(header);
             }
-            Ui.Button("×", () => ui.CloseWindow()).AddTo(header);
+            Ui.IconButton("close", () => ui.CloseWindow()).AddTo(header);
 
             _scroll = new ScrollView(ScrollViewMode.Vertical).AddTo(Root);
             _scroll.AddToClassList("ws-scroll");

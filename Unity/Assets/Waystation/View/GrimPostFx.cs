@@ -23,9 +23,9 @@ namespace Waystation.View
         {
 #if WAYSTATION_URP
             if (_grade == null) return;
-            _grade.saturation.Override(Mathf.Lerp(-30f, -12f, daylight));
-            _grade.postExposure.Override(Mathf.Lerp(0.25f, 0.1f, daylight));
-            _vignette.intensity.Override(Mathf.Lerp(0.46f, 0.34f, daylight));
+            _grade.saturation.Override(Mathf.Lerp(-18f, -6f, daylight));
+            _grade.postExposure.Override(Mathf.Lerp(0.55f, 0.3f, daylight));
+            _vignette.intensity.Override(Mathf.Lerp(0.3f, 0.22f, daylight));
 #endif
         }
 
@@ -70,18 +70,18 @@ namespace Waystation.View
             bloom.tint.Override(new Color(1f, 0.82f, 0.66f));
 
             var vignette = profile.Add<Vignette>(true);
-            vignette.intensity.Override(0.46f);
+            vignette.intensity.Override(0.3f);
             vignette.smoothness.Override(0.42f);
             vignette.color.Override(Color.black);
 
             var grain = profile.Add<FilmGrain>(true);
             grain.type.Override(FilmGrainLookup.Medium3);
-            grain.intensity.Override(0.55f);
+            grain.intensity.Override(0.3f);
             grain.response.Override(0.75f);
 
             var grade = profile.Add<ColorAdjustments>(true);
             grade.saturation.Override(-30f);
-            grade.contrast.Override(22f);
+            grade.contrast.Override(14f);
             grade.postExposure.Override(0.25f);
             _grade = grade;
             _vignette = vignette;

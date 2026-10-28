@@ -49,28 +49,30 @@ namespace Waystation.View
         {
             var s = _game.Station;
             var def = b.Def;
+            var image = Ui.El("ws-inspector-image").AddTo(Root);
+            var thumbnail = Thumbnails.Get(_game.Buildings, def.Type);
+            if (thumbnail != null) image.style.backgroundImage = new StyleBackground(thumbnail);
+            else Ui.Show(image, false);
+            _ui.Tooltip(image, () => def.Description);
+
             var header = Ui.El("ws-window-header").AddTo(Root);
             var title = Ui.Heading("").AddTo(header);
             title.AddToClassList("ws-grow");
-            Ui.Button("×", _game.ClearSelection).AddTo(header);
-            Live(title, () => s.Label(b).ToUpperInvariant());
-
-            Ui.Text(def.Description, "ws-small", "ws-muted").AddTo(Root);
+            Ui.IconButton("close", _game.ClearSelection).AddTo(header);
+            Live(title, () => s.Label(b));
 
             var status = Ui.Text("", "ws-small").AddTo(Root);
             _updaters.Add(() =>
             {
-                Ui.Set(status, !b.Connected ? "● Not connected: link it with walkways or foundations"
-                    : !b.Enabled ? "● Switched off"
-                    : "● Connected to the station");
+                Ui.Set(status, !b.Connected ? "Not connected" : !b.Enabled ? "Switched off" : "Online");
                 Ui.Tone(status, !b.Connected ? "ws-bad" : !b.Enabled ? "ws-warn" : "ws-good");
             });
+            _ui.Tooltip(status, () => b.Connected ? def.Description : "Link it to the station with walkways or foundations.");
 
             if (def.Serves.Length > 0)
             {
-                Ui.Text("SERVICE", "ws-subheading").AddTo(Root);
-                Ui.Text("Takes " + string.Join(" and ", def.Serves.Select(c => ShipCatalog.Get(c).Name.ToLowerInvariant() + "s")) +
-                        (def.Repairs ? " · repair crew on duty" : ""), "ws-small").AddTo(Root);
+                Ui.Text("Service", "ws-subheading").AddTo(Root);
+                Row("Takes", () => string.Join(", ", def.Serves.Select(c => ShipCatalog.Get(c).Name.ToLowerInvariant() + "s")) + (def.Repairs ? " · repairs" : ""));
 
                 var occupant = Ui.Text("", "ws-small").AddTo(Root);
                 occupant.RegisterCallback<ClickEvent>(_ =>
@@ -85,7 +87,7 @@ namespace Waystation.View
                 _updaters.Add(() =>
                 {
                     var ship = b.ShipId is int id ? s.GetShip(id) : null;
-                    Ui.Set(occupant, ship != null ? $"In use: {ship.Name} ({ship.State.ToString().ToLowerInvariant()})" : "Free");
+                    Ui.Set(occupant, ship != null ? $"{ship.Name} · {ship.State.ToString().ToLowerInvariant()}" : "Free");
                     Ui.Tone(occupant, ship != null ? "ws-comms" : "ws-good");
                 });
 
@@ -95,7 +97,7 @@ namespace Waystation.View
 
             if (def.FuelCapacity > 0)
             {
-                Ui.Text("FUEL TANK", "ws-subheading").AddTo(Root);
+                Ui.Text("Fuel tank", "ws-subheading").AddTo(Root);
                 var bar = new Bar().AddTo(Root);
                 Row("Station stock", () => $"{s.FuelStock:0} / {s.FuelCapacity:0}");
                 _updaters.Add(() =>
@@ -108,27 +110,23 @@ namespace Waystation.View
             BuildPower(b);
             BuildOperation(b);
 
-            Ui.Text("COSTS", "ws-subheading").AddTo(Root);
+            Ui.El("ws-rule").AddTo(Root);
             Row("Upkeep", () => $"{def.UpkeepPerMinute:0.#} cr/min");
 
             var actions = Ui.El("ws-row").AddTo(Root);
             actions.style.marginTop = 8;
-            Ui.Button("FOCUS", () => _game.FocusOnBuilding(b)).AddTo(actions);
+            _ui.Tooltip(Ui.IconButton("focus", () => _game.FocusOnBuilding(b)).AddTo(actions), () => "Centre the view");
             Ui.El("ws-spacer").AddTo(actions);
             if (def.CanToggle)
             {
-                var toggle = Ui.Button("", () => _game.TryExecute(new SetEnabled(b.Id, !b.Enabled))).AddTo(actions);
-                _ui.Tooltip(toggle, () => "Switched-off modules use no power and do nothing (upkeep is still paid).");
-                _updaters.Add(() =>
-                {
-                    string text = b.Enabled ? "SWITCH OFF" : "SWITCH ON";
-                    if (toggle.text != text) toggle.text = text;
-                });
+                var toggle = Ui.IconButton("toggle", () => _game.TryExecute(new SetEnabled(b.Id, !b.Enabled))).AddTo(actions);
+                _ui.Tooltip(toggle, () => b.Enabled ? "Switch off (saves power, still costs upkeep)" : "Switch on");
+                _updaters.Add(() => toggle.EnableInClassList("ws-button--on", b.Enabled));
             }
             if (!def.IsHub)
             {
-                var demolish = Ui.Button($"DEMOLISH (+{def.Cost * Rules.DemolishRefund:N0})", () => _game.TryExecute(new Demolish(b.Id)), "ws-button--danger").AddTo(actions);
-                _ui.Tooltip(demolish, () => b.ShipId != null ? "A ship is using it right now." : $"Refunds {Rules.DemolishRefund:P0} of the build cost.");
+                var demolish = Ui.IconButton("demolish", () => _game.TryExecute(new Demolish(b.Id)), "ws-button--danger").AddTo(actions);
+                _ui.Tooltip(demolish, () => b.ShipId != null ? "A ship is using it" : $"Demolish (+{def.Cost * Rules.DemolishRefund:N0} cr)");
             }
         }
 
@@ -138,7 +136,7 @@ namespace Waystation.View
             var def = b.Def;
             if (def.PowerUse <= 0 && def.PowerOutput <= 0 && def.SolarOutput <= 0 && def.GeneratorOutput <= 0 && def.BatteryCapacity <= 0) return;
 
-            Ui.Text("POWER", "ws-subheading").AddTo(Root);
+            Ui.Text("Power", "ws-subheading").AddTo(Root);
             if (def.PowerOutput > 0) Row("Radioisotope generator", () => $"+{def.PowerOutput:0.#} kW");
             if (def.SolarOutput > 0)
                 Row("Solar output", () => b.Operating ? $"+{def.SolarOutput * s.SunExposure:0.#} of {def.SolarOutput:0} kW" : "off");
@@ -156,7 +154,7 @@ namespace Waystation.View
             }
             if (def.PowerUse > 0)
                 Row("Draw", () => b.Operating && (def.RefineRate <= 0 || b.Running) ? $"{def.PowerUse:0.#} kW" : "0 kW");
-            Row("Station grid", () => s.Brownout ? $"BROWNOUT · {s.PowerSatisfaction:P0}" : $"{s.PowerSupply:0.#} kW made · {s.PowerDemand:0.#} kW used");
+            Row("Station grid", () => s.Brownout ? $"brownout · {s.PowerSatisfaction:P0}" : $"{s.PowerSupply:0.#} kW made · {s.PowerDemand:0.#} kW used");
         }
 
         /// <summary>What a module is doing right now.</summary>
@@ -166,7 +164,7 @@ namespace Waystation.View
             var def = b.Def;
             if (def.RefineRate > 0)
             {
-                Ui.Text("REFINERY", "ws-subheading").AddTo(Root);
+                Ui.Text("Refinery", "ws-subheading").AddTo(Root);
                 Row("Status", () => b.Running ? $"cracking ice · +{def.RefineRate * 60 * s.PowerSatisfaction:0} fuel/min"
                     : !b.Operating ? "off"
                     : s.FuelStock >= s.FuelCapacity - 0.5 ? "idle: tanks full"
@@ -175,20 +173,20 @@ namespace Waystation.View
             }
             if (def.FuelCapacity > 0 && !def.IsHub)
             {
-                Ui.Text("FUEL", "ws-subheading").AddTo(Root);
+                Ui.Text("Fuel", "ws-subheading").AddTo(Root);
                 Row("Holds", () => $"{def.FuelCapacity:0} units");
                 Row("Station fuel", () => $"{s.FuelStock:0} / {s.FuelCapacity:0}");
             }
             if (def.LoungeSeats > 0)
             {
-                Ui.Text("LOUNGE", "ws-subheading").AddTo(Root);
+                Ui.Text("Lounge", "ws-subheading").AddTo(Root);
                 Row("Docked crews", () => $"{s.Ships.Count(x => x.State == ShipState.Servicing)} / {s.LoungeSeats} seats");
                 Row("Crews spend", () => $"{ShipCatalog.Get(ShipClass.Shuttle).ServicesFee:0} cr (shuttle) · {ShipCatalog.Get(ShipClass.Hauler).ServicesFee:0} cr (hauler)");
                 Row("Earned (station)", () => Ui.Money(s.Ledger.Totals[(int)LedgerLine.Services]));
             }
             if (def.Comms)
             {
-                Ui.Text("BEACON", "ws-subheading").AddTo(Root);
+                Ui.Text("Beacon", "ws-subheading").AddTo(Root);
                 Row("Status", () =>
                 {
                     int n = s.CommsArraysOnline;
@@ -198,7 +196,7 @@ namespace Waystation.View
             }
             if (def.Atc)
             {
-                Ui.Text("TRAFFIC CONTROL", "ws-subheading").AddTo(Root);
+                Ui.Text("Traffic control", "ws-subheading").AddTo(Root);
                 var status = Ui.Text("", "ws-small").AddTo(Root);
                 _updaters.Add(() =>
                 {
@@ -215,10 +213,11 @@ namespace Waystation.View
             var s = _game.Station;
             var cls = ShipCatalog.Get(ship.Class);
             var header = Ui.El("ws-window-header").AddTo(Root);
-            Ui.Heading(ship.Name.ToUpperInvariant()).AddTo(header).AddToClassList("ws-grow");
-            Ui.Button("×", _game.ClearSelection).AddTo(header);
+            Ui.Icon(ship.Class == ShipClass.Hauler ? "hauler" : "shuttle", "ws-icon--big", "ws-icon--comms").AddTo(header).style.marginRight = 6;
+            Ui.Heading(ship.Name).AddTo(header).AddToClassList("ws-grow");
+            Ui.IconButton("close", _game.ClearSelection).AddTo(header);
 
-            Ui.Text($"{cls.Name} · landing fee {Ui.Money(cls.LandingFee)}", "ws-small", "ws-muted").AddTo(Root);
+            Ui.Text($"{cls.Name} · fee {cls.LandingFee:0} cr", "ws-small", "ws-muted").AddTo(Root);
             var state = Ui.Text("", "ws-small").AddTo(Root);
             _updaters.Add(() =>
             {
@@ -227,7 +226,7 @@ namespace Waystation.View
             });
 
             var patienceBox = Ui.El().AddTo(Root);
-            Ui.Text("PATIENCE", "ws-subheading").AddTo(patienceBox);
+            Ui.Text("Patience", "ws-subheading").AddTo(patienceBox);
             var patience = new Bar().AddTo(patienceBox);
             _updaters.Add(() =>
             {
@@ -237,7 +236,7 @@ namespace Waystation.View
                 patience.Set(p, Bar.Health(p));
             });
 
-            Ui.Text("FUEL", "ws-subheading").AddTo(Root);
+            Ui.Text("Fuel", "ws-subheading").AddTo(Root);
             var fuel = new Bar().AddTo(Root);
             Row("Loaded", () => $"{ship.FuelLoaded:0} / {ship.FuelNeeded:0}");
             _updaters.Add(() => fuel.Set(ship.FuelNeeded > 0 ? ship.FuelLoaded / ship.FuelNeeded : 1, Bar.Warn));
@@ -247,10 +246,11 @@ namespace Waystation.View
 
             var actions = Ui.El("ws-row").AddTo(Root);
             actions.style.marginTop = 8;
-            Ui.Button("FOCUS", () => _game.FocusOnShip(ship)).AddTo(actions);
+            _ui.Tooltip(Ui.IconButton("focus", () => _game.FocusOnShip(ship)).AddTo(actions), () => "Centre the view");
             Ui.El("ws-spacer").AddTo(actions);
-            var clear = Ui.Button("CLEAR TO LAND", () => _game.BeginClearance(ship), "ws-button--comms").AddTo(actions);
-            var wave = Ui.Button("WAVE OFF", () => _game.TryExecute(new WaveOff(ship.Id)), "ws-button--danger").AddTo(actions);
+            var clear = Ui.Button("Clear to land", () => _game.BeginClearance(ship), "ws-button--comms").AddTo(actions);
+            var wave = Ui.IconButton("close", () => _game.TryExecute(new WaveOff(ship.Id)), "ws-button--danger").AddTo(actions);
+            _ui.Tooltip(wave, () => "Wave off");
             _updaters.Add(() =>
             {
                 bool hailing = ship.State == ShipState.Hailing;

@@ -3,12 +3,14 @@ using Waystation.Sim;
 
 namespace Waystation.View
 {
-    /// <summary>Station status across the top: credits, reputation, fuel, traffic stats, windows, clock and speed.</summary>
+    /// <summary>Resource chips across the top (credits, reputation, fuel, power, orbit, traffic), then windows, clock and speed.</summary>
     public sealed class TopBar
     {
         readonly GameController _game;
-        readonly Label _money, _trend, _rep, _fuel, _fuelNote, _power, _powerNote, _orbit, _orbitNote, _traffic, _atc, _clock;
-        readonly Bar _repBar, _fuelBar, _batteryBar, _orbitBar;
+        readonly Label _money, _trend, _rep, _repSub, _fuel, _fuelSub, _power, _powerSub, _orbit, _orbitSub, _traffic, _trafficSub, _clock;
+        readonly Bar _repBar, _fuelBar, _batteryBar;
+        readonly VisualElement _orbitIcon, _powerIcon;
+        readonly Button _grid;
         readonly Button[] _speedButtons = new Button[GameController.SpeedMultipliers.Length];
 
         public VisualElement Root { get; }
@@ -16,131 +18,110 @@ namespace Waystation.View
         public TopBar(GameController game, UiRoot ui)
         {
             _game = game;
-            Root = Ui.El("ws-panel", "ws-topbar");
+            Root = Ui.El("ws-topbar");
 
-            var brand = Ui.El().AddTo(Root);
-            Ui.Text("WAYSTATION", "ws-brand").AddTo(brand);
-            Ui.Text("DOCK CONTROL", "ws-brand-sub").AddTo(brand);
-            Ui.El("ws-divider").AddTo(Root);
-
-            var credits = Stat("CREDITS", out _money);
-            _trend = Ui.Text("", "ws-small").AddTo(credits);
-            ui.Tooltip(credits, () => "Net result of the last full minute. Open the ledger (M) for the breakdown.");
-            Ui.El("ws-divider").AddTo(Root);
-
-            var rep = Gauge("REPUTATION", out _rep, out _repBar);
-            ui.Tooltip(rep, () => "Higher reputation brings more traffic. Served ships raise it; angry or waved-off ships lower it.");
-            Ui.El("ws-divider").AddTo(Root);
-
-            var fuel = Gauge("FUEL", out _fuel, out _fuelBar);
-            _fuelNote = Ui.Text("", "ws-small", "ws-muted").AddTo(fuel);
-            ui.Tooltip(fuel, () => $"A tanker is ordered automatically below {Rules.RestockThreshold:P0} of capacity, at {Rules.FuelBuyPrice:0.0} cr per unit. Ships buy fuel at {Rules.FuelSellPrice:0.0} cr.");
-            Ui.El("ws-divider").AddTo(Root);
-
-            var power = Gauge("POWER", out _power, out _batteryBar);
-            _powerNote = Ui.Text("", "ws-small", "ws-muted").AddTo(power);
-            ui.Tooltip(power, PowerTooltip);
-            Ui.El("ws-divider").AddTo(Root);
-
-            var orbit = Gauge("ORBIT", out _orbit, out _orbitBar);
-            _orbitNote = Ui.Text("", "ws-small", "ws-muted").AddTo(orbit);
-            ui.Tooltip(orbit, () => $"The station circles the planet every {Orbit.PeriodSeconds / 60:0} minutes and spends {Orbit.ShadowFraction:P0} of each orbit in its shadow. Solar arrays only work in sunlight; batteries carry you through the eclipse.");
-            Ui.El("ws-divider").AddTo(Root);
-
-            var traffic = Stat("TRAFFIC", out _traffic);
-            _atc = Ui.Text("", "ws-small").AddTo(traffic);
-            ui.Tooltip(traffic, () => _game.Station.AutoClearance
-                ? "Traffic control clears ships to free pads automatically."
-                : "No traffic control online: you clear every landing by hand (Comms panel, or click a hailing ship). Build a Traffic Control tower to automate it.");
+            Chip(ui, "credits", out _money, out _trend, out _, () => "Credits. Below: net result of the last minute (ledger: M).", "ws-icon--accent");
+            Chip(ui, "reputation", out _rep, out _repSub, out _repBar, () => "Reputation. Higher means more traffic.", "ws-icon--accent");
+            Chip(ui, "fuel", out _fuel, out _fuelSub, out _fuelBar,
+                () => $"Fuel. Tankers restock below {Rules.RestockThreshold:P0} at {Rules.FuelBuyPrice:0.0} cr/unit; ships pay {Rules.FuelSellPrice:0.0}.");
+            _powerIcon = Chip(ui, "power", out _power, out _powerSub, out _batteryBar, PowerTooltip);
+            _orbitIcon = Chip(ui, "sun", out _orbit, out _orbitSub, out _,
+                () => $"Orbit: {Orbit.PeriodSeconds / 60:0} min, {Orbit.ShadowFraction:P0} in the planet's shadow. No solar power in the eclipse.");
+            Chip(ui, "ship", out _traffic, out _trafficSub, out _, () => _game.Station.AutoClearance
+                ? "Ships served. Traffic control is clearing landings."
+                : "Ships served. You clear every landing (Comms panel) until a Traffic Control tower is online.");
 
             Ui.El("ws-spacer").AddTo(Root);
 
-            Ui.Button("LOG  L", () => ui.ToggleWindow(UiWindow.Log)).AddTo(Root);
-            Ui.Button("LEDGER  M", () => ui.ToggleWindow(UiWindow.Ledger)).AddTo(Root);
+            _grid = Ui.IconButton("grid", _game.ToggleGrid).AddTo(Root);
+            ui.Tooltip(_grid, () => "Build grid (G)");
+            ui.Tooltip(Ui.IconButton("log", () => ui.ToggleWindow(UiWindow.Log)).AddTo(Root), () => "Station log (L)");
+            ui.Tooltip(Ui.IconButton("ledger", () => ui.ToggleWindow(UiWindow.Ledger)).AddTo(Root), () => "Ledger (M)");
             Ui.El("ws-divider").AddTo(Root);
 
-            _clock = Ui.Text("", "ws-stat-value").AddTo(Root);
-            _clock.style.minWidth = 70;
-            string[] names = { "II", "1×", "2×", "4×" };
+            _clock = Ui.Text("", "ws-clock").AddTo(Root);
+            string[] icons = { "pause", "speed1", "speed2", "speed3" };
+            string[] tips = { "Pause (Space)", "Normal speed (1)", "Fast (2)", "Fastest (3)" };
             for (int i = 0; i < _speedButtons.Length; i++)
             {
                 int speed = i;
-                _speedButtons[i] = Ui.Button(names[i], () => _game.SetSpeed(speed)).AddTo(Root);
+                _speedButtons[i] = Ui.IconButton(icons[i], () => _game.SetSpeed(speed)).AddTo(Root);
+                ui.Tooltip(_speedButtons[i], () => tips[speed]);
             }
-            ui.Tooltip(_speedButtons[0], () => "Pause (Space). Speed: 1 / 2 / 3.");
         }
 
         string PowerTooltip()
         {
             var s = _game.Station;
-            string text = $"Making {s.PowerSupply:0.#} kW (solar {s.SolarPower:0.#}), using {s.PowerDemand:0.#} kW.\n" +
-                          $"Batteries {s.BatteryCharge / 1000:0.0} / {s.BatteryCapacity / 1000:0.0} MJ.";
-            if (s.GeneratorsOn) text += "\nFuel cell generators are running.";
-            if (s.Brownout) text += $"\nBROWNOUT: only {s.PowerSatisfaction:P0} of demand is met. Pumps, repairs and refineries slow down; below 50% lounges, comms and traffic control shut down.";
+            string text = $"Power: making {s.PowerSupply:0.#} kW (solar {s.SolarPower:0.#}), using {s.PowerDemand:0.#} kW.\nBattery {s.BatteryCharge / 1000:0.0} / {s.BatteryCapacity / 1000:0.0} MJ.";
+            if (s.GeneratorsOn) text += "\nGenerators running.";
+            if (s.Brownout) text += $"\nBrownout: {s.PowerSatisfaction:P0} of demand met. Everything slows down.";
             return text;
         }
 
-        VisualElement Stat(string label, out Label value)
+        /// <summary>Icon, a big value, and a small line (or a thin bar) underneath.</summary>
+        VisualElement Chip(UiRoot ui, string icon, out Label value, out Label sub, out Bar bar, System.Func<string> tooltip, string iconTone = null)
         {
-            var box = Ui.El().AddTo(Root);
-            Ui.Text(label, "ws-stat-label").AddTo(box);
-            value = Ui.Text("", "ws-stat-value").AddTo(box);
-            return box;
-        }
-
-        VisualElement Gauge(string label, out Label value, out Bar bar)
-        {
-            var box = Ui.El("ws-gauge").AddTo(Root);
-            var row = Ui.El("ws-row").AddTo(box);
-            Ui.Text(label, "ws-stat-label", "ws-grow").AddTo(row);
-            value = Ui.Text("", "ws-small").AddTo(row);
-            bar = new Bar().AddTo(box);
-            return box;
+            var chip = Ui.El("ws-chip").AddTo(Root);
+            var image = Ui.Icon(icon, "ws-icon--big").AddTo(chip);
+            if (iconTone != null) image.AddToClassList(iconTone);
+            var body = Ui.El("ws-chip-body").AddTo(chip);
+            value = Ui.Text("", "ws-chip-value").AddTo(body);
+            sub = Ui.Text("", "ws-chip-sub").AddTo(body);
+            bar = new Bar().AddTo(body);
+            Ui.Show(bar, false); // shown by Update for chips that use it
+            ui.Tooltip(chip, tooltip);
+            return image;
         }
 
         public void Update()
         {
             var s = _game.Station;
 
-            Ui.Set(_money, Ui.Money(s.Money));
+            Ui.Set(_money, $"{s.Money:N0}");
             Ui.Tone(_money, s.Money < 0 ? "ws-bad" : null);
             double net = s.Ledger.LastMinuteNet;
-            Ui.Set(_trend, $"{Ui.Signed(net)} /min");
+            Ui.Set(_trend, $"{Ui.Signed(net)}/min");
             Ui.Tone(_trend, net > 0 ? "ws-good" : net < 0 ? "ws-bad" : "ws-muted");
 
             double rep = s.Reputation / 100.0;
             Ui.Set(_rep, $"{s.Reputation:0}");
+            Ui.Show(_repSub, false);
+            Ui.Show(_repBar, true);
             _repBar.Set(rep, Bar.Health(rep));
 
             double capacity = s.FuelCapacity;
             double fuel = capacity > 0 ? s.FuelStock / capacity : 0;
-            Ui.Set(_fuel, $"{s.FuelStock:0} / {capacity:0}");
+            Ui.Set(_fuel, $"{s.FuelStock:0}");
             _fuelBar.Set(fuel, fuel < Rules.RestockThreshold ? Bar.Bad : Bar.Warn);
-            Ui.Set(_fuelNote, s.FuelDeliveryTick >= 0
-                ? $"Tanker in {(s.FuelDeliveryTick - s.Tick) / (double)Station.TicksPerSecond:0}s"
-                : "");
+            bool tanker = s.FuelDeliveryTick >= 0;
+            Ui.Show(_fuelSub, tanker);
+            Ui.Show(_fuelBar, !tanker);
+            if (tanker) Ui.Set(_fuelSub, $"tanker {(s.FuelDeliveryTick - s.Tick) / (double)Station.TicksPerSecond:0}s");
 
             double power = s.NetPower;
             Ui.Set(_power, $"{(power >= 0 ? "+" : "−")}{System.Math.Abs(power):0.#} kW");
-            Ui.Tone(_power, s.Brownout ? "ws-bad" : power < 0 ? "ws-warn" : "ws-good");
+            Ui.Tone(_power, s.Brownout ? "ws-bad" : power < 0 ? "ws-warn" : null);
+            Ui.IconTone(_powerIcon, s.Brownout ? "bad" : s.GeneratorsOn ? "warn" : "good");
             double battery = s.BatteryFraction;
             _batteryBar.Set(battery, s.Brownout ? Bar.Bad : Bar.Health(battery));
-            Ui.Set(_powerNote, s.Brownout ? $"BROWNOUT {s.PowerSatisfaction:P0}" : s.GeneratorsOn ? $"Generator on · {battery:P0}" : $"Battery {battery:P0}");
-            Ui.Tone(_powerNote, s.Brownout ? "ws-bad" : s.GeneratorsOn ? "ws-warn" : "ws-muted");
+            Ui.Show(_powerSub, s.Brownout || s.GeneratorsOn);
+            Ui.Show(_batteryBar, !s.Brownout && !s.GeneratorsOn);
+            Ui.Set(_powerSub, s.Brownout ? $"brownout {s.PowerSatisfaction:P0}" : "generator on");
+            Ui.Tone(_powerSub, s.Brownout ? "ws-bad" : "ws-warn");
 
             double toChange = Orbit.SecondsToChange(s.Tick, out bool sunset);
-            Ui.Set(_orbit, sunset ? "SUNLIGHT" : "ECLIPSE");
-            Ui.Tone(_orbit, sunset ? "ws-warn" : "ws-comms");
-            _orbitBar.Set(Orbit.Phase(s.Tick), sunset ? Bar.Warn : Bar.Comms);
-            Ui.Set(_orbitNote, $"{(sunset ? "sunset" : "sunrise")} in {Ui.Clock(toChange).Substring(2)}");
+            Ui.SetIcon(_orbitIcon, sunset ? "sun" : "eclipse");
+            Ui.IconTone(_orbitIcon, sunset ? "warn" : "comms");
+            Ui.Set(_orbit, Ui.Clock(toChange).Substring(2));
+            Ui.Set(_orbitSub, sunset ? "to sunset" : "to sunrise");
 
-            Ui.Set(_traffic, $"{s.ShipsServed} served · {s.ShipsLostAngry + s.ShipsDiverted} lost");
-            Ui.Set(_atc, s.AutoClearance
-                ? $"ATC AUTO · wait {s.AverageHailWaitSeconds:0}s"
-                : $"ATC MANUAL · wait {s.AverageHailWaitSeconds:0}s");
-            Ui.Tone(_atc, s.AutoClearance ? "ws-good" : "ws-comms");
+            Ui.Set(_traffic, $"{s.ShipsServed}");
+            int lost = s.ShipsLostAngry + s.ShipsDiverted;
+            Ui.Set(_trafficSub, s.AutoClearance ? $"{lost} lost · auto" : $"{lost} lost");
 
             Ui.Set(_clock, Ui.Clock(s.Seconds));
+            _grid.EnableInClassList("ws-button--on", _game.GridVisible);
             for (int i = 0; i < _speedButtons.Length; i++)
                 _speedButtons[i].EnableInClassList("ws-button--on", _game.Speed == i);
         }

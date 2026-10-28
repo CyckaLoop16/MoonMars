@@ -32,6 +32,45 @@ namespace Waystation.View
             return b;
         }
 
+        /// <summary>A tinted icon (see <see cref="Icons"/>).</summary>
+        public static VisualElement Icon(string name, params string[] classes)
+        {
+            var e = El("ws-icon");
+            foreach (var c in classes) e.AddToClassList(c);
+            SetIcon(e, name);
+            e.pickingMode = PickingMode.Ignore;
+            return e;
+        }
+
+        public static void SetIcon(VisualElement e, string name) =>
+            e.style.backgroundImage = new StyleBackground(Icons.Get(name));
+
+        /// <summary>Swap an icon between the meaning tints (good / warn / bad / comms / muted / accent).</summary>
+        public static void IconTone(VisualElement e, string tone)
+        {
+            foreach (var t in new[] { "good", "warn", "bad", "comms", "muted", "accent" })
+                e.EnableInClassList("ws-icon--" + t, t == tone);
+        }
+
+        /// <summary>A square button showing just an icon.</summary>
+        public static Button IconButton(string icon, Action onClick, params string[] classes)
+        {
+            var b = Button("", onClick, classes);
+            b.AddToClassList("ws-icon-button");
+            Icon(icon, "ws-icon--big").AddTo(b);
+            return b;
+        }
+
+        /// <summary>A button with an icon and a label.</summary>
+        public static Button IconTextButton(string icon, string text, Action onClick, params string[] classes)
+        {
+            var b = Button("", onClick, classes);
+            b.AddToClassList("ws-tab");
+            Icon(icon).AddTo(b);
+            Text(text, "ws-small").AddTo(b).pickingMode = PickingMode.Ignore;
+            return b;
+        }
+
         public static T AddTo<T>(this T child, VisualElement parent) where T : VisualElement
         {
             parent.Add(child);

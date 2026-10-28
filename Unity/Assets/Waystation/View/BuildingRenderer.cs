@@ -102,6 +102,22 @@ namespace Waystation.View
         Material _material;
         Station _station;
 
+        // Placement animation: new buildings drop into place, thump down and kick up dust.
+        const float DropSeconds = 0.42f, SettleSeconds = 0.3f, TileDropSeconds = 0.2f, TileSettleSeconds = 0.14f;
+        static readonly Color FlashColor = MeshBuilder.Hex("#ffe2b8");
+
+        sealed class Arrival
+        {
+            public float Start;
+            public bool Landed;
+        }
+
+        readonly Dictionary<int, Arrival> _arrivals = new Dictionary<int, Arrival>();
+        readonly HashSet<int> _known = new HashSet<int>();
+        readonly Dictionary<int, (Vector3 center, float radius)> _footprints = new Dictionary<int, (Vector3, float)>();
+        readonly Dictionary<int, Transform> _roots = new Dictionary<int, Transform>();
+        readonly List<(FxLight lamp, float start)> _flashes = new List<(FxLight, float)>();
+
         void Awake()
         {
             _material = MeshBuilder.CreateMaterial();
@@ -113,7 +129,14 @@ namespace Waystation.View
             }
         }
 
-        public void Bind(Station station) => _station = station;
+        public void Bind(Station station)
+        {
+            _station = station;
+            _arrivals.Clear();
+            _known.Clear();
+            _footprints.Clear();
+            foreach (var b in station.Buildings) _known.Add(b.Id); // a new station's pad is already there
+        }
 
         public static Vector3 Center(Building b, int gridWidth, int gridHeight) =>
             new Vector3(b.Origin.X + b.Def.Width / 2f - gridWidth / 2f, 0f, b.Origin.Y + b.Def.Height / 2f - gridHeight / 2f);
@@ -124,7 +147,9 @@ namespace Waystation.View
             _objects.Clear();
             _pads.Clear();
             _modules.Clear();
+            _roots.Clear();
             var s = _station;
+            NoteArrivalsAndRemovals();
 
             foreach (var b in s.Buildings)
             {
@@ -132,6 +157,7 @@ namespace Waystation.View
                 root.transform.SetParent(transform, false);
                 root.transform.position = Center(b, s.Width, s.Height);
                 _objects.Add(root);
+                _roots[b.Id] = root.transform;
                 bool powered = b.Operating;
 
                 switch (b.Type)
@@ -168,6 +194,7 @@ namespace Waystation.View
                 if (!b.Connected) AddEmergencyLamp(root, b);
             }
             UpdatePads();
+            UpdateArrivals();
         }
 
         void Update()
@@ -175,6 +202,132 @@ namespace Waystation.View
             if (_station == null) return;
             UpdatePads();
             UpdateModules();
+            UpdateArrivals();
+        }
+
+        /// <summary>
+        /// A standalone model of a building type, as it looks connected and powered (installed art if
+        /// there is any, otherwise the placeholder): for UI thumbnails. The caller destroys it.
+        /// </summary>
+        public GameObject CreatePreview(BuildingType type)
+        {
+            var root = new GameObject($"Preview {type}");
+            var def = BuildingCatalog.Get(type);
+            switch (type)
+            {
+                case BuildingType.Walkway:
+                    BuildTile(root, 0, "Walkway_Deck", WalkwayDeck, "Walkway_Railing", WalkwayRailing);
+                    break;
+                case BuildingType.Foundation:
+                    BuildTile(root, 0, "Foundation", FoundationPlate, "Foundation_Edge", FoundationEdge);
+                    break;
+                default:
+                    if (def.RequiresFoundation)
+                    {
+                        Spawn(root, type.ToString(), type.ToString(), () => ModulePlaceholder(type, true), Vector3.zero, Quaternion.identity);
+                        if (type == BuildingType.SolarArray)
+                            Spawn(root, "SolarArray_Wing", "SolarArray_Wing", SolarWing, new Vector3(0f, 0.68f, 0f), Quaternion.Euler(-25f, 0f, 0f));
+                        if (type == BuildingType.CommsArray)
+                            Spawn(root, "CommsArray_Dish", "CommsArray_Dish", Dish, new Vector3(0f, 1.25f, 0f), Quaternion.Euler(-30f, 225f, 0f));
+                        if (type == BuildingType.AtcTower)
+                            Spawn(root, "AtcTower_Radar", "AtcTower_Radar", Radar, new Vector3(0f, 2.47f, 0f), Quaternion.Euler(0f, 30f, 0f));
+                    }
+                    else
+                    {
+                        Spawn(root, type.ToString(), type.ToString(), () => Placeholder(type, true), Vector3.zero, Quaternion.identity);
+                    }
+                    break;
+            }
+            return root;
+        }
+
+        // ------------------------------------------------------------------ placement animation
+
+        /// <summary>Buildings that weren't there last rebuild start dropping in; ones that went get a dust puff.</summary>
+        void NoteArrivalsAndRemovals()
+        {
+            var s = _station;
+            var present = new HashSet<int>();
+            foreach (var b in s.Buildings)
+            {
+                present.Add(b.Id);
+                _footprints[b.Id] = (Center(b, s.Width, s.Height), Mathf.Max(b.Def.Width, b.Def.Height) * 0.45f);
+                if (_known.Add(b.Id)) _arrivals[b.Id] = new Arrival { Start = Time.unscaledTime };
+            }
+
+            _known.RemoveWhere(id =>
+            {
+                if (present.Contains(id)) return false;
+                if (_footprints.TryGetValue(id, out var gone)) Fx.Burst(transform, gone.center + Vector3.up * 0.1f, gone.radius, sparks: gone.radius > 0.5f);
+                _footprints.Remove(id);
+                _arrivals.Remove(id);
+                return true;
+            });
+        }
+
+        void UpdateArrivals()
+        {
+            float now = Time.unscaledTime;
+            List<int> done = null;
+            foreach (var kv in _arrivals)
+            {
+                var b = _station.GetBuilding(kv.Key);
+                if (b == null || !_roots.TryGetValue(kv.Key, out var root) || root == null)
+                {
+                    (done ??= new List<int>()).Add(kv.Key);
+                    continue;
+                }
+
+                var a = kv.Value;
+                bool tile = b.Def.IsPaintable;
+                float drop = tile ? TileDropSeconds : DropSeconds;
+                float settle = tile ? TileSettleSeconds : SettleSeconds;
+                float height = tile ? 0.6f : 2.4f;
+                var rest = Center(b, _station.Width, _station.Height);
+                float t = now - a.Start;
+
+                if (t < drop)
+                {
+                    // Falling, accelerating, slightly stretched.
+                    float k = t / drop;
+                    root.position = rest + Vector3.up * (height * (1f - k * k));
+                    root.localScale = new Vector3(0.94f + 0.06f * k, 1.06f - 0.06f * k, 0.94f + 0.06f * k);
+                    continue;
+                }
+
+                if (!a.Landed)
+                {
+                    a.Landed = true;
+                    var (center, radius) = _footprints[b.Id];
+                    Fx.Burst(transform, center + Vector3.up * 0.05f, radius, sparks: !tile);
+                    if (!tile) _flashes.Add((FxLight.Create(transform, center + Vector3.up * 0.6f, FlashColor, 0f, radius * 3f + 1.5f), now));
+                }
+
+                // Thump: a quick squash that springs back.
+                float s = Mathf.Clamp01((t - drop) / settle);
+                float squash = Mathf.Sin(s * Mathf.PI) * (1f - s) * (tile ? 0.12f : 0.18f);
+                root.position = rest;
+                root.localScale = new Vector3(1f + squash * 0.5f, 1f - squash, 1f + squash * 0.5f);
+                if (s >= 1f)
+                {
+                    root.localScale = Vector3.one;
+                    (done ??= new List<int>()).Add(kv.Key);
+                }
+            }
+            if (done != null) foreach (var id in done) _arrivals.Remove(id);
+
+            for (int i = _flashes.Count - 1; i >= 0; i--)
+            {
+                var (lamp, start) = _flashes[i];
+                float k = (now - start) / 0.35f;
+                if (lamp == null || k >= 1f)
+                {
+                    if (lamp != null) Destroy(lamp.gameObject);
+                    _flashes.RemoveAt(i);
+                    continue;
+                }
+                lamp.Intensity = 2.6f * (1f - k) * (1f - k);
+            }
         }
 
         // ------------------------------------------------------------------ lamps and effects

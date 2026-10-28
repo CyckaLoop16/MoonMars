@@ -15,7 +15,7 @@ namespace Waystation.View
     /// The game's UI (UI Toolkit). Builds one full-screen document in code, styled by
     /// Resources/UI/Waystation.uss (through the WaystationTheme theme), and owns the widgets:
     /// top bar, build bar, comms panel, inspector, toasts, world labels, windows, pause menu,
-    /// tooltips and a scanline overlay. New screens are new widget classes added here.
+    /// and tooltips. New screens are new widget classes added here.
     /// </summary>
     public sealed class UiRoot : MonoBehaviour
     {
@@ -36,8 +36,6 @@ namespace Waystation.View
         VisualElement _tooltip;
         Label _tooltipText;
         Func<string> _tooltipSource;
-        VisualElement _scanlines;
-        int _scanlineHeight;
 
         public UiWindow OpenWindow { get; private set; }
 
@@ -99,9 +97,6 @@ namespace Waystation.View
             Ui.IgnorePointer(_tooltip);
             Ui.Show(_tooltip, false);
 
-            _scanlines = Ui.El("ws-layer").AddTo(_root);
-            _scanlines.pickingMode = PickingMode.Ignore;
-            _scanlines.style.opacity = 0.16f;
         }
 
         public void OnNewGame()
@@ -126,7 +121,6 @@ namespace Waystation.View
             if (OpenWindow == UiWindow.Log) _logWindow.Update();
             if (OpenWindow == UiWindow.Ledger) _ledgerWindow.Update();
             if (_tooltipSource != null) Ui.Set(_tooltipText, _tooltipSource());
-            UpdateScanlines();
         }
 
         // ------------------------------------------------------------------ windows
@@ -196,23 +190,6 @@ namespace Waystation.View
             if (y > size.y - 90f) y = panelPosition.y - 80f;
             _tooltip.style.left = x;
             _tooltip.style.top = y;
-        }
-
-        // ------------------------------------------------------------------ CRT scanlines
-
-        /// <summary>A one-pixel-wide texture of alternating dark rows, stretched over the screen.</summary>
-        void UpdateScanlines()
-        {
-            int height = Mathf.Max(2, Screen.height / 3);
-            if (height == _scanlineHeight) return;
-            _scanlineHeight = height;
-
-            var tex = new Texture2D(1, height, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-            var pixels = new Color32[height];
-            for (int y = 0; y < height; y++) pixels[y] = y % 2 == 0 ? new Color32(0, 0, 0, 255) : new Color32(0, 0, 0, 0);
-            tex.SetPixels32(pixels);
-            tex.Apply();
-            _scanlines.style.backgroundImage = new StyleBackground(tex);
         }
     }
 }

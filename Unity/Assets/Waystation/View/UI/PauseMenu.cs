@@ -15,11 +15,10 @@ namespace Waystation.View
             _game = game;
             Root = Ui.El("ws-menu-layer");
             var menu = Ui.El("ws-panel", "ws-menu").AddTo(Root);
-            Ui.Heading("STATION SUSPENDED").AddTo(menu);
-            Ui.Text("The void waits. So do your pilots.", "ws-small", "ws-muted").AddTo(menu).style.marginBottom = 8;
-            Ui.Button("RESUME", () => _game.SetMenuOpen(false)).AddTo(menu);
-            Ui.Button("NEW STATION", () => _game.NewGame(System.Environment.TickCount)).AddTo(menu);
-            Ui.Button("QUIT", Quit, "ws-button--danger").AddTo(menu);
+            Ui.Heading("Paused").AddTo(menu).style.marginBottom = 10;
+            Ui.Button("Resume", () => _game.SetMenuOpen(false)).AddTo(menu);
+            Ui.Button("New station", () => _game.NewGame(System.Environment.TickCount)).AddTo(menu);
+            Ui.Button("Quit", Quit, "ws-button--danger").AddTo(menu);
             Ui.Show(Root, false);
         }
 

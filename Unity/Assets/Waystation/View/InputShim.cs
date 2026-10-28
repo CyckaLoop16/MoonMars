@@ -147,6 +147,7 @@ namespace Waystation.View
             if (k.tKey.wasPressedThisFrame) return 'T';
             if (k.lKey.wasPressedThisFrame) return 'L';
             if (k.mKey.wasPressedThisFrame) return 'M';
+            if (k.gKey.wasPressedThisFrame) return 'G';
 #else
             if (Input.GetKeyDown(KeyCode.P)) return 'P';
             if (Input.GetKeyDown(KeyCode.H)) return 'H';
@@ -156,6 +157,7 @@ namespace Waystation.View
             if (Input.GetKeyDown(KeyCode.T)) return 'T';
             if (Input.GetKeyDown(KeyCode.L)) return 'L';
             if (Input.GetKeyDown(KeyCode.M)) return 'M';
+            if (Input.GetKeyDown(KeyCode.G)) return 'G';
 #endif
             return '\0';
         }

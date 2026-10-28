@@ -8,7 +8,7 @@ namespace Waystation.View
     /// (day side, night-side lights, a thin atmosphere), the sun crossing the sky and setting behind the
     /// planet's limb with a sunrise/sunset flare, a moon whose crescent follows the sun, slowly wheeling
     /// stars, nebula haze, wreck silhouettes, distant traffic, drifting rocks and scrap, and a build grid
-    /// that only shows while building.
+    /// overlay (with corner brackets) that the player toggles.
     ///
     /// The sky is driven by <see cref="UpdateSky"/> from the orbit (see SkyCycle). Everything here is
     /// placeholder art: the backdrop pieces are obvious candidates for GPT replacements.
@@ -135,11 +135,9 @@ namespace Waystation.View
 
             var grid = new MeshBuilder();
             BuildGrid(grid, gridWidth, gridHeight);
+            BuildCorners(grid, gridWidth, gridHeight);
             _grid = AddChild("BuildGrid", grid.ToMesh("BuildGrid"), unlit);
             _grid.SetActive(false);
-            var corners = new MeshBuilder();
-            BuildCorners(corners, gridWidth, gridHeight);
-            AddChild("GridCorners", corners.ToMesh("GridCorners"), unlit);
 
             BuildDebris(rng, gridWidth, gridHeight, lit);
             Fx.Create(transform, FxPreset.Dust, new Vector3(0f, 1.5f, 0f), Vector3.up, startActive: true);
@@ -151,7 +149,7 @@ namespace Waystation.View
         public static Vector3 CellCenter(int x, int y, int gridWidth, int gridHeight) =>
             new Vector3(x + 0.5f - gridWidth / 2f, 0f, y + 0.5f - gridHeight / 2f);
 
-        /// <summary>The build grid is only drawn while building or demolishing.</summary>
+        /// <summary>The build grid is an overlay the player toggles (G).</summary>
         public void ShowGrid(bool visible)
         {
             if (_grid != null && _grid.activeSelf != visible) _grid.SetActive(visible);
@@ -288,7 +286,7 @@ namespace Waystation.View
             }
         }
 
-        /// <summary>Rust-red corner brackets marking the station's build area (always shown).</summary>
+        /// <summary>Rust-red corner brackets marking the station's build area.</summary>
         static void BuildCorners(MeshBuilder b, int w, int h)
         {
             float hw = w / 2f, hh = h / 2f;

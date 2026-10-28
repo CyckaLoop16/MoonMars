@@ -97,7 +97,7 @@ setup: `PanelSettings` are created at runtime (scale with screen size, 1920×108
   `Resources/UI/WaystationTheme.tss`, which imports Unity's default runtime theme first. Colour means
   something: green good, amber warning, red bad, cyan comms. Use `Ui.Tone(label, "ws-bad")` to switch.
 - **Helpers:** `View/UI/Ui.cs`: `Ui.El`, `Ui.Text`, `Ui.Button`, `.AddTo(parent)`, `Ui.Show`,
-  `Ui.Set` (only touches text that changed), `Ui.Money`, `Ui.Clock`, and a `Bar` progress bar.
+  `Ui.Set` (only touches text that changed), `Ui.Icon`, `Ui.IconButton`, `Ui.Money`, `Ui.Clock`, and a `Bar` progress bar.
 - **Widgets** (one class each in `View/UI/`, each with a `Root` element and an `Update()` that UiRoot
   calls every frame):
 
@@ -117,7 +117,15 @@ setup: `PanelSettings` are created at runtime (scale with screen size, 1920×108
   revenue), so the UI decides how to present it without parsing text.
 - **Money:** every credit goes through `Station.Earn/Spend` with a `LedgerLine`, so the ledger always
   balances (`LedgerTests`).
+- **Icons:** `View/UI/Icons.cs` draws every HUD icon in code from simple shapes (white, tinted by
+  USS). Drop a PNG at `Resources/UI/Icons/<name>.png` to replace one (names: credits, reputation, fuel,
+  power, sun, eclipse, ship, shuttle, hauler, clock, log, ledger, grid, select, demolish, close, pause,
+  speed1–3, focus, toggle, hail, landing, structure, services, warning, build, info).
+- **Thumbnails:** `View/UI/Thumbnails.cs` renders each building type once with an offscreen camera
+  (layer 31, from `BuildingRenderer.CreatePreview`, so installed art shows up automatically). Drop a
+  PNG at `Resources/UI/Thumbnails/<BuildingType>.png` to replace one; if rendering fails the tile
+  falls back to an icon.
 - **Map clicks vs UI:** `UiRoot.IsPointerOver` picks the panel; anything pickable blocks the map.
-  Purely decorative layers (world labels, toasts, scanlines) use `PickingMode.Ignore`.
+  Purely decorative layers (world labels, toasts) use `PickingMode.Ignore`.
 - **Adding a screen:** write a class with `Root` + `Update()`, add it in `UiRoot.Init` at the right layer
   (or as a `UiWindow` for a centred window with a hotkey), style it in `Waystation.uss`.

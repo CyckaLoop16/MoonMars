@@ -66,8 +66,8 @@ namespace Waystation.View
             {
                 _seen.Add(b.Id);
                 var label = Get(_buildings, b.Id, "ws-world-label");
-                string name = b.Def.Label != null ? s.Label(b).ToUpperInvariant() : b.Def.Name.ToUpperInvariant();
-                Ui.Set(label, b.Enabled ? name : name + " · OFF");
+                string name = b.Def.Label != null ? s.Label(b) : b.Def.Name;
+                Ui.Set(label, b.Enabled ? name : name + " · off");
 
                 string tone;
                 if (_game.Tool == Tool.ClearToLand && _game.ClearingShip != null)
@@ -117,26 +117,26 @@ namespace Waystation.View
             {
                 case ShipState.Hailing:
                     tone = ship.PatienceTicks < ship.MaxPatienceTicks / 3 ? "ws-bad" : "ws-comms";
-                    return $"HAILING · {ship.PatienceTicks / (double)Station.TicksPerSecond:0}s";
+                    return $"Hailing {ship.PatienceTicks / (double)Station.TicksPerSecond:0}s";
                 case ShipState.Servicing:
                     if (ship.FuelLoaded < ship.FuelNeeded)
                     {
                         if (_game.Station.FuelStock <= 0)
                         {
                             tone = "ws-bad";
-                            return "NO FUEL";
+                            return "No fuel";
                         }
-                        return $"FUEL {ship.FuelLoaded / ship.FuelNeeded:P0}";
+                        return $"Fuel {ship.FuelLoaded / ship.FuelNeeded:P0}";
                     }
                     if (ship.NeedsRepair && !ship.Repaired)
                     {
                         tone = "ws-warn";
-                        return $"REPAIR {ship.StateProgress:P0}";
+                        return $"Repair {ship.StateProgress:P0}";
                     }
                     return null;
                 case ShipState.Departing when ship.Angry:
                     tone = "ws-bad";
-                    return "ANGRY";
+                    return "Angry";
                 default:
                     return null;
             }
