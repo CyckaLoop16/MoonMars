@@ -1,0 +1,39 @@
+# Unity generated
+Unity/[Ll]ibrary/
+Unity/[Tt]emp/
+Unity/[Oo]bj/
+Unity/[Bb]uild/
+Unity/[Bb]uilds/
+Unity/[Ll]ogs/
+Unity/[Uu]ser[Ss]ettings/
+Unity/[Mm]emoryCaptures/
+Unity/[Rr]ecordings/
+Unity/Assets/Plugins/Editor/JetBrains*
+Unity/*.csproj
+Unity/*.sln
+Unity/*.slnx
+Unity/*.unityproj
+Unity/*.pidb
+Unity/*.booproj
+Unity/*.svd
+Unity/*.pdb
+Unity/*.mdb
+Unity/*.opendb
+Unity/*.VC.db
+Unity/crashlytics-build.properties
+*.apk
+*.aab
+*.unitypackage
+
+# .NET test project
+Tests/**/bin/
+Tests/**/obj/
+TestResults/
+
+# IDEs / OS
+.vs/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
