@@ -1,0 +1,17 @@
+{
+    "name": "Waystation.View",
+    "rootNamespace": "Waystation.View",
+    "references": [
+        "Waystation.Sim",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

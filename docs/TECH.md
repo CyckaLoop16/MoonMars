@@ -1,72 +1,41 @@
-# Tech Stack & Architecture
+# Tech & Art Pipeline
 
-## Engine: Unity 6 (LTS)
-
-| Option | Verdict |
-|---|---|
-| **Unity 6** | ✅ **Chosen.** C# suits a heavy simulation. Large strategy and city-builder lineage (Humankind, Old World, Endless Space 2, Cities: Skylines). Strong UI tooling (UI Toolkit), ScriptableObjects for data-driven content, huge asset store. The Personal license is free under the revenue threshold. |
-| Unreal Engine 5 | Built for high-fidelity action. C++/Blueprints slow down iteration on systems-heavy, UI-heavy 4X. Nanite and Lumen don't help a top-down hex map much. |
-| Godot 4 | Good, lighter alternative; rejected in favor of Unity. |
-
-## Key architecture decision: simulation is separate from presentation
-
-```
-┌──────────────────────────┐        commands        ┌──────────────────────────┐
-│  Regolith.View (Unity)   │ ─────────────────────▶ │  Regolith.Sim (pure C#)  │
-│  meshes, camera, UI,     │                        │  map, colonies, yields,  │
-│  input, audio, VFX       │ ◀───────────────────── │  tech, AI, turn resolve  │
-└──────────────────────────┘     state / events     └──────────────────────────┘
-```
-
-- `Regolith.Sim` has **no `UnityEngine` references**, enforced by its asmdef
-  (`noEngineReferences: true`). That gives us:
-  - **Unit tests without Unity** (`dotnet test` in `Tests/`, also usable in CI with no Unity license)
-  - **Deterministic ticks**: seeded RNG and no frame-time dependence. This enables replays,
-    reproducible bug reports, and lockstep multiplayer later.
-  - **Headless AI simulation**: run whole AI-vs-AI campaigns at max speed to balance the game
-- **Time model: turn-based on a daily sim.** 1 tick = 1 in-game day; End Turn runs ticks to the
-  1st of the next month. Nothing in the sim reads frame time, which keeps it deterministic.
-- **Multiple worlds:** the top-level state is a `SolarSystem` holding bodies (Moon, Mars, …), each
-  with its own `WorldMap`, plus abstract outposts for Act III.
-- Player actions will be **commands** (`FoundColony`, `PlaceModule`, `AssignPioneer`, `SetResearch`…),
-  queued and applied by the sim on tick boundaries. The UI and the AI issue the same commands,
-  which also gives us save files and undo.
-- The view only reads sim state and renders it. It never mutates the sim directly.
-
-## Content pipeline
-
-- **Now:** terrain definitions live in C# (`TerrainCatalog`) while the prototype is small.
-- **Next:** move content (terrains, modules, techs, events) to data, either ScriptableObjects
-  authored in Unity or JSON for modding friendliness. Leaning JSON plus a Unity
-  importer, so modders don't need the editor.
-
-## Art pipeline
-
-Art (models, textures, map visuals, icons) is produced **outside the codebase** (generated with
-GPT image/3D tools). Code only ships **placeholders**, and every visual has a drop-in slot so art
-replaces placeholders without code changes:
-
-| Asset | Drop-in location | Placeholder until then |
-|---|---|---|
-| Colony module model | `Unity/Assets/Regolith/Resources/Modules/<ModuleType>.prefab` (e.g. `SolarArray.prefab`; pivot at the base, ~1 unit across) | Coloured hex column |
-| Pioneer figure | `Unity/Assets/Regolith/Resources/Pioneers/<Expertise>.prefab` (e.g. `Engineer.prefab`), or `Pioneer.prefab` for all; pivot at the feet, ~0.25 units tall, facing +Z | Coloured suit + white helmet |
-| Terrain | (slot planned with the URP terrain pass) | Vertex-coloured terraced hexes |
-
-## Rendering
-
-- Prototype: a single procedural mesh of terraced hex prisms with vertex colors and a tiny
-  unlit shader that works in both Built-in and URP. No art assets needed.
-- Later: URP, a proper lit terrain shader (triplanar regolith textures), dust/atmosphere
-  fog, instanced module models, and a Civ6-style tilted camera (already started).
-
-## Tooling
+## Stack
 
 | Need | Choice |
 |---|---|
-| Engine | Unity 6 LTS |
-| Language | C# (Sim targets .NET Standard 2.1 for Unity compatibility) |
-| Input | Unity Input System package (code also compiles under the legacy Input Manager) |
-| UI | IMGUI for the debug overlay now, UI Toolkit for the real UI |
-| Tests | NUnit: `dotnet test` for Sim, Unity Test Runner for view code |
-| Version control | Git + Git LFS for binary art and audio (see `.gitattributes`) |
-| CI (later) | GitHub Actions: `dotnet test` on every push, and GameCI for Unity builds |
+| Engine | Unity 6 |
+| Language | C# (the sim stays .NET Standard 2.1-compatible for Unity) |
+| Input | Input System package (code also compiles under the legacy Input Manager) |
+| UI | IMGUI placeholder HUD, then UI Toolkit for the real UI |
+| Tests | NUnit via `dotnet test` (no Unity licence needed) |
+| Version control | Git + Git LFS for binary art (see `.gitattributes`) |
+
+## Architecture: simulation separate from presentation
+
+- `Waystation.Sim` has **no UnityEngine references** (enforced by its asmdef). It holds the
+  station, buildings, ships and all rules, and runs in fixed ticks (10 per game second).
+- `Waystation.View` reads sim state and renders it, and turns input into **commands**
+  (`PlaceBuilding`, `Demolish`). It never changes sim state directly.
+- Real time is just "how many ticks per frame": pause = 0, speed ×1/×2/×4. The sim never reads
+  the clock and all randomness comes from a seeded RNG, so runs are reproducible (useful for
+  balancing, bug reports and save files via the command log).
+
+## Art pipeline
+
+Art is produced **outside the codebase** (GPT). Code ships placeholders, and every visual has a
+drop-in slot. Put a prefab at the path and it replaces the placeholder with no code changes.
+
+| Asset | Drop-in path | Conventions |
+|---|---|---|
+| Starter pad | `Unity/Assets/Waystation/Resources/Buildings/StarterPad.prefab` | Pivot at footprint centre, deck top at Y=0, 1 unit = 1 grid cell (3×3) |
+| Landing pad | `.../Resources/Buildings/LandingPad.prefab` | 3×3 |
+| Hangar | `.../Resources/Buildings/Hangar.prefab` | 4×4, open enough that a docked ship is visible |
+| Corridor centre | `.../Resources/Buildings/Corridor_Hub.prefab` | 1×1 cell centre piece |
+| Corridor arm | `.../Resources/Buildings/Corridor_Arm.prefab` | Runs from cell centre to the **+Z** edge; rotated for each link |
+| Shuttle | `.../Resources/Ships/Shuttle.prefab` | Nose along +Z, pivot at the bottom of the gear, ~1.5 units long |
+| Hauler | `.../Resources/Ships/Hauler.prefab` | Nose along +Z, ~2.5 units long |
+
+Rendering uses one unlit vertex-colour shader (`Waystation/Unlit Vertex Color`) with lighting
+baked into vertex colours, so art and placeholders need no scene lights. GPT's earlier Regolith
+art used the same convention.
