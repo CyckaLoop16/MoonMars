@@ -78,21 +78,17 @@ namespace Regolith.Sim.Tests
     public class YieldTests
     {
         [Test]
-        public void DepositsAddToBaseYields()
+        public void TileYieldsCombineTerrainMineralsRimsAndDeposits()
         {
-            var tile = new Tile(new HexCoord(0, 0)) { Terrain = TerrainType.RegolithPlains, Ice = 0.9f, Minerals = 0.8f };
-            var y = tile.Yields;
-            var b = TerrainCatalog.Get(TerrainType.RegolithPlains).BaseYields;
+            var tile = new Tile(new HexCoord(0, 0))
+            {
+                Terrain = TerrainType.LunarHighlands, Minerals = 0.8f, Feature = TileFeature.CraterRim, Deposit = Deposit.Ilmenite,
+            };
+            var b = TerrainCatalog.Get(TerrainType.LunarHighlands).BaseYields;
 
-            Assert.That(y.Water, Is.EqualTo(b.Water + 2));
-            Assert.That(y.Materials, Is.EqualTo(b.Materials + 1));
-        }
-
-        [Test]
-        public void PolarIceGetsNoExtraIceBonus()
-        {
-            var tile = new Tile(new HexCoord(0, 0)) { Terrain = TerrainType.PolarIce, Ice = 1f };
-            Assert.That(tile.Yields.Water, Is.EqualTo(TerrainCatalog.Get(TerrainType.PolarIce).BaseYields.Water));
+            Assert.That(tile.Yields.Materials, Is.EqualTo(b.Materials + 1 + 1));
+            Assert.That(tile.Yields.Science, Is.EqualTo(b.Science + 1));
+            Assert.That(tile.Yields.Water, Is.EqualTo(0), "water only comes from ice mines");
         }
 
         [Test]

@@ -233,6 +233,9 @@ namespace Regolith.View
                 _builder.AddHexTop(center + new Vector3(0.38f, 0f, -0.3f), pipY, 0.17f, MineralColor);
             if (tile.Feature == TileFeature.LavaTube)
                 _builder.AddHexTop(center + new Vector3(0f, 0f, 0.35f), pipY, 0.24f, LavaTubeColor);
+            var deposit = DepositCatalog.Get(tile.Deposit);
+            if (deposit != null)
+                _builder.AddHexTop(center + new Vector3(0f, 0f, -0.05f), pipY + 0.005f, 0.24f, ParseColor(deposit.Color));
             if (tile.Feature == TileFeature.PeakOfLight)
                 _builder.AddHexTop(center + new Vector3(0f, 0f, 0.35f), pipY, 0.2f, PeakColor);
         }

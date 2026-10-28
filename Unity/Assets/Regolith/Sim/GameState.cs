@@ -10,6 +10,17 @@ namespace Regolith.Sim
         public string Name;
         /// <summary>sRGB hex colour for territory.</summary>
         public string Color;
+
+        public readonly HashSet<TechId> Researched = new HashSet<TechId>();
+        public readonly HashSet<TechId> Boosted = new HashSet<TechId>();
+        public readonly Dictionary<TechId, double> Progress = new Dictionary<TechId, double>();
+        public TechId? CurrentResearch;
+        /// <summary>Science earned while nothing is being researched; applied to the next pick.</summary>
+        public double ScienceBank;
+        /// <summary>Science per day on the last simulated day, for the UI.</summary>
+        public double SciencePerDay;
+
+        public bool Has(TechId tech) => Researched.Contains(tech);
     }
 
     public sealed class Module
@@ -38,6 +49,7 @@ namespace Regolith.Sim
         public readonly double[] Net = new double[Stockpile.Count];
         public double EnergySupply;
         public double EnergyDemand;
+        public double Science;
         public int Jobs;
         public int Workers;
 
@@ -57,11 +69,17 @@ namespace Regolith.Sim
         /// <summary>Consecutive days each resource has run out.</summary>
         public readonly int[] ShortageDays = new int[Stockpile.Count];
         public ColonyReport LastReport = new ColonyReport();
+        public int FoundedDay;
+        /// <summary>Energy held in battery banks.</summary>
+        public double StoredEnergy;
+        /// <summary>Set the first time power demand outstrips supply (a research boost trigger).</summary>
+        public bool HadBrownout;
 
         public bool IsAlive => Pops > 0;
         public int Housing => Modules.Where(m => m.IsBuilt).Sum(m => m.Def.Housing);
         public Module ModuleAt(HexCoord c) => Modules.FirstOrDefault(m => m.Coord == c);
         public Module UnderConstruction => Modules.FirstOrDefault(m => !m.IsBuilt);
+        public double EnergyCapacity => Modules.Where(m => m.IsBuilt).Sum(m => m.Def.EnergyStorage);
     }
 
     public readonly struct GameEvent
@@ -100,6 +118,7 @@ namespace Regolith.Sim
         public Faction GetFaction(int id) => Factions.FirstOrDefault(f => f.Id == id);
         public Colony GetColony(int id) => Colonies.FirstOrDefault(c => c.Id == id);
         public Colony ColonyOwning(HexCoord c) => Colonies.FirstOrDefault(col => col.Territory.Contains(c));
+        public IEnumerable<Colony> ColoniesOf(Faction f) => Colonies.Where(c => c.FactionId == f.Id);
 
         public void Report(string text) => Log.Add(new GameEvent(Day, text));
     }

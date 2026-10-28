@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Regolith.Sim
@@ -27,6 +28,83 @@ namespace Regolith.Sim
         LavaTube,
         /// <summary>Moon: a high rim near the pole that sees the Sun almost constantly.</summary>
         PeakOfLight,
+    }
+
+    /// <summary>Harvestable resource on a tile (Civ-style). Build the right module on it to benefit.</summary>
+    public enum Deposit
+    {
+        None,
+        Ilmenite,
+        Volatiles,
+        RareEarths,
+        PlatinumMetals,
+    }
+
+    public enum DepositKind
+    {
+        /// <summary>Boosts a module built on the tile.</summary>
+        Bonus,
+        /// <summary>Mined into its own stockpile for advanced construction and Earth trade.</summary>
+        Strategic,
+    }
+
+    public sealed class DepositDef
+    {
+        public Deposit Type;
+        public DepositKind Kind;
+        public string Name;
+        public string Description;
+        /// <summary>sRGB hex colour for the map marker.</summary>
+        public string Color;
+        /// <summary>Extra automatic monthly yield of the tile.</summary>
+        public Yields TileBonus;
+        public ModuleType[] BoostedModules = new ModuleType[0];
+        public double Multiplier = 1.0;
+    }
+
+    public static class DepositCatalog
+    {
+        static readonly Dictionary<Deposit, DepositDef> Defs = new Dictionary<Deposit, DepositDef>();
+
+        static DepositCatalog()
+        {
+            Add(new DepositDef
+            {
+                Type = Deposit.Ilmenite, Kind = DepositKind.Bonus, Name = "Ilmenite", Color = "#7d93a6",
+                Description = "Iron-titanium oxide. Oxygen Plants and Foundries built here produce 50% more.",
+                TileBonus = new Yields(1, 0, 0, 0), Multiplier = 1.5,
+                BoostedModules = new[] { ModuleType.OxygenPlant, ModuleType.Foundry },
+            });
+            Add(new DepositDef
+            {
+                Type = Deposit.Volatiles, Kind = DepositKind.Bonus, Name = "Cold-Trapped Volatiles", Color = "#b48cff",
+                Description = "Ice laced with CO₂, ammonia and methane, as LCROSS found. Ice Mines built here produce 50% more.",
+                TileBonus = new Yields(0, 0, 0, 1), Multiplier = 1.5,
+                BoostedModules = new[] { ModuleType.IceMine },
+            });
+            Add(new DepositDef
+            {
+                Type = Deposit.RareEarths, Kind = DepositKind.Strategic, Name = "Rare-Earth Elements", Color = "#e0609e",
+                Description = "KREEP-rich crust from the South Pole–Aitken basin. Strategic: needed for electronics and prized by Earth.",
+                TileBonus = new Yields(0, 0, 0, 1),
+            });
+            Add(new DepositDef
+            {
+                Type = Deposit.PlatinumMetals, Kind = DepositKind.Strategic, Name = "Platinum-Group Metals", Color = "#e8e8f2",
+                Description = "Remnants of a metallic asteroid impactor. Strategic: catalysts for fuel cells and electrolysis.",
+                TileBonus = new Yields(1, 0, 0, 0),
+            });
+        }
+
+        static void Add(DepositDef def) => Defs[def.Type] = def;
+
+        public static DepositDef Get(Deposit d) => d == Deposit.None ? null : Defs[d];
+
+        public static double Multiplier(Deposit d, ModuleType module)
+        {
+            var def = Get(d);
+            return def != null && Array.IndexOf(def.BoostedModules, module) >= 0 ? def.Multiplier : 1.0;
+        }
     }
 
     public struct Yields
@@ -59,6 +137,7 @@ namespace Regolith.Sim
         public string Description;
         /// <summary>sRGB hex colour, e.g. "#b5603a". The sim never draws, it only names the colour.</summary>
         public string Color;
+        /// <summary>Automatic monthly yield of a claimed tile (Civ-style), no workers needed.</summary>
         public Yields BaseYields;
         public int MoveCost;
     }
@@ -91,7 +170,7 @@ namespace Regolith.Sim
                 "Bright, ancient anorthosite crust. Rugged but solid ground.");
             Add(TerrainType.LunarMare, "Mare Basalt", "#62605c", new Yields(2, 0, 0, 0), 1,
                 "Dark plains of ancient lava. Smooth, rich in iron and titanium.");
-            Add(TerrainType.ShadowedCrater, "Permanently Shadowed Crater", "#2c303a", new Yields(0, 0, 3, 1), 3,
+            Add(TerrainType.ShadowedCrater, "Permanently Shadowed Crater", "#2c303a", new Yields(0, 0, 0, 1), 3,
                 "Has not seen sunlight in two billion years. −230 °C and full of water ice.");
             Add(TerrainType.LunarMassif, "Lunar Massif", "#8e8a83", new Yields(2, 0, 0, 0), 4,
                 "Kilometres-high mountain. Hard going, but the summits catch the low polar Sun.");

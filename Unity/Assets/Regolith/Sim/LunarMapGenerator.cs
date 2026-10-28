@@ -43,7 +43,7 @@ namespace Regolith.Sim
             public double Elevation;
             public double DistanceKm;
             public double FarSide; // 0 = Earth-facing edge, 1 = far-side edge
-            public bool Interior, Rim, Ejecta, Massif, Ridge;
+            public bool Interior, Rim, Ejecta, Massif, Ridge, CentralPeak;
             public double IceBonus;
         }
 
@@ -109,9 +109,13 @@ namespace Regolith.Sim
             var gerlache = map.Landmarks.Find(l => l.Name == "de Gerlache");
             StampRidge(cells, shackleton, gerlache);
 
-            // 5. Classify every hex.
+            // 5. Classify every hex, then scatter deposits (row by row, so the RNG order is fixed).
             foreach (var cell in cells.Values)
                 Classify(cell, mineralNoise, detailNoise);
+
+            for (int row = 0; row < height; row++)
+            for (int col = 0; col < width; col++)
+                PlaceDeposit(cells[HexCoord.FromOffset(col, row)], rng, mineralNoise);
 
             return map;
         }
@@ -192,11 +196,13 @@ namespace Regolith.Sim
                 {
                     double t = d / (double)c.Radius;
                     double e = t < 0.6 ? floor : Lerp(floor, rim - 0.2, (t - 0.6) / 0.4);
-                    if (c.Radius >= 5 && d <= 1) e = floor + 0.45; // central peak of a complex crater
+                    bool centralPeak = c.Radius >= 5 && d <= 1; // complex craters rebound into a central peak
+                    if (centralPeak) e = floor + 0.45;
 
                     cell.Elevation = e + wobble;
                     cell.Interior = true;
                     cell.Rim = cell.Ejecta = cell.Massif = cell.Ridge = false;
+                    cell.CentralPeak = centralPeak;
                     cell.IceBonus = Math.Max(cell.IceBonus, c.IceBonus);
                 }
                 else if (d == c.Radius)
@@ -283,6 +289,38 @@ namespace Regolith.Sim
             tile.Elevation = (float)Clamp(cell.Elevation, -1.6, 1.6);
             tile.Ice = (float)Clamp01(ice);
             tile.Minerals = (float)Clamp01(minerals);
+        }
+
+        /// <summary>Civ-style resources: scarce, and tied to the geology that would really produce them.</summary>
+        static void PlaceDeposit(Cell cell, Random rng, PerlinNoise clusterNoise)
+        {
+            var tile = cell.Tile;
+            var (col, row) = tile.Coord.ToOffset();
+            double roll = rng.NextDouble();
+            double cluster = clusterNoise.Sample(col * 0.17 + 50.0, row * 0.17 + 50.0);
+
+            if (tile.Terrain == TerrainType.ShadowedCrater)
+            {
+                // Volatiles concentrate in the coldest traps; Cabeus is famously rich.
+                if (roll < (cell.IceBonus >= 0.15 ? 0.35 : 0.08)) tile.Deposit = Deposit.Volatiles;
+            }
+            else if (cell.CentralPeak)
+            {
+                if (roll < 0.5) tile.Deposit = Deposit.PlatinumMetals;
+            }
+            else if (cell.FarSide > 0.55 && cluster > 0.2)
+            {
+                if (roll < 0.2) tile.Deposit = Deposit.RareEarths;
+            }
+            else if (tile.Terrain == TerrainType.EjectaBlanket)
+            {
+                if (roll < 0.12) tile.Deposit = Deposit.Ilmenite;
+            }
+            else if (tile.Feature == TileFeature.CraterRim)
+            {
+                if (roll < 0.015) tile.Deposit = Deposit.PlatinumMetals;
+                else if (roll < 0.05) tile.Deposit = Deposit.Ilmenite;
+            }
         }
 
         /// <summary>Polar stereographic-ish placement: distance from the pole by latitude, bearing by longitude.</summary>

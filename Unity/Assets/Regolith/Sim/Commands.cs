@@ -54,6 +54,7 @@ namespace Regolith.Sim
                 FactionId = FactionId,
                 Center = At,
                 Pops = StartingPops,
+                FoundedDay = state.Day,
             };
 
             foreach (var c in At.WithinRange(ClaimRadius))
@@ -93,6 +94,8 @@ namespace Regolith.Sim
 
             var def = ModuleCatalog.Get(Type);
             if (!def.Buildable) return $"{def.Name} can't be built";
+            if (def.RequiredTech.HasValue && !state.GetFaction(colony.FactionId).Has(def.RequiredTech.Value))
+                return $"Requires {TechCatalog.Get(def.RequiredTech.Value).Name}";
             if (colony.ModuleAt(At) != null) return "Tile already has a module";
 
             var placementError = ModuleCatalog.PlacementError(Type, state.Map.GetTile(At));
@@ -107,9 +110,10 @@ namespace Regolith.Sim
             var colony = state.GetColony(ColonyId);
             var def = ModuleCatalog.Get(Type);
             colony.Stock[Resource.Materials] -= def.MaterialCost;
-            colony.Modules.Add(new Module(Type, At, def.BuildDays));
+            int days = Modifiers.BuildDays(state.GetFaction(colony.FactionId), def);
+            colony.Modules.Add(new Module(Type, At, days));
             state.Revision++;
-            state.Report($"{colony.Name}: construction of {def.Name} queued ({def.BuildDays} days).");
+            state.Report($"{colony.Name}: construction of {def.Name} queued ({days} days).");
         }
     }
 }

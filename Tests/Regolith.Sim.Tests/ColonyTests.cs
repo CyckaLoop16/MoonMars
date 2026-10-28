@@ -169,7 +169,7 @@ namespace Regolith.Sim.Tests
             TestMaps.Build(sim, colony, TestMaps.IceCrater, ModuleType.IceMine);
             TestMaps.Build(sim, colony, TestMaps.Free(colony, 0), ModuleType.Greenhouse);
             TestMaps.Build(sim, colony, TestMaps.Free(colony, 0), ModuleType.SolarArray);
-            TestMaps.Build(sim, colony, TestMaps.Free(colony, 0), ModuleType.Foundry);
+            TestMaps.Build(sim, colony, TestMaps.Free(colony, 0), ModuleType.Lab);
 
             sim.Advance(365);
 

@@ -11,14 +11,15 @@ named characters who age, scheme and become legends.
 - 🛠️ [Tech stack & architecture](docs/TECH.md): why Unity, sim/view split
 - 🗺️ [Roadmap](docs/ROADMAP.md): milestones M0 → M8 (Moon slice first)
 
-## Status: M1 (clock & colony core) in progress
+## Status: Act I (Luna) taking shape. M1 done, M2 prototype
 
-- **Act I map:** the real lunar south pole at 3 km per hex. Named landmarks (Shackleton, de Gerlache, Malapert…) sit at their true positions, with procedural craters between them. Four sizes, up to 168×110 hexes
-- **Real-time with pause *or* monthly turns** (toggle with `T`; still deciding which). 1 tick = 1 day from Jan 2040, including the lunar day/night cycle
-- **Land a base and build modules on hexes:** solar, fission reactor, ice mine, oxygen plant, greenhouse, foundry, habitat
-- **Survival:** a life-support economy with power sharing, crew jobs, lethal shortages and crew arrivals from Earth
+- **Turn-based** (1 turn = 1 month) on a daily simulation, with a turn report
+- **The real lunar south pole** at 3 km per hex: Shackleton, de Gerlache, Malapert and more at their true positions, with procedural craters between them. Four map sizes
+- **Land a base and build modules on hexes:** solar, batteries, fission, ice mine, oxygen plant, greenhouse, foundry, lab, habitat
+- **Survival:** a life-support economy with power, crew jobs, lethal shortages and the lunar day/night
+- **Research:** Proven-tier tech tree with Civ-style boosts
+- **Resources:** automatic territory yields, plus Civ-style deposits (ice, volatiles, ilmenite, rare earths, platinum)
 - **Visuals:** placeholders only. Art is produced separately and dropped in (see [TECH.md](docs/TECH.md#art-pipeline))
-- (M0) A procedural Mars map generator, ready for Act II
 
 ## Layout
 
@@ -41,12 +42,13 @@ docs/                          design + tech docs
    **Commit those.** If it asks to enable the new Input System backend, click **Yes**.
 4. Press **Play** in any scene (even the empty default one). The game boots itself.
 
-Controls: `T` switch real-time / turns · real-time: `Space` pause, `1`–`5` speed · turns: `Enter`
-end turn · left-click select · `WASD`/right-drag pan · `Q`/`E` rotate · wheel zoom · `R` new map.
+Controls: `Enter` end turn · left-click select · `WASD`/right-drag pan · `Q`/`E` rotate ·
+wheel zoom · `R` new map.
 
-**First steps:** click a tile next to a dark shadowed crater (ice) and ideally near a yellow-marked
-peak of light, then land your base. Build power first, then the oxygen plant, then an ice mine on
-the crater, then a greenhouse. Unpause, and watch out for the lunar night.
+**First steps:** click a tile on Shackleton's sunlit rim (yellow peak markers, next to the dark
+ice-filled crater) and land your base. Build a solar array on a peak, then an oxygen plant, an
+ice mine in the crater (purple marker = volatiles, +50%), a greenhouse and a lab. Pick a research,
+then end turns and watch the turn report through your first lunar nights.
 
 ### Run the sim tests (no Unity needed)
 

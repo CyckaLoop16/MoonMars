@@ -32,6 +32,8 @@ namespace Regolith.Sim
         OxygenPlant,
         Greenhouse,
         Foundry,
+        Lab,
+        BatteryBank,
     }
 
     public readonly struct Flow
@@ -61,6 +63,10 @@ namespace Regolith.Sim
         public double EnergyOutput;
         public double EnergyDraw;
         public bool IsSolar;
+        public double Science;
+        public double EnergyStorage;
+        /// <summary>Tech needed before this can be built, if any.</summary>
+        public TechId? RequiredTech;
         public Flow[] Inputs = new Flow[0];
         public Flow[] Outputs = new Flow[0];
     }
@@ -79,7 +85,7 @@ namespace Regolith.Sim
             {
                 Type = ModuleType.HabCore, Name = "Hab Core", Buildable = false, Priority = 0,
                 Description = "The landed base: crew quarters, fuel cells and life-support recyclers.",
-                Housing = 6, EnergyOutput = 3, EnergyDraw = 2,
+                Housing = 6, EnergyOutput = 3, EnergyDraw = 2, Science = 1,
                 Outputs = new[] { new Flow(Resource.Oxygen, 1), new Flow(Resource.Water, 3) },
             });
             Add(new ModuleDef
@@ -111,20 +117,35 @@ namespace Regolith.Sim
             Add(new ModuleDef
             {
                 Type = ModuleType.FissionReactor, Name = "Fission Reactor", MaterialCost = 80, BuildDays = 25, Jobs = 1, Priority = 5,
+                RequiredTech = TechId.KilopowerReactors,
                 Description = "Compact reactor shipped from Earth. Steady power through the lunar night.",
                 EnergyOutput = 12,
             });
             Add(new ModuleDef
             {
-                Type = ModuleType.Foundry, Name = "Regolith Foundry", MaterialCost = 30, BuildDays = 10, Jobs = 2, Priority = 6,
+                Type = ModuleType.Foundry, Name = "Regolith Foundry", MaterialCost = 30, BuildDays = 10, Jobs = 2, Priority = 7,
+                RequiredTech = TechId.RegolithSintering,
                 Description = "Sinters and smelts regolith into building materials. Better on mineral-rich ground.",
                 EnergyDraw = 3, Outputs = new[] { new Flow(Resource.Materials, 2) },
             });
             Add(new ModuleDef
             {
-                Type = ModuleType.Habitat, Name = "Habitat", MaterialCost = 25, BuildDays = 10, Priority = 7,
+                Type = ModuleType.Habitat, Name = "Habitat", MaterialCost = 25, BuildDays = 10, Priority = 8,
                 Description = "Regolith-shielded living space for more crew.",
                 Housing = 6, EnergyDraw = 1,
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.Lab, Name = "Research Lab", MaterialCost = 30, BuildDays = 10, Jobs = 2, Priority = 6,
+                Description = "Geology, life-support and engineering research. Produces Science.",
+                EnergyDraw = 2, Science = 4,
+            });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.BatteryBank, Name = "Battery Bank", MaterialCost = 30, BuildDays = 8, Priority = 9,
+                RequiredTech = TechId.BatteryStorage,
+                Description = "Charges from surplus daylight power and carries the colony through the night.",
+                EnergyStorage = 60,
             });
         }
 
