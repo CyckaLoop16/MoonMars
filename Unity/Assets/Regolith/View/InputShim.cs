@@ -79,6 +79,46 @@ namespace Regolith.View
 #endif
         }
 
+        /// <summary>Left click this frame: select a tile.</summary>
+        public static bool SelectPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+#else
+            return Input.GetMouseButtonDown(0);
+#endif
+        }
+
+        public static bool PausePressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.Space);
+#endif
+        }
+
+        /// <summary>Number key 1–5 pressed this frame, or 0.</summary>
+        public static int SpeedPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var k = Keyboard.current;
+            if (k == null) return 0;
+            if (k.digit1Key.wasPressedThisFrame) return 1;
+            if (k.digit2Key.wasPressedThisFrame) return 2;
+            if (k.digit3Key.wasPressedThisFrame) return 3;
+            if (k.digit4Key.wasPressedThisFrame) return 4;
+            if (k.digit5Key.wasPressedThisFrame) return 5;
+#else
+            if (Input.GetKeyDown(KeyCode.Alpha1)) return 1;
+            if (Input.GetKeyDown(KeyCode.Alpha2)) return 2;
+            if (Input.GetKeyDown(KeyCode.Alpha3)) return 3;
+            if (Input.GetKeyDown(KeyCode.Alpha4)) return 4;
+            if (Input.GetKeyDown(KeyCode.Alpha5)) return 5;
+#endif
+            return 0;
+        }
+
         public static bool RegeneratePressed()
         {
 #if ENABLE_INPUT_SYSTEM

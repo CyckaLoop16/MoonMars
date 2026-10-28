@@ -11,11 +11,14 @@ named characters who age, scheme and become legends.
 - 🛠️ [Tech stack & architecture](docs/TECH.md): why Unity, sim/view split
 - 🗺️ [Roadmap](docs/ROADMAP.md): milestones M0 → M8 (Moon slice first)
 
-## Status: M0 (foundations)
+## Status: M1 (clock & colony core) in progress
 
-- Procedural Mars map: hemispheric dichotomy, polar caps, craters, volcanic rises with lava tubes,
-  a Valles Marineris-style canyon, dune fields, plus ice and mineral deposits
-- 3D terraced hex rendering, Civ-style strategy camera, hover tile inspector
+- **Act I map:** procedural lunar south pole, with permanently shadowed ice craters, peaks of light and mare plains
+- **Real-time with pause** (1 tick = 1 day from Jan 2040), including the lunar day/night cycle
+- **Land a base and build modules on hexes:** solar, fission reactor, ice mine, oxygen plant, greenhouse, foundry, habitat
+- **Survival:** a life-support economy with power sharing, crew jobs, lethal shortages and crew arrivals from Earth
+- **Visuals:** placeholders only. Art is produced separately and dropped in (see [TECH.md](docs/TECH.md#art-pipeline))
+- (M0) A procedural Mars map generator, ready for Act II
 
 ## Layout
 
@@ -38,7 +41,12 @@ docs/                          design + tech docs
    **Commit those.** If it asks to enable the new Input System backend, click **Yes**.
 4. Press **Play** in any scene (even the empty default one). The game boots itself.
 
-Controls: `WASD` pan · `Q`/`E` rotate · mouse wheel zoom · right/middle-drag pan · `R` new map.
+Controls: `Space` pause · `1`–`5` speed · left-click select · `WASD`/right-drag pan · `Q`/`E` rotate ·
+wheel zoom · `R` new map.
+
+**First steps:** click a tile next to a dark shadowed crater (ice) and ideally near a yellow-marked
+peak of light, then land your base. Build power first, then the oxygen plant, then an ice mine on
+the crater, then a greenhouse. Unpause, and watch out for the lunar night.
 
 ### Run the sim tests (no Unity needed)
 

@@ -41,6 +41,17 @@
   authored in Unity or JSON for modding friendliness. Leaning JSON plus a Unity
   importer, so modders don't need the editor.
 
+## Art pipeline
+
+Art (models, textures, map visuals, icons) is produced **outside the codebase** (generated with
+GPT image/3D tools). Code only ships **placeholders**, and every visual has a drop-in slot so art
+replaces placeholders without code changes:
+
+| Asset | Drop-in location | Placeholder until then |
+|---|---|---|
+| Colony module model | `Unity/Assets/Regolith/Resources/Modules/<ModuleType>.prefab` (e.g. `SolarArray.prefab`; pivot at the base, ~1 unit across) | Coloured hex column |
+| Terrain | (slot planned with the URP terrain pass) | Vertex-coloured terraced hexes |
+
 ## Rendering
 
 - Prototype: a single procedural mesh of terraced hex prisms with vertex colors and a tiny

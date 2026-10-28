@@ -9,13 +9,15 @@ then Beyond. Each milestone ends with something playable.
 - Unity view: 3D terraced hex map, strategy camera, hover tile inspector
 - Sim unit tests (`dotnet test`)
 
-## M1: Clock & colony core (on the Moon)
-- Tick engine: 1 tick = 1 day, pause plus 5 speeds, monthly economy pass
-- Command queue (player and AI issue the same commands, applied on tick boundaries)
-- Lunar map generator: south pole, shadowed ice craters, peaks of light
-- Found a colony; place modules on hexes; power → ISRU → greenhouse chain
-- Pops & jobs, life support, growth/decline
-- HUD: time controls, resource bar, colony panel (UI Toolkit)
+## M1: Clock & colony core (on the Moon) 🚧
+- [x] Tick engine: 1 tick = 1 day, pause plus 5 speeds, monthly economy pass
+- [x] Command system (player and AI issue the same commands; command log for replays)
+- [x] Lunar map generator: south pole, shadowed ice craters, peaks of light
+- [x] Land a base; place modules on hexes; power → ISRU → greenhouse chain
+- [x] Pops & jobs, life support, growth/decline, lunar day/night
+- [x] Prototype HUD: time controls, resource bar, colony panel, event log (IMGUI placeholder)
+- [ ] Playtest in Unity and tune the opening (first 90 days)
+- [ ] Player-set job priorities, demolish/cancel construction
 
 ## M2: Pioneers
 - Characters: roles, traits, skills, age, death
