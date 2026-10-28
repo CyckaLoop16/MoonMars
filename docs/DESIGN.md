@@ -27,6 +27,25 @@ The game sits between **Civilization VI**, **Hearts of Iron IV** and **Stellaris
 4. **The campaign is a journey.** Each act changes the game. The Moon teaches you, Mars
    tests you, and Beyond asks what your civilization has become.
 
+## Tone: realism gradually gives way to sci-fi
+
+The game starts as **hard, near-future sci-fi** and gets stranger the further you push.
+Research drives this directly: every tech belongs to a **tier**, and the deeper tiers
+unlock both more powerful tools and stranger events.
+
+| Tier | Feels like | Examples |
+|---|---|---|
+| **Proven** (Act I) | Today's real engineering | ISRU, small fission reactors, 3D-printed regolith habitats, rovers |
+| **Emerging** (Act II) | Plausible extrapolation | Fusion pilots, closed-loop ecology, AI administrators, radiation-adapted crops |
+| **Speculative** (late Act II–III) | Classic sci-fi | Mass drivers, space elevators, genetic adaptation, antimatter, the ark |
+| **Unknown** (endgame) | The mystery | Only reachable by following the anomaly thread |
+
+**The mystery is seeded early but stays deniable.** Act I has odd readings in lunar ice that
+might be instrument error. Act II has methane spikes on Mars (a real phenomenon) and
+structures in the strata that might be geology. Act III has the Europa signal. Players who
+ignore the thread get a grounded game; players who pursue it find out what's really going on.
+The endgame crisis is weighted by how far the system as a whole has pushed into the deep tiers.
+
 ## Time & pacing
 
 - **Real-time with pause**, 5 speeds. 1 tick = 1 day. The economy resolves monthly.
@@ -103,6 +122,17 @@ Technocrat, Corporatist…) and **needs**. Their mood drives stability.
 - **Traits** are gained by doing things ("Survived a Breach", "Dust-Storm Veteran", "Ambitious").
 - **Age and legacy**: Pioneers age and die. The greats become **Legends** with permanent
   bonuses, monuments and names on the map.
+- **Mortality**: besides old age, Pioneers can die in **rare incidents and accidents**
+  (EVA mishaps, habitat breaches, rover crashes, radiation exposure, launch failures).
+  - Risk depends on what they're doing: field roles (Expedition Leader, Chief Engineer during
+    a disaster) are exposed; council seats rarely are.
+  - Safety tech, modules and traits lower the risk. Pushing crews hard ("rush this megaproject")
+    raises it.
+  - It's rare: a handful of deaths per campaign, so each one matters.
+  - **Near misses** come first and are more common. They leave scars and traits
+    ("Survived a Breach") and warn you that someone is in harm's way.
+  - A death triggers a memorial, a morale effect, and sometimes Legend status. A Pioneer's
+    **protégé** can inherit part of their skills, so knowledge isn't lost entirely.
 - **Ambitions and loyalty**: a brilliant but ambitious Pioneer may demand a council seat,
   lead a faction, or **defect to a rival** and take their secrets along.
 - **Generations**: Act III's leaders were born on Mars. They have different traits, and
@@ -144,6 +174,9 @@ pacts, joint independence, and a **System Council** that votes on resolutions (C
 
 ## Faction roster (fictional, inspired by real-world blocs)
 
+**3 to 6 factions per game**, chosen at setup. Map sizes scale with the count, so the Moon
+stays contested but not impossibly crowded.
+
 | Faction | Flavor | Strength | Weakness |
 |---|---|---|---|
 | **Atlantic Accord** | Democratic coalition program | Big Earth funding, stability | Slow, bureaucratic directives |
@@ -151,6 +184,7 @@ pacts, joint independence, and a **System Council** that votes on resolutions (C
 | **Helion Dynamics** | Megacorp | Trade, Credits, buys what it needs | Low cohesion; Pioneers defect for pay |
 | **Prometheus Consortium** | International science body | Research, terraforming | Weak security, depends on donors |
 | **The Long Voyage** | Ideological settler movement | Growth, cohesion, hardship tolerance | Little Earth support |
+| **Meridian Compact** | Coalition of emerging space nations | Cheap launches, adaptable, strong diplomacy | Smaller budget, fragile consensus |
 
 Independents and breakaway colonies can emerge mid-game when a rival's colony revolts.
 
@@ -164,13 +198,18 @@ Independents and breakaway colonies can emerge mid-game when a rival's colony re
 - **Supremacy**: control or vassalize every rival's capital (domination)
 - **Score** at campaign end date
 
-## Endgame crisis (Stellaris-style), candidates
+## Endgame crisis (Stellaris-style)
 
-- **The Silence**: Earth goes dark (war or collapse). Supply stops. Only self-sufficient
-  factions survive, and everyone must decide what they are without Earth.
-- **Kessler Cascade**: orbital debris chain reaction. Launches become deadly, and the
-  system map fragments.
-- **The Signal**: something under Europa's ice answers back.
+Which crisis fires depends on how far the system has pushed into the deep tech tiers:
+
+- **Grounded** (little deep research):
+  - **The Silence**: Earth goes dark (war or collapse). Supply stops. Only self-sufficient
+    factions survive, and everyone must decide what they are without Earth.
+  - **Kessler Cascade**: orbital debris chain reaction. Launches become deadly, and the
+    system map fragments.
+- **Mysterious** (deep research + the anomaly thread followed):
+  - **The Signal**: something under Europa's ice answers back. It's the payoff of the
+    mystery seeded since Act I.
 
 ## Resources
 
@@ -190,7 +229,7 @@ This is a big game, so we build it as **vertical slices**:
 
 ## Open questions
 
-- Tone: grounded hard sci-fi throughout, or a hint of mystery (The Signal)?
-- How many factions per game: 3 on the Moon, all 5 by Mars?
-- Can you lose a Pioneer permanently in the field (permadeath) or only through events?
+- What *is* the mystery? Decide the truth early, even if players only learn it at the end,
+  so every clue is consistent.
+- Do all factions land on the Moon, or do some skip straight to Mars?
 - Multiplayer later? The sim stays deterministic so the door stays open.
