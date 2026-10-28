@@ -15,7 +15,7 @@ namespace Waystation.Sim
             Y = y;
         }
 
-        /// <summary>North, east, south, west: the four directions corridors connect in.</summary>
+        /// <summary>North, east, south, west: the four directions walkways connect in.</summary>
         public static readonly Cell[] Directions = { new Cell(0, 1), new Cell(1, 0), new Cell(0, -1), new Cell(-1, 0) };
 
         public static Cell operator +(Cell a, Cell b) => new Cell(a.X + b.X, a.Y + b.Y);
@@ -47,7 +47,10 @@ namespace Waystation.Sim
         StarterPad,
         LandingPad,
         Hangar,
-        Corridor,
+        /// <summary>Open-air grated catwalk with railings; links modules to the station.</summary>
+        Walkway,
+        /// <summary>Structural deck plate; future buildings will stand on these.</summary>
+        Foundation,
     }
 
     public sealed class BuildingDef
@@ -62,7 +65,10 @@ namespace Waystation.Sim
         public bool Buildable = true;
         /// <summary>The root of the station network: fuel and power flow out from here.</summary>
         public bool IsHub;
-        public bool IsCorridor;
+        /// <summary>1×1 network piece (walkway or foundation) that can be painted by dragging.</summary>
+        public bool IsPaintable;
+        /// <summary>Short label prefix for the map and the traffic board, e.g. "Pad" → "Pad 2".</summary>
+        public string Label;
         public ShipClass[] Serves = new ShipClass[0];
         public bool Repairs;
         public double FuelCapacity;
@@ -79,27 +85,35 @@ namespace Waystation.Sim
             Add(new BuildingDef
             {
                 Type = BuildingType.StarterPad, Name = "Waystation Pad", Width = 3, Height = 3,
-                Description = "Where it all started: a landing platform with the station's fuel tank.",
-                Buildable = false, IsHub = true, UpkeepPerMinute = 5, FuelCapacity = 800,
+                Description = "Where it all started: a landing platform with the station's fuel tank and comms mast.",
+                Label = "Pad", Buildable = false, IsHub = true, UpkeepPerMinute = 5, FuelCapacity = 800,
                 Serves = new[] { ShipClass.Shuttle },
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.LandingPad, Name = "Landing Pad", Width = 3, Height = 3, Cost = 900,
                 Description = "Another place for shuttles to set down and refuel. Must be connected to the station.",
+                Label = "Pad",
                 UpkeepPerMinute = 8, Serves = new[] { ShipClass.Shuttle },
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.Hangar, Name = "Hangar", Width = 4, Height = 4, Cost = 2600,
-                Description = "Enclosed bay with a repair crew. Takes haulers (and shuttles). Must be connected to the station.",
+                Description = "Open repair bay with a gantry crane. Takes haulers (and shuttles). Must be connected to the station.",
+                Label = "Hangar",
                 UpkeepPerMinute = 25, Repairs = true, Serves = new[] { ShipClass.Hauler, ShipClass.Shuttle },
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.Corridor, Name = "Corridor", Width = 1, Height = 1, Cost = 25,
-                Description = "Pressurised walkway carrying fuel lines and power. Connects buildings to the station.",
-                UpkeepPerMinute = 0.3, IsCorridor = true,
+                Type = BuildingType.Walkway, Name = "Walkway", Width = 1, Height = 1, Cost = 25,
+                Description = "Open-air grated catwalk with railings and fuel lines underneath. Links modules to the station.",
+                UpkeepPerMinute = 0.3, IsPaintable = true,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.Foundation, Name = "Foundation", Width = 1, Height = 1, Cost = 60,
+                Description = "Heavy deck plate. Extends the station; future buildings will be placed on foundations.",
+                UpkeepPerMinute = 0.5, IsPaintable = true,
             });
         }
 

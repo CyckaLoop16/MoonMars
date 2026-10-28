@@ -133,7 +133,7 @@ namespace Waystation.View
 #endif
         }
 
-        /// <summary>Build hotkeys: P pad, H hangar, C corridor, X demolish. Returns the letter, or '\0'.</summary>
+        /// <summary>Hotkeys: P pad, H hangar, C walkway (catwalk), F foundation, X demolish, T clear next hail. Returns the letter, or '\0'.</summary>
         public static char ToolPressed()
         {
 #if ENABLE_INPUT_SYSTEM
@@ -143,11 +143,15 @@ namespace Waystation.View
             if (k.hKey.wasPressedThisFrame) return 'H';
             if (k.cKey.wasPressedThisFrame) return 'C';
             if (k.xKey.wasPressedThisFrame) return 'X';
+            if (k.fKey.wasPressedThisFrame) return 'F';
+            if (k.tKey.wasPressedThisFrame) return 'T';
 #else
             if (Input.GetKeyDown(KeyCode.P)) return 'P';
             if (Input.GetKeyDown(KeyCode.H)) return 'H';
             if (Input.GetKeyDown(KeyCode.C)) return 'C';
             if (Input.GetKeyDown(KeyCode.X)) return 'X';
+            if (Input.GetKeyDown(KeyCode.F)) return 'F';
+            if (Input.GetKeyDown(KeyCode.T)) return 'T';
 #endif
             return '\0';
         }

@@ -6,8 +6,8 @@ namespace Waystation.Sim
     {
         /// <summary>Flying in from orbit.</summary>
         Approaching,
-        /// <summary>Circling the station, waiting for a free pad. Patience runs down.</summary>
-        Holding,
+        /// <summary>Calling the station for a landing spot while circling. Patience runs down until it's assigned one.</summary>
+        Hailing,
         Landing,
         /// <summary>On the pad: refuelling, then repairs if needed.</summary>
         Servicing,

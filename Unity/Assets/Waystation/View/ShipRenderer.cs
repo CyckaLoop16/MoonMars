@@ -6,8 +6,9 @@ using Waystation.Sim;
 namespace Waystation.View
 {
     /// <summary>
-    /// Ships flying in from deep space, circling in the holding pattern, settling onto their pad,
-    /// and leaving again. Motion is presentation only: positions are derived from each ship's sim state.
+    /// Ships flying in from deep space, circling while they hail for a landing spot (with a blinking
+    /// comms beacon), settling onto their assigned pad, and leaving again. Motion is presentation only:
+    /// positions are derived from each ship's sim state.
     ///
     /// Art drop-in slots: Resources/Ships/Shuttle.prefab, Resources/Ships/Hauler.prefab
     /// (nose along +Z, pivot at the bottom of the landing gear, ~1–2 units long).
@@ -19,6 +20,7 @@ namespace Waystation.View
         sealed class Visual
         {
             public GameObject GameObject;
+            public GameObject Beacon;
             public Vector3 Position;
             public Quaternion Rotation = Quaternion.identity;
         }
@@ -31,6 +33,8 @@ namespace Waystation.View
         static readonly Color Glass = MeshBuilder.Hex("#2fd6ff");
         static readonly Color Engine = MeshBuilder.Hex("#2a2a35");
         static readonly Color Glow = MeshBuilder.Hex("#ffb347");
+        static readonly Color Comms = MeshBuilder.Hex("#4fe3ff");
+        Mesh _beaconMesh;
 
         readonly Dictionary<int, Visual> _visuals = new Dictionary<int, Visual>();
         readonly Dictionary<(ShipClass, int), Mesh> _meshes = new Dictionary<(ShipClass, int), Mesh>();
@@ -66,7 +70,8 @@ namespace Waystation.View
             if (_station == null) return;
             float dt = Time.deltaTime;
 
-            var holding = _station.Holding.Select(s => s.Id).ToList();
+            var holding = _station.Hailing.Select(s => s.Id).ToList();
+            bool blinkOn = Mathf.Repeat(Time.unscaledTime, 0.8f) < 0.5f;
             var alive = new HashSet<int>();
             foreach (var ship in _station.Ships)
             {
@@ -92,6 +97,7 @@ namespace Waystation.View
                     v.Rotation = Quaternion.Slerp(v.Rotation, Quaternion.LookRotation(velocity), 1f - Mathf.Exp(-5f * dt));
 
                 v.GameObject.transform.SetPositionAndRotation(v.Position, v.Rotation);
+                v.Beacon.SetActive(ship.State == ShipState.Hailing && blinkOn);
             }
 
             foreach (var id in _visuals.Keys.Where(id => !alive.Contains(id)).ToList())
@@ -110,7 +116,7 @@ namespace Waystation.View
             {
                 case ShipState.Approaching:
                     return Vector3.Lerp(EntryPoint(ship), HoldingPoint(slot), EaseOut(p));
-                case ShipState.Holding:
+                case ShipState.Hailing:
                     return HoldingPoint(slot);
                 case ShipState.Landing:
                     return pad + Vector3.up * (PadHeight + 4f * (1f - EaseOut(p)));
@@ -174,8 +180,21 @@ namespace Waystation.View
             }
             go.name = $"{ship.Class} {ship.Name}";
 
+            // Blinking comms beacon shown while the ship hails for clearance.
+            if (_beaconMesh == null)
+            {
+                var bb = new MeshBuilder();
+                bb.AddSpike(new Vector3(0f, 1.2f, 0f), new Vector3(0f, 0.95f, 0f), 0.14f, 4, Comms, 45f);
+                bb.AddSpike(new Vector3(0f, 1.2f, 0f), new Vector3(0f, 1.45f, 0f), 0.14f, 4, Comms, 45f);
+                _beaconMesh = bb.ToMesh("CommsBeacon");
+            }
+            var beacon = new GameObject("CommsBeacon");
+            beacon.transform.SetParent(go.transform, false);
+            beacon.AddComponent<MeshFilter>().sharedMesh = _beaconMesh;
+            beacon.AddComponent<MeshRenderer>().sharedMaterial = _material;
+
             var start = EntryPoint(ship);
-            return new Visual { GameObject = go, Position = start, Rotation = Quaternion.LookRotation(-start.normalized) };
+            return new Visual { GameObject = go, Beacon = beacon, Position = start, Rotation = Quaternion.LookRotation(-start.normalized) };
         }
 
         static Mesh Placeholder(ShipClass cls, int livery)

@@ -23,7 +23,10 @@ namespace Waystation.Sim
         public const double RestockThreshold = 0.4;
         public const double FuelDeliverySeconds = 15;
 
+        /// <summary>Ships that can circle the station at once while hailing.</summary>
         public const int MaxHolding = 6;
+        /// <summary>Reputation cost of waving a ship off (less than letting it give up).</summary>
+        public const double ReputationLostWhenWavedOff = 1;
         public const double FirstArrivalSeconds = 5;
         public const double BaseArrivalSeconds = 16;
 
@@ -76,7 +79,7 @@ namespace Waystation.Sim
             s.Buildings.Add(new Building { Id = s.NextBuildingId++, Type = Type, Origin = Origin });
             s.RecomputeConnections();
             s.Revision++;
-            if (!def.IsCorridor) s.Report($"{def.Name} built.");
+            if (!def.IsPaintable) s.Report($"{def.Name} built.");
         }
     }
 
@@ -105,6 +108,52 @@ namespace Waystation.Sim
             s.Money += b.Def.Cost * Rules.DemolishRefund;
             s.RecomputeConnections();
             s.Revision++;
+        }
+    }
+
+    /// <summary>The player clears a hailing ship to land on a specific pad or hangar.</summary>
+    public sealed class AssignLanding : ICommand
+    {
+        public readonly int ShipId;
+        public readonly int BuildingId;
+
+        public AssignLanding(int shipId, int buildingId)
+        {
+            ShipId = shipId;
+            BuildingId = buildingId;
+        }
+
+        public string Validate(Station s) => s.LandingError(s.GetShip(ShipId), s.GetBuilding(BuildingId));
+
+        public void Apply(Station s)
+        {
+            var ship = s.GetShip(ShipId);
+            var b = s.GetBuilding(BuildingId);
+            Simulation.ClearToLand(ship, b);
+            s.Report($"{ship.Name} cleared to land on {s.Label(b)}.");
+        }
+    }
+
+    /// <summary>Turn a hailing ship away: a small reputation hit, but better than letting it give up.</summary>
+    public sealed class WaveOff : ICommand
+    {
+        public readonly int ShipId;
+
+        public WaveOff(int shipId)
+        {
+            ShipId = shipId;
+        }
+
+        public string Validate(Station s) =>
+            s.GetShip(ShipId)?.State == ShipState.Hailing ? null : "That ship isn't waiting for clearance";
+
+        public void Apply(Station s)
+        {
+            var ship = s.GetShip(ShipId);
+            s.Reputation -= Rules.ReputationLostWhenWavedOff;
+            s.ShipsDiverted++;
+            s.Report($"{ship.Name} waved off. Reputation −{Rules.ReputationLostWhenWavedOff:0}.");
+            ship.Enter(ShipState.Departing, Rules.Ticks(Rules.DepartingSeconds));
         }
     }
 
@@ -163,7 +212,7 @@ namespace Waystation.Sim
             var def = ShipCatalog.Get(cls);
             var name = ShipCatalog.RandomName(s.Rng);
 
-            int waiting = s.Ships.Count(x => x.State == ShipState.Holding || x.State == ShipState.Approaching);
+            int waiting = s.Ships.Count(x => x.State == ShipState.Hailing || x.State == ShipState.Approaching);
             if (waiting >= Rules.MaxHolding)
             {
                 s.ShipsDiverted++;
@@ -192,11 +241,16 @@ namespace Waystation.Sim
             switch (ship.State)
             {
                 case ShipState.Approaching:
-                    if (--ship.StateTicks <= 0) ship.Enter(ShipState.Holding, 0);
+                    if (--ship.StateTicks <= 0)
+                    {
+                        ship.Enter(ShipState.Hailing, 0);
+                        var def = ShipCatalog.Get(ship.Class);
+                        s.Report($"{ship.Name} ({def.Name.ToLowerInvariant()}, {ship.FuelNeeded:0} fuel{(ship.NeedsRepair ? ", needs repairs" : "")}) is hailing for a landing spot.");
+                    }
                     break;
 
-                case ShipState.Holding:
-                    if (--ship.PatienceTicks <= 0) LeaveAngry(s, ship, "gave up waiting for a pad");
+                case ShipState.Hailing:
+                    if (--ship.PatienceTicks <= 0) LeaveAngry(s, ship, "gave up waiting for clearance");
                     break;
 
                 case ShipState.Landing:
@@ -265,9 +319,11 @@ namespace Waystation.Sim
             ship.Enter(ShipState.Departing, Rules.Ticks(Rules.DepartingSeconds));
         }
 
+        /// <summary>Automatic clearance: only once the station has air traffic control.</summary>
         static void Dock(Station s)
         {
-            foreach (var ship in s.Holding.ToList())
+            if (!s.AutoAssign) return;
+            foreach (var ship in s.Hailing.ToList())
             {
                 var free = s.Buildings
                     .Where(b => b.Connected && b.ShipId == null && b.Def.CanServe(ship.Class))
@@ -277,10 +333,15 @@ namespace Waystation.Sim
                     .FirstOrDefault();
                 if (free == null) continue;
 
-                free.ShipId = ship.Id;
-                ship.BuildingId = free.Id;
-                ship.Enter(ShipState.Landing, Rules.Ticks(Rules.LandingSeconds));
+                ClearToLand(ship, free);
             }
+        }
+
+        public static void ClearToLand(Ship ship, Building b)
+        {
+            b.ShipId = ship.Id;
+            ship.BuildingId = b.Id;
+            ship.Enter(ShipState.Landing, Rules.Ticks(Rules.LandingSeconds));
         }
 
         static void Fuel(Station s)

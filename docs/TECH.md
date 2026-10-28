@@ -31,8 +31,10 @@ drop-in slot. Put a prefab at the path and it replaces the placeholder with no c
 | Starter pad | `Unity/Assets/Waystation/Resources/Buildings/StarterPad.prefab` | Pivot at footprint centre, deck top at Y=0, 1 unit = 1 grid cell (3×3) |
 | Landing pad | `.../Resources/Buildings/LandingPad.prefab` | 3×3 |
 | Hangar | `.../Resources/Buildings/Hangar.prefab` | 4×4, open enough that a docked ship is visible |
-| Corridor centre | `.../Resources/Buildings/Corridor_Hub.prefab` | 1×1 cell centre piece |
-| Corridor arm | `.../Resources/Buildings/Corridor_Arm.prefab` | Runs from cell centre to the **+Z** edge; rotated for each link |
+| Walkway deck | `.../Resources/Buildings/Walkway_Deck.prefab` | Full 1×1 grated catwalk deck |
+| Walkway railing | `.../Resources/Buildings/Walkway_Railing.prefab` | Railing along the cell's **+Z** edge; placed (rotated) on every side with no neighbour |
+| Foundation | `.../Resources/Buildings/Foundation.prefab` | Full 1×1 heavy deck plate |
+| Foundation edge | `.../Resources/Buildings/Foundation_Edge.prefab` | Trim along the **+Z** edge; placed on every open side |
 | Shuttle | `.../Resources/Ships/Shuttle.prefab` | Nose along +Z, pivot at the bottom of the gear, ~1.5 units long |
 | Hauler | `.../Resources/Ships/Hauler.prefab` | Nose along +Z, ~2.5 units long |
 

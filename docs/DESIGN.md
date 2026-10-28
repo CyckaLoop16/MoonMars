@@ -16,17 +16,22 @@
 ## Core loop (prototype)
 
 ```
-ship arrives → holding pattern (patience ↓) → landing → refuel → [repairs] → pays → departs
+ship arrives → hails the station (patience ↓) → you clear it to a pad → landing → refuel → [repairs] → pays → departs
+                       │ you wave it off → leaves (reputation −1)
                        │ patience runs out → leaves angry (reputation −4)
-                       │ holding pattern full (6) → diverted (lost revenue)
+                       │ 6 ships already circling → diverted (lost revenue)
 ```
+
+- **Hailing and clearance**: until the station buys an **air traffic control tower** (later), the
+  player clears every landing by hand: click the ship (or use the Comms panel), then a pad. That
+  busywork at high traffic is deliberate: it's what makes the ATC tower worth buying.
 
 - **Shuttles**: small, frequent. Land on any pad or a hangar. Pay a landing fee plus fuel.
 - **Haulers**: big. Need a hangar. Often (45%) need repairs: slow but lucrative.
 - **Fuel**: bought in bulk by automatic tanker orders (1.8 cr/unit) and sold at the pump
   (3 cr/unit). Run dry and ships leave angry.
 - **Connections**: the starter pad holds the fuel tank. Any module must touch the station or link
-  to it through corridors; unconnected modules show a red beacon and can't serve ships.
+  to it through walkways or foundations; unconnected modules show a red beacon and can't serve ships.
 - **Reputation (0–100)** drives arrival rate and the share of haulers.
 - **Upkeep** is charged every minute; demolishing refunds 50%.
 
@@ -37,10 +42,13 @@ ship arrives → holding pattern (patience ↓) → landing → refuel → [repa
 | Waystation Pad | 3×3 | (start) | 5 | Starter pad + 800-unit fuel tank, the network hub |
 | Landing Pad | 3×3 | 900 | 8 | Shuttles |
 | Hangar | 4×4 | 2,600 | 25 | Haulers and shuttles, repairs |
-| Corridor | 1×1 | 25 | 0.3 | Links modules; auto-connects visually |
+| Walkway | 1×1 | 25 | 0.3 | Open-air catwalk; railings only on open sides, so paths join up |
+| Foundation | 1×1 | 60 | 0.5 | Heavy deck plate that extends the station; future buildings go on these |
 
 ## Next ideas (not built yet)
 
+- **Air traffic control tower**: automatic clearance (the sim already supports it via `AutoAssign`)
+- **Buildings on foundations**: fuel tanks, lounges, shops
 - **Fuel tanks and refinery:** more storage, cheaper fuel, fuel-price setting
 - **Pad sizes:** small/medium/large pads; more ship classes (explorers, fighters, freighter captains)
 - **Services:** traveller lounge/diner, trade terminal, ship shop, crew quarters and staff

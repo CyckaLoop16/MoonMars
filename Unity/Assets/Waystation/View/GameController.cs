@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Waystation.Sim;
@@ -9,17 +10,21 @@ namespace Waystation.View
         Select,
         Build,
         Demolish,
+        /// <summary>Pick a pad or hangar for the hailing ship in <see cref="GameController.ClearingShip"/>.</summary>
+        ClearToLand,
     }
 
     /// <summary>
     /// Entry point: owns the simulation, runs the real-time clock (pause, 1×, 2×, 4×), and turns
-    /// mouse and keyboard input into build/demolish commands. Auto-spawns when you press Play in
-    /// any scene, so the project needs no hand-built scene yet.
+    /// mouse and keyboard input into commands: building, demolishing, and clearing hailing ships to
+    /// land. Auto-spawns when you press Play in any scene, so the project needs no hand-built scene yet.
     /// </summary>
     public sealed class GameController : MonoBehaviour
     {
         public static readonly float[] SpeedMultipliers = { 0f, 1f, 2f, 4f };
         const int MaxStepsPerFrame = 400;
+        /// <summary>How close (in pixels) a click must be to a ship to pick it.</summary>
+        const float ShipPickRadius = 34f;
 
         [Tooltip("0 = random seed each run")]
         public int Seed;
@@ -45,7 +50,9 @@ namespace Waystation.View
         public BuildingType BuildType { get; private set; } = BuildingType.LandingPad;
         public Cell? HoverCell { get; private set; }
         public Building Selected { get; private set; }
-        /// <summary>Why the current placement isn't allowed, for the HUD; null when it is.</summary>
+        /// <summary>The hailing ship being cleared to land (Tool.ClearToLand).</summary>
+        public Ship ClearingShip { get; private set; }
+        /// <summary>Why the current placement or clearance isn't allowed, for the HUD; null when it is.</summary>
         public string PlacementError { get; private set; }
         public string LastError { get; private set; }
         public float LastErrorTime { get; private set; } = -100f;
@@ -84,13 +91,14 @@ namespace Waystation.View
         {
             Sim = GameSetup.NewStation(seed);
             Selected = null;
+            ClearingShip = null;
             Tool = Tool.Select;
             Speed = 1;
             _accumulator = 0f;
             _renderedRevision = -1;
 
             _world.Build(Station.Width, Station.Height, seed, _camera);
-            _buildings.Bind(Station.Width, Station.Height);
+            _buildings.Bind(Station);
             _ships.Bind(Station);
             float half = Station.Width / 2f + 6f;
             _cameraRig.Init(_camera, Vector3.zero, Rect.MinMaxRect(-half, -half, half, half));
@@ -102,10 +110,15 @@ namespace Waystation.View
             RunClock();
             if (Station.Revision != _renderedRevision)
             {
-                _buildings.Rebuild(Station);
+                _buildings.Rebuild();
                 _renderedRevision = Station.Revision;
                 if (Selected != null && !Station.Buildings.Contains(Selected)) Selected = null;
             }
+
+            // A ship that stopped hailing (gave up, or was cleared elsewhere) ends clearance mode.
+            if (Tool == Tool.ClearToLand && (ClearingShip == null || ClearingShip.State != ShipState.Hailing))
+                SetTool(Tool.Select);
+
             HandlePointer();
         }
 
@@ -122,8 +135,10 @@ namespace Waystation.View
             {
                 case 'P': StartBuilding(BuildingType.LandingPad); break;
                 case 'H': StartBuilding(BuildingType.Hangar); break;
-                case 'C': StartBuilding(BuildingType.Corridor); break;
+                case 'C': StartBuilding(BuildingType.Walkway); break;
+                case 'F': StartBuilding(BuildingType.Foundation); break;
                 case 'X': SetTool(Tool.Demolish); break;
+                case 'T': ClearNextHail(); break;
             }
         }
 
@@ -160,10 +175,20 @@ namespace Waystation.View
         public void SetTool(Tool tool)
         {
             Tool = tool;
+            if (tool != Tool.ClearToLand) ClearingShip = null;
             _lastPaintedCell = null;
         }
 
-        public void SelectBuilding(Building b) => Selected = b;
+        /// <summary>Start clearing a hailing ship: the next click on a pad or hangar assigns it.</summary>
+        public void BeginClearance(Ship ship)
+        {
+            if (ship == null || ship.State != ShipState.Hailing) return;
+            SetTool(Tool.ClearToLand);
+            ClearingShip = ship;
+        }
+
+        /// <summary>T: pick up the longest-waiting hail.</summary>
+        public void ClearNextHail() => BeginClearance(Station.Hailing.FirstOrDefault());
 
         /// <summary>Runs a command; on failure the reason is shown in the HUD.</summary>
         public bool TryExecute(ICommand command)
@@ -178,30 +203,34 @@ namespace Waystation.View
         {
             PlacementError = null;
             var mouse = InputShim.MousePosition();
-            HoverCell = _hud.IsPointerOver(mouse) ? null : CellUnder(mouse);
+            bool overHud = _hud.IsPointerOver(mouse);
+            HoverCell = overHud ? null : CellUnder(mouse);
 
-            if (Tool == Tool.Build && HoverCell.HasValue)
+            switch (Tool)
             {
-                var place = new PlaceBuilding(BuildType, OriginFor(HoverCell.Value));
-                PlacementError = place.Validate(Station);
-                ShowGhost(place.Origin, BuildingCatalog.Get(BuildType), PlacementError == null);
-
-                bool corridor = BuildingCatalog.Get(BuildType).IsCorridor;
-                bool click = InputShim.SelectPressed();
-                // Corridors paint while the button is held, one cell at a time.
-                bool paint = corridor && InputShim.SelectHeld() && _lastPaintedCell != HoverCell;
-                if ((click || paint) && PlacementError == null)
-                {
-                    TryExecute(place);
-                    _lastPaintedCell = HoverCell;
-                }
-                if (!InputShim.SelectHeld()) _lastPaintedCell = null;
-                return;
+                case Tool.Build when HoverCell.HasValue:
+                    HandleBuild();
+                    return;
+                case Tool.ClearToLand:
+                    HandleClearance(overHud);
+                    return;
             }
 
             HideGhost();
-            if (!InputShim.SelectPressed() || !HoverCell.HasValue) return;
+            if (overHud || !InputShim.SelectPressed()) return;
 
+            if (Tool == Tool.Select)
+            {
+                // Clicking near a hailing ship starts clearing it.
+                var ship = HailingShipNear(mouse);
+                if (ship != null)
+                {
+                    BeginClearance(ship);
+                    return;
+                }
+            }
+
+            if (!HoverCell.HasValue) return;
             var building = Station.BuildingAt(HoverCell.Value);
             if (Tool == Tool.Demolish)
             {
@@ -213,12 +242,60 @@ namespace Waystation.View
             }
         }
 
-        /// <summary>Footprints are centred on the cursor.</summary>
-        Cell OriginFor(Cell hover)
+        void HandleBuild()
         {
             var def = BuildingCatalog.Get(BuildType);
-            return new Cell(hover.X - (def.Width - 1) / 2, hover.Y - (def.Height - 1) / 2);
+            var place = new PlaceBuilding(BuildType, OriginFor(HoverCell.Value, def));
+            PlacementError = place.Validate(Station);
+            ShowGhost(place.Origin, def.Width, def.Height, PlacementError == null);
+
+            bool click = InputShim.SelectPressed();
+            // Walkways and foundations paint while the button is held, one cell at a time.
+            bool paint = def.IsPaintable && InputShim.SelectHeld() && _lastPaintedCell != HoverCell;
+            if ((click || paint) && PlacementError == null)
+            {
+                TryExecute(place);
+                _lastPaintedCell = HoverCell;
+            }
+            if (!InputShim.SelectHeld()) _lastPaintedCell = null;
         }
+
+        void HandleClearance(bool overHud)
+        {
+            var target = HoverCell.HasValue ? Station.BuildingAt(HoverCell.Value) : null;
+            if (target == null || target.Def.Serves.Length == 0)
+            {
+                HideGhost();
+                return;
+            }
+
+            PlacementError = Station.LandingError(ClearingShip, target);
+            ShowGhost(target.Origin, target.Def.Width, target.Def.Height, PlacementError == null);
+
+            if (!overHud && InputShim.SelectPressed() && TryExecute(new AssignLanding(ClearingShip.Id, target.Id)))
+                SetTool(Tool.Select);
+        }
+
+        Ship HailingShipNear(Vector2 mouse)
+        {
+            Ship best = null;
+            float bestDistance = ShipPickRadius;
+            foreach (var ship in Station.Hailing)
+            {
+                if (!TryGetShipScreenPosition(ship.Id, out var sp) || sp.z <= 0f) continue;
+                float d = Vector2.Distance(mouse, new Vector2(sp.x, sp.y));
+                if (d < bestDistance)
+                {
+                    best = ship;
+                    bestDistance = d;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>Footprints are centred on the cursor.</summary>
+        static Cell OriginFor(Cell hover, BuildingDef def) =>
+            new Cell(hover.X - (def.Width - 1) / 2, hover.Y - (def.Height - 1) / 2);
 
         Cell? CellUnder(Vector2 screen)
         {
@@ -230,6 +307,16 @@ namespace Waystation.View
             var cell = new Cell(Mathf.FloorToInt(p.x + Station.Width / 2f), Mathf.FloorToInt(p.z + Station.Height / 2f));
             return Station.InBounds(cell) ? cell : (Cell?)null;
         }
+
+        public bool TryGetShipScreenPosition(int shipId, out Vector3 screen)
+        {
+            screen = default;
+            if (!_ships.TryGetPosition(shipId, out var world)) return false;
+            screen = _camera.WorldToScreenPoint(world + Vector3.up * 0.4f);
+            return true;
+        }
+
+        public Vector3 WorldToScreen(Vector3 world) => _camera.WorldToScreenPoint(world);
 
         // ------------------------------------------------------------------ placement ghost
 
@@ -251,12 +338,12 @@ namespace Waystation.View
             HideGhost();
         }
 
-        void ShowGhost(Cell origin, BuildingDef def, bool valid)
+        void ShowGhost(Cell origin, int width, int height, bool valid)
         {
             var color = valid ? MeshBuilder.Hex("#5dff9a") : MeshBuilder.Hex("#ff4d6a");
             float x0 = origin.X - Station.Width / 2f, z0 = origin.Y - Station.Height / 2f;
-            float x1 = x0 + def.Width, z1 = z0 + def.Height;
-            const float y = 0.04f;
+            float x1 = x0 + width, z1 = z0 + height;
+            const float y = 0.05f;
 
             var b = new MeshBuilder();
             b.AddQuad(new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), Vector3.up, color * 0.45f, false);
@@ -275,14 +362,6 @@ namespace Waystation.View
         {
             if (_ghostFill != null) _ghostFill.gameObject.SetActive(false);
             if (_ghostOutline != null) _ghostOutline.enabled = false;
-        }
-
-        public bool TryGetShipScreenPosition(int shipId, out Vector3 screen)
-        {
-            screen = default;
-            if (!_ships.TryGetPosition(shipId, out var world)) return false;
-            screen = _camera.WorldToScreenPoint(world + Vector3.up * 0.8f);
-            return true;
         }
     }
 }

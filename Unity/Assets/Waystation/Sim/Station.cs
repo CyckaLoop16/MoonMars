@@ -70,7 +70,33 @@ namespace Waystation.Sim
         public Building GetBuilding(int id) => Buildings.FirstOrDefault(b => b.Id == id);
         public Ship GetShip(int id) => Ships.FirstOrDefault(s => s.Id == id);
 
-        public IEnumerable<Ship> Holding => Ships.Where(s => s.State == ShipState.Holding).OrderBy(s => s.ArrivedTick).ThenBy(s => s.Id);
+        /// <summary>Ships calling in for a landing spot, oldest first.</summary>
+        public IEnumerable<Ship> Hailing => Ships.Where(s => s.State == ShipState.Hailing).OrderBy(s => s.ArrivedTick).ThenBy(s => s.Id);
+
+        /// <summary>
+        /// When true, hailing ships are cleared to free pads automatically. Until the station owns an
+        /// air traffic control tower (coming later) the player assigns every landing by hand.
+        /// </summary>
+        public bool AutoAssign;
+
+        /// <summary>"Pad 2", "Hangar 1": numbered per label in build order.</summary>
+        public string Label(Building b)
+        {
+            if (b.Def.Label == null) return b.Def.Name;
+            int n = Buildings.Where(x => x.Def.Label == b.Def.Label).OrderBy(x => x.Id).ToList().IndexOf(b) + 1;
+            return $"{b.Def.Label} {n}";
+        }
+
+        /// <summary>Why this ship can't be cleared to this building right now, or null if it can.</summary>
+        public string LandingError(Ship ship, Building b)
+        {
+            if (ship == null || ship.State != ShipState.Hailing) return "That ship isn't waiting for clearance";
+            if (b == null || b.Def.Serves.Length == 0) return "Ships can't land there";
+            if (!b.Def.CanServe(ship.Class)) return $"{b.Def.Name} can't take a {ship.Class.ToString().ToLowerInvariant()}";
+            if (!b.Connected) return $"{Label(b)} isn't connected to the station";
+            if (b.ShipId != null) return $"{Label(b)} is taken";
+            return null;
+        }
 
         public void Report(string text) => Log.Add(new StationEvent(Tick, text));
 
@@ -88,7 +114,7 @@ namespace Waystation.Sim
         }
 
         /// <summary>
-        /// Flood-fills from the hub through every occupied cell (corridors and buildings alike).
+        /// Flood-fills from the hub through every occupied cell (walkways, foundations and modules alike).
         /// Anything reached is connected; anything else can't get fuel or power.
         /// </summary>
         public void RecomputeConnections()
@@ -116,7 +142,7 @@ namespace Waystation.Sim
             }
         }
 
-        /// <summary>Which of the four neighbours of a cell hold something a corridor should link to (N, E, S, W bit mask).</summary>
+        /// <summary>Which of the four neighbours of a cell hold something a walkway should link to (N, E, S, W bit mask).</summary>
         public int LinkMask(Cell c)
         {
             int mask = 0;
