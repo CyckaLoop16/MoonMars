@@ -9,49 +9,55 @@ then Beyond. Each milestone ends with something playable.
 - Unity view: 3D terraced hex map, strategy camera, hover tile inspector
 - Sim unit tests (`dotnet test`)
 
-## M1: Clock & colony core (on the Moon) 🚧
-- [x] Tick engine: 1 tick = 1 day, pause plus 5 speeds, monthly economy pass
-- [x] Command system (player and AI issue the same commands; command log for replays)
-- [x] Lunar map generator: south pole, shadowed ice craters, peaks of light
-- [x] Land a base; place modules on hexes; power → ISRU → greenhouse chain
-- [x] Pops & jobs, life support, growth/decline, lunar day/night
-- [x] Prototype HUD: time controls, resource bar, colony panel, event log (IMGUI placeholder)
-- [ ] Playtest in Unity and tune the opening (first 90 days)
-- [ ] Player-set job priorities, demolish/cancel construction
+## M1: Clock & colony core (on the Moon) ✅
+- Daily simulation, monthly turns (real-time was prototyped and rejected), turn report
+- Real lunar south-pole map at 3 km/hex; sizes up to 168×110; chunked rendering
+- Land a base; place modules on hexes; power → oxygen / water → food chains
+- Crew and jobs, life support, lethal shortages, lunar day/night, crew arrivals
 
-## M2: Pioneers
-- Characters: roles, traits, skills, age, death
-- Council seats and Administrators with modifiers
-- Event system v1 (anomalies, character events)
+## M2: Research & resources ✅ (prototype)
+- Proven-tier tech tree (7 techs) with Civ-style boosts; Research Lab; locked modules
+- Battery Bank for the lunar night
+- Automatic territory yields; Civ-style deposits (ice, volatiles, ilmenite, rare earths, platinum)
+- [ ] Job priorities, cancel/demolish construction
+- [ ] Playtest pass on the first 2 years
 
-## M3: Rivals I: the Treaty era
-- 2 AI factions (utility AI using the same commands as the player)
-- Territory claims, Influence, loyalty pressure, espionage and sabotage
-- Research tree v1 with boosts; directive trees v1 for 2–3 factions
+---
 
-## M4: Act I vertical slice: "Luna" 🎯
-- Earth relations: blocs, funding, cargo
-- Act goal: self-sufficiency + lunar fuel depot
-- Save/load
-- **Playtest milestone: is the Moon fun start to finish?**
+**Act I (Luna) vertical slice, in build order:**
 
-## M5: System view & Mars
-- System map (Earth, Moon, Mars), transfer routes, launch windows
-- Mars map (the M0 generator), dust storms
-- Moon colonies become fuel and shipyard hubs
-- All 5 factions
+## M3: Earth ✅ (prototype)
+- Credits: monthly sponsor funding (base 100, raised by objectives and the Earth Liaison)
+- Cargo orders: crew rotations, materials, life-support supplies, specialist Pioneers; 3-day transit
+- 8 Earth objectives (Boots on the Regolith → Lunar Exports), each paying out and raising funding
+- Mineral Extractor (research Mineral Beneficiation) mines rare earths / platinum for export
 
-## M6: Conflict & independence
-- The Treaty breaking; security units on hex map; supply = life-support range
-- Independence mechanics, System Council
-- Generational Pioneers (Mars-born traits)
+## M4: Exploration & expansion
+- Rovers as units: movement costs, fog of war
+- Survey sites: LCROSS impact site (Cabeus), the Athena lander (Mons Mouton), anomalies (grounded)
+- Outposts and a second colony; territory growth over time
 
-## M7: Act III: Beyond
-- Outposts on the system map (belt, Jovian/Saturnian moons)
-- Endgame crisis
-- All victory conditions
+## M5: Pioneers ✅ (prototype)
+- Named characters with expertise (Engineer, Scientist, Explorer, Administrator), skill 1–5, age, traits
+- Assignments: specialist at a module (output bonus), colony Administrator (faster construction),
+  council seats (Chief Scientist, Chief Engineer, Earth Liaison)
+- Experience: a year in a role raises skill; crowded colonies produce new Pioneers
+- Rare, assignment-dependent accidents with near misses first (earning the Survivor trait); memorial
+- Visible on the map: each Pioneer walks to their post and moves around it (placeholder figures)
+- [ ] Event system v1 (anomalies, character events), protégés, old age
 
-## M8: Presentation & balance
-- URP, terrain shading, module models, VFX (dust storms, launches), audio
-- Balance via headless AI-vs-AI runs
-- UI polish, tutorial, onboarding
+## M6: Rivals (Treaty era)
+- 2–3 AI factions using the same commands as the player
+- Claims, Influence, loyalty pressure, espionage; contested ice and peaks of light
+
+## M7: Act I finale 🎯
+- Propellant production; lunar fuel depot / shipyard (the gateway to Mars)
+- Save/load (built on the command log)
+- **Playtest milestone: is the Moon fun from start to finish?**
+
+---
+
+## M8+: Mars (Act II), Beyond (Act III), presentation & balance
+- System view, launch windows, the Mars map (M0 generator), conflict and independence
+- Outposts beyond Mars, endgame crisis, victories
+- URP, terrain shading, art drop-ins, audio; balance via headless AI-vs-AI campaigns

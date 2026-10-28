@@ -10,6 +10,21 @@ namespace Regolith.Sim
         public string Name;
         /// <summary>sRGB hex colour for territory.</summary>
         public string Color;
+
+        public readonly HashSet<TechId> Researched = new HashSet<TechId>();
+        public readonly HashSet<TechId> Boosted = new HashSet<TechId>();
+        public readonly Dictionary<TechId, double> Progress = new Dictionary<TechId, double>();
+        public TechId? CurrentResearch;
+        /// <summary>Science earned while nothing is being researched; applied to the next pick.</summary>
+        public double ScienceBank;
+        /// <summary>Science per day on the last simulated day, for the UI.</summary>
+        public double SciencePerDay;
+
+        public double Credits;
+        public double UnitsExported;
+        public readonly HashSet<ObjectiveId> CompletedObjectives = new HashSet<ObjectiveId>();
+
+        public bool Has(TechId tech) => Researched.Contains(tech);
     }
 
     public sealed class Module
@@ -38,6 +53,7 @@ namespace Regolith.Sim
         public readonly double[] Net = new double[Stockpile.Count];
         public double EnergySupply;
         public double EnergyDemand;
+        public double Science;
         public int Jobs;
         public int Workers;
 
@@ -57,11 +73,17 @@ namespace Regolith.Sim
         /// <summary>Consecutive days each resource has run out.</summary>
         public readonly int[] ShortageDays = new int[Stockpile.Count];
         public ColonyReport LastReport = new ColonyReport();
+        public int FoundedDay;
+        /// <summary>Energy held in battery banks.</summary>
+        public double StoredEnergy;
+        /// <summary>Set the first time power demand outstrips supply (a research boost trigger).</summary>
+        public bool HadBrownout;
 
         public bool IsAlive => Pops > 0;
         public int Housing => Modules.Where(m => m.IsBuilt).Sum(m => m.Def.Housing);
         public Module ModuleAt(HexCoord c) => Modules.FirstOrDefault(m => m.Coord == c);
         public Module UnderConstruction => Modules.FirstOrDefault(m => !m.IsBuilt);
+        public double EnergyCapacity => Modules.Where(m => m.IsBuilt).Sum(m => m.Def.EnergyStorage);
     }
 
     public readonly struct GameEvent
@@ -85,6 +107,11 @@ namespace Regolith.Sim
         public readonly List<Faction> Factions = new List<Faction>();
         public readonly List<Colony> Colonies = new List<Colony>();
         public readonly List<GameEvent> Log = new List<GameEvent>();
+        public readonly List<Pioneer> Pioneers = new List<Pioneer>();
+        public readonly List<Shipment> Shipments = new List<Shipment>();
+        /// <summary>The sim's only source of randomness, seeded from the map, so games replay exactly.</summary>
+        public readonly Random Rng;
+        public int NextPioneerId = 1;
         /// <summary>Bumped whenever something the map shows changes (territory, modules), so views know to rebuild.</summary>
         public int Revision;
         public int NextColonyId = 1;
@@ -92,6 +119,7 @@ namespace Regolith.Sim
         public GameState(WorldMap map)
         {
             Map = map;
+            Rng = new Random(unchecked(map.Seed * 7919 + 17));
         }
 
         public DateTime Date => StartDate.AddDays(Day);
@@ -100,6 +128,7 @@ namespace Regolith.Sim
         public Faction GetFaction(int id) => Factions.FirstOrDefault(f => f.Id == id);
         public Colony GetColony(int id) => Colonies.FirstOrDefault(c => c.Id == id);
         public Colony ColonyOwning(HexCoord c) => Colonies.FirstOrDefault(col => col.Territory.Contains(c));
+        public IEnumerable<Colony> ColoniesOf(Faction f) => Colonies.Where(c => c.FactionId == f.Id);
 
         public void Report(string text) => Log.Add(new GameEvent(Day, text));
     }

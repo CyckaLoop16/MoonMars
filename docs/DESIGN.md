@@ -48,7 +48,18 @@ The endgame crisis is weighted by how far the system as a whole has pushed into 
 
 ## Time & pacing
 
-- **Real-time with pause**, 5 speeds. 1 tick = 1 day. The economy resolves monthly.
+**Decided: turn-based.** 1 turn = 1 calendar month. Under the hood the simulation still runs
+daily (lunar nights, construction, shortages), and each End Turn plays out a month of it.
+A turn report then shows what happened.
+
+Why turns: Civ6 is the primary reference, and this is a strategy-heavy game. With turns,
+every decision is deliberate, several worlds can be reviewed one by one, rival AI and
+diplomacy get clean decision points, and events and Pioneers fit naturally into a turn report.
+The cost is that you don't watch the lunar night happen; instead your stockpiles have to buffer
+it, which the turn report makes visible.
+
+- Simulation: 1 tick = 1 day from Jan 2040; the economy resolves daily, crew arrivals monthly.
+- Later acts may use longer turns (a quarter, then a year), the way Civ's eras speed up.
 - The campaign runs **~2040 → ~2160**. That's about three generations of Pioneers, so the
   founders you start with are retired or dead by the end.
 - Target: **~20 hours** for a full campaign. Act I ≈ 4h, Act II ≈ 10h, Act III ≈ 5h.
@@ -59,8 +70,11 @@ There's no hard reset between acts. Your Moon colonies keep running when Mars op
 role changes from home to supply base.
 
 ### Act I: Luna (2040–2065) · the foothold
-- Small hex map: the south polar region, with ice in permanently shadowed craters and
-  "peaks of eternal light" for solar power.
+- The real lunar south pole at 3 km per hex (up to ~500 km across): Shackleton,
+  de Gerlache, Shoemaker, Haworth, Cabeus, the Malapert Massif and Mons Mouton at their true
+  positions and sizes, with procedural craters, debris fields and terrain between them.
+  Ice sits in permanently shadowed craters, and "peaks of eternal light" provide solar power.
+  The far side (inside the South Pole–Aitken basin) is mineral-rich.
 - Earth is **3 days away**: supply is easy, but Earth's control is strongest here.
 - 2–3 rival factions land within sight of each other. Ice deposits are few and contested.
 - **Act goal:** become self-sufficient and build the first **lunar fuel depot / shipyard**.
@@ -108,7 +122,13 @@ role changes from home to supply base.
 **Pops** are the population. Each has a **faction leaning** (Loyalist, Martian-first,
 Technocrat, Corporatist…) and **needs**. Their mood drives stability.
 
-**Pioneers** are named characters drawn from your pops or sent from Earth:
+**Pioneers** are named characters drawn from your pops or sent from Earth. They are visible on
+the map: each one walks to their post (their module, or their colony's hab) and moves around there.
+
+*Implemented so far (Act I):* expertise (Engineer, Scientist, Explorer, Administrator) with
+skill 1–5; traits (Meticulous, Bold, Botanist, Ice Driller, Tinkerer, Diplomat, Survivor);
+assignments to a module (output bonus), as colony Administrator (faster construction), or to a
+council seat (Chief Scientist, Chief Engineer, Earth Liaison). The full design:
 
 | Role | Inspired by | Does |
 |---|---|---|
@@ -213,11 +233,31 @@ Which crisis fires depends on how far the system has pushed into the deep tech t
 
 ## Resources
 
-- **Yields on tiles**: Materials, Energy, Water, Science
-- **Colony stockpiles**: O₂, Food, Water, Propellant
-- **Faction-wide**: Credits (Earth funding and trade), Influence (diplomacy, claims),
-  Cohesion (identity, civics/directives progress), Research
-- **Strategic**: Helium-3 (Moon), rare metals (belt), Pioneers themselves
+Resources come in three layers, mixing Civ's map resources with city-builder automation:
+
+**1. Ambient (automatic, no workers):**
+- **Sunlight** varies by tile (peaks of light ~90%, shadowed craters 0%) and by time (the
+  two-week lunar night). Solar arrays and batteries convert it automatically.
+- **Regolith** is everywhere, so oxygen plants and foundries can be built anywhere.
+- **Tile yields (Civ-style):** every hex in a colony's territory produces Materials and Science
+  each turn on its own: surface robots scrape regolith, and survey teams study exposed strata.
+
+**2. Deposits (harvestable, Civ-style), shown as markers on specific hexes:**
+
+| Deposit | Kind | Where | Effect |
+|---|---|---|---|
+| Water ice | core | Shadowed crater floors | Needed for Ice Mines; output scales with ice % |
+| Cold-trapped volatiles | bonus | Coldest shadowed craters (Cabeus!) | Ice Mine +50% |
+| Ilmenite | bonus | Fresh ejecta, some rims | Oxygen Plant / Foundry +50% |
+| Rare-earth elements | strategic | Far side (South Pole–Aitken basin) | Electronics, Earth exports (with Earth trade) |
+| Platinum-group metals | strategic | Central peaks of big craters | Catalysts, Earth exports (with Earth trade) |
+| *Helium-3* | *strategic, hidden* | *Old sunlit regolith* | *Revealed by Emerging-tier research; fusion fuel* |
+
+**3. Produced (chains in modules):** Power → Oxygen, Water → Food; plus Materials and Science.
+Later: Propellant, then Credits from exports.
+
+**Faction-wide:** Science (research), and later Credits (Earth funding and trade), Influence
+(diplomacy, claims) and Cohesion (identity, directives).
 
 ## Scope strategy
 

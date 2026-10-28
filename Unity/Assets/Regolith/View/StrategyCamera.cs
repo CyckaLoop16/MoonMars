@@ -31,6 +31,16 @@ namespace Regolith.View
             Apply();
         }
 
+        public float Distance => _distance;
+
+        /// <summary>Glide-free jump: centre the view on a world position and zoom in.</summary>
+        public void FocusOn(Vector3 position)
+        {
+            _pivot = new Vector3(position.x, 0f, position.z);
+            _distance = Mathf.Min(_distance, 12f);
+            if (_camera != null) Apply();
+        }
+
         void LateUpdate()
         {
             if (_camera == null) return;

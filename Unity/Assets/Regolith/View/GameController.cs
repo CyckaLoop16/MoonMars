@@ -6,36 +6,36 @@ using UnityEngine;
 namespace Regolith.View
 {
     /// <summary>
-    /// Prototype entry point: owns the simulation, runs the clock, handles selection and
-    /// forwards player actions to the sim as commands.
+    /// Prototype entry point: owns the simulation, ends turns (1 turn = 1 month of daily ticks),
+    /// handles selection and forwards player actions to the sim as commands.
     /// Auto-spawns when you press Play in any scene, so the project needs no hand-built scene yet.
     /// </summary>
     public sealed class GameController : MonoBehaviour
     {
-        /// <summary>Game days per real second for each speed. Index 0 = paused.</summary>
-        public static readonly float[] DaysPerSecond = { 0f, 1f, 2f, 5f, 10f, 25f };
-        const int MaxTicksPerFrame = 30;
-
         [Tooltip("0 = random seed each run")]
         public int Seed;
+        public MapSize MapSize = MapSize.Large;
 
         Camera _camera;
         StrategyCamera _cameraRig;
         HexMapRenderer _mapRenderer;
         ModuleRenderer _moduleRenderer;
+        PioneerRenderer _pioneerRenderer;
         Hud _hud;
         int _renderedRevision = -1;
-        float _accumulator;
-        int _resumeSpeed = 1;
 
         public Simulation Sim { get; private set; }
-        public int Speed { get; private set; }
         public Tile Hovered { get; private set; }
         public Tile Selected { get; private set; }
         public string LastError { get; private set; }
         public float LastErrorTime { get; private set; } = -100f;
+        /// <summary>How the player colony's stockpiles changed over the last turn.</summary>
+        public double[] LastTurnChange { get; private set; }
+        /// <summary>First day of the turn that just ended, so the HUD can show what happened in it.</summary>
+        public int LastTurnStartDay { get; private set; }
 
         public GameState State => Sim.State;
+        public Faction Player => State.GetFaction(GameSetup.PlayerFactionId);
         public Colony PlayerColony => State.Colonies.FirstOrDefault(c => c.FactionId == GameSetup.PlayerFactionId);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -55,70 +55,65 @@ namespace Regolith.View
             }
             _camera.clearFlags = CameraClearFlags.SolidColor;
             _camera.backgroundColor = new Color(0.02f, 0.02f, 0.04f); // space
-            _camera.farClipPlane = 500f;
+            _camera.farClipPlane = 2000f;
 
             _cameraRig = _camera.GetComponent<StrategyCamera>();
             if (_cameraRig == null) _cameraRig = _camera.gameObject.AddComponent<StrategyCamera>();
 
             _mapRenderer = new GameObject("HexMap").AddComponent<HexMapRenderer>();
             _moduleRenderer = new GameObject("Modules").AddComponent<ModuleRenderer>();
+            _pioneerRenderer = new GameObject("Pioneers").AddComponent<PioneerRenderer>();
             _hud = gameObject.AddComponent<Hud>();
             _hud.Init(this);
 
             NewGame(Seed != 0 ? Seed : System.Environment.TickCount);
         }
 
+        public void NewGame(MapSize size)
+        {
+            MapSize = size;
+            NewGame(System.Environment.TickCount);
+        }
+
         void NewGame(int seed)
         {
-            Sim = GameSetup.NewLunarGame(seed);
-            Speed = 0;
+            Sim = GameSetup.NewLunarGame(seed, MapSize);
             Selected = null;
             Hovered = null;
+            LastTurnChange = null;
+            LastTurnStartDay = 0;
+            _mapRenderer.Build(State.Map);
+            _pioneerRenderer.Bind(State);
             _renderedRevision = -1;
             RefreshVisuals();
 
+            // Start zoomed in over the pole, where the action is.
             var bounds = _mapRenderer.WorldBounds();
+            _cameraRig.MaxDistance = Mathf.Max(90f, bounds.width * 0.75f);
             _cameraRig.Init(_camera, new Vector3(bounds.center.x, 0f, bounds.center.y), bounds);
         }
 
         void Update()
         {
-            HandleKeys();
-            RunClock();
+            if (InputShim.RegeneratePressed()) NewGame(System.Environment.TickCount);
+            if (InputShim.EndTurnPressed()) EndTurn();
+
             if (State.Revision != _renderedRevision) RefreshVisuals();
             HandlePointer();
         }
 
-        void HandleKeys()
+        public void EndTurn()
         {
-            if (InputShim.RegeneratePressed()) NewGame(System.Environment.TickCount);
-            if (InputShim.PausePressed()) TogglePause();
+            var colony = PlayerColony;
+            var before = new double[Stockpile.Count];
+            for (int i = 0; i < before.Length && colony != null; i++) before[i] = colony.Stock[(Resource)i];
 
-            int speed = InputShim.SpeedPressed();
-            if (speed > 0) SetSpeed(speed);
-        }
+            LastTurnStartDay = State.Day;
+            Sim.AdvanceToNextMonth();
 
-        public void TogglePause() => SetSpeed(Speed == 0 ? _resumeSpeed : 0);
-
-        public void SetSpeed(int speed)
-        {
-            Speed = Mathf.Clamp(speed, 0, DaysPerSecond.Length - 1);
-            if (Speed > 0) _resumeSpeed = Speed;
-        }
-
-        void RunClock()
-        {
-            if (Speed == 0) return;
-
-            _accumulator += Time.unscaledDeltaTime * DaysPerSecond[Speed];
-            int ticks = 0;
-            while (_accumulator >= 1f && ticks < MaxTicksPerFrame)
-            {
-                Sim.Tick();
-                _accumulator -= 1f;
-                ticks++;
-            }
-            if (ticks == MaxTicksPerFrame) _accumulator = 0f; // don't spiral if the frame rate tanks
+            if (colony == null) return;
+            LastTurnChange = new double[Stockpile.Count];
+            for (int i = 0; i < before.Length; i++) LastTurnChange[i] = colony.Stock[(Resource)i] - before[i];
         }
 
         void RefreshVisuals()
@@ -130,7 +125,7 @@ namespace Regolith.View
                 foreach (var c in colony.Territory) territory[c] = color;
             }
 
-            _mapRenderer.Build(State.Map, territory, State.Colonies.SelectMany(c => c.Modules).Select(m => m.Coord));
+            _mapRenderer.SetTerritory(territory, State.Colonies.SelectMany(c => c.Modules).Select(m => m.Coord));
             _moduleRenderer.Build(State);
             _mapRenderer.SetHovered(Hovered);
             _mapRenderer.SetSelected(Selected);
@@ -147,12 +142,8 @@ namespace Regolith.View
             }
 
             Tile tile = null;
-            var ray = _camera.ScreenPointToRay(mouse);
-            if (_mapRenderer.Collider.Raycast(ray, out var hit, 1000f))
-            {
-                // Nudge into the prism so hits on walls resolve to the taller tile.
-                tile = State.Map.GetTile(HexMapRenderer.FromWorld(hit.point - hit.normal * 0.02f));
-            }
+            if (_mapRenderer.Raycast(_camera.ScreenPointToRay(mouse), out var point))
+                tile = State.Map.GetTile(HexMapRenderer.FromWorld(point));
 
             SetHovered(tile);
             if (InputShim.SelectPressed())
@@ -167,6 +158,17 @@ namespace Regolith.View
             if (tile == Hovered) return;
             Hovered = tile;
             _mapRenderer.SetHovered(tile);
+        }
+
+        public Camera Camera => _camera;
+        public float CameraDistance => _cameraRig != null ? _cameraRig.Distance : 0f;
+
+        public bool TryGetPioneerPosition(int pioneerId, out Vector3 position) =>
+            _pioneerRenderer.TryGetPosition(pioneerId, out position);
+
+        public void FocusOnPioneer(int pioneerId)
+        {
+            if (_pioneerRenderer.TryGetPosition(pioneerId, out var position)) _cameraRig.FocusOn(position);
         }
 
         /// <summary>Runs a player command; on failure the reason is shown in the HUD.</summary>

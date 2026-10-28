@@ -54,6 +54,7 @@ namespace Regolith.Sim
                 FactionId = FactionId,
                 Center = At,
                 Pops = StartingPops,
+                FoundedDay = state.Day,
             };
 
             foreach (var c in At.WithinRange(ClaimRadius))
@@ -69,6 +70,16 @@ namespace Regolith.Sim
             state.Colonies.Add(colony);
             state.Revision++;
             state.Report($"{Name} has landed. {StartingPops} crew on the surface.");
+
+            // The first landing brings the founding Pioneers: a commander and two specialists.
+            if (!state.Pioneers.Any(p => p.FactionId == FactionId))
+            {
+                var commander = PioneerCatalog.Create(state, FactionId, colony.Id, Expertise.Administrator, 2);
+                commander.Assignment = Assignment.AsAdministrator(colony.Id);
+                PioneerCatalog.Create(state, FactionId, colony.Id, Expertise.Engineer, 2);
+                PioneerCatalog.Create(state, FactionId, colony.Id, Expertise.Scientist, 2);
+                state.Report($"Founding Pioneers: {string.Join(", ", state.Pioneers.Where(p => p.FactionId == FactionId).Select(p => p.Name))}. {commander.Name} takes command.");
+            }
         }
     }
 
@@ -93,6 +104,8 @@ namespace Regolith.Sim
 
             var def = ModuleCatalog.Get(Type);
             if (!def.Buildable) return $"{def.Name} can't be built";
+            if (def.RequiredTech.HasValue && !state.GetFaction(colony.FactionId).Has(def.RequiredTech.Value))
+                return $"Requires {TechCatalog.Get(def.RequiredTech.Value).Name}";
             if (colony.ModuleAt(At) != null) return "Tile already has a module";
 
             var placementError = ModuleCatalog.PlacementError(Type, state.Map.GetTile(At));
@@ -107,9 +120,10 @@ namespace Regolith.Sim
             var colony = state.GetColony(ColonyId);
             var def = ModuleCatalog.Get(Type);
             colony.Stock[Resource.Materials] -= def.MaterialCost;
-            colony.Modules.Add(new Module(Type, At, def.BuildDays));
+            int days = Modifiers.BuildDays(state, colony, def);
+            colony.Modules.Add(new Module(Type, At, days));
             state.Revision++;
-            state.Report($"{colony.Name}: construction of {def.Name} queued ({def.BuildDays} days).");
+            state.Report($"{colony.Name}: construction of {def.Name} queued ({days} days).");
         }
     }
 }

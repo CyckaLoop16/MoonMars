@@ -36,8 +36,12 @@ namespace Regolith.View
             { ModuleType.OxygenPlant, new Placeholder(new Color(0.3f, 0.55f, 0.9f), 0.35f, 0.45f) },
             { ModuleType.Greenhouse, new Placeholder(new Color(0.35f, 0.78f, 0.35f), 0.3f, 0.6f) },
             { ModuleType.Foundry, new Placeholder(new Color(0.88f, 0.5f, 0.2f), 0.4f, 0.45f) },
+            { ModuleType.Lab, new Placeholder(new Color(0.7f, 0.55f, 0.92f), 0.4f, 0.45f) },
+            { ModuleType.BatteryBank, new Placeholder(new Color(0.95f, 0.85f, 0.25f), 0.2f, 0.4f) },
+            { ModuleType.MineralExtractor, new Placeholder(new Color(0.75f, 0.4f, 0.55f), 0.3f, 0.5f) },
         };
 
+        static readonly Placeholder Fallback = new Placeholder(Color.magenta, 0.3f, 0.45f);
         static readonly Color UnderConstruction = new Color(0.5f, 0.5f, 0.5f);
 
         readonly HexMeshBuilder _builder = new HexMeshBuilder();
@@ -73,7 +77,7 @@ namespace Regolith.View
                         continue;
                     }
 
-                    var p = Placeholders[module.Type];
+                    if (!Placeholders.TryGetValue(module.Type, out var p)) p = Fallback;
                     float height = module.IsBuilt ? p.Height : p.Height * 0.35f;
                     var color = module.IsBuilt ? p.Color : Color.Lerp(p.Color, UnderConstruction, 0.65f);
                     if (!colony.IsAlive) color = HexMeshBuilder.Shade(color, 0.4f);

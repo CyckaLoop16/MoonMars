@@ -7,6 +7,7 @@ namespace Regolith.Sim
         public HexCoord Coord { get; }
         public TerrainType Terrain;
         public TileFeature Feature;
+        public Deposit Deposit;
 
         /// <summary>Roughly [-1, 1]. Rendered as terraced height levels.</summary>
         public float Elevation;
@@ -22,23 +23,41 @@ namespace Regolith.Sim
 
         public TerrainDef Def => TerrainCatalog.Get(Terrain);
 
-        /// <summary>Base terrain yields plus bonuses from deposits and features.</summary>
+        /// <summary>
+        /// Automatic monthly yield while the tile is in a colony's territory: terrain, plus rich
+        /// minerals, exposed strata on crater rims, and any deposit. Ice, power and air need modules.
+        /// </summary>
         public Yields Yields
         {
             get
             {
                 var y = Def.BaseYields;
-                if (Terrain != TerrainType.PolarIce)
-                {
-                    if (Ice >= 0.85f) y.Water += 2;
-                    else if (Ice >= 0.6f) y.Water += 1;
-                }
                 if (Minerals >= 0.7f) y.Materials += 1;
                 if (Feature == TileFeature.CraterRim) y.Science += 1;
-                if (Feature == TileFeature.PeakOfLight) y.Energy += 2;
+                var deposit = DepositCatalog.Get(Deposit);
+                if (deposit != null) y += deposit.TileBonus;
                 return y;
             }
         }
+    }
+
+    public enum LandmarkKind
+    {
+        Crater,
+        Massif,
+        Ridge,
+    }
+
+    /// <summary>A named geographic feature, shown on the map and in the tile inspector.</summary>
+    public sealed class Landmark
+    {
+        public string Name;
+        public string Description;
+        public LandmarkKind Kind;
+        public HexCoord Center;
+        public int Radius;
+
+        public bool Contains(HexCoord c) => c.DistanceTo(Center) <= Radius;
     }
 
     public sealed class WorldMap
@@ -56,6 +75,18 @@ namespace Regolith.Sim
             Height = height;
             Seed = seed;
             Body = body;
+        }
+
+        public readonly List<Landmark> Landmarks = new List<Landmark>();
+
+        /// <summary>The smallest named feature containing this hex, or null.</summary>
+        public Landmark LandmarkAt(HexCoord c)
+        {
+            Landmark best = null;
+            foreach (var l in Landmarks)
+                if (l.Contains(c) && (best == null || l.Radius < best.Radius))
+                    best = l;
+            return best;
         }
 
         public IEnumerable<Tile> Tiles => _tiles.Values;

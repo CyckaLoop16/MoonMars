@@ -10,6 +10,8 @@ namespace Regolith.Sim
     public static class Economy
     {
         public const double ConsumptionPerPop = 1.0;
+        public const double BatteryEfficiency = 0.9;
+        public const double DaysPerMonth = 30.0;
         /// <summary>A colony needs this many days of supplies per crew member before Earth sends more people.</summary>
         public const double ArrivalReserveDays = 10.0;
 
@@ -36,8 +38,11 @@ namespace Regolith.Sim
                     : "Sunset. The two-week lunar night begins, and solar arrays go dark.");
             }
 
+            foreach (var f in state.Factions) f.SciencePerDay = 0;
             foreach (var colony in state.Colonies.Where(c => c.IsAlive))
                 RunColonyDay(state, colony);
+
+            ResearchSystem.CheckBoosts(state);
         }
 
         public static void RunMonth(GameState state)
@@ -57,6 +62,7 @@ namespace Regolith.Sim
 
         static void RunColonyDay(GameState state, Colony colony)
         {
+            var faction = state.GetFaction(colony.FactionId);
             var report = new ColonyReport();
             var before = new double[Stockpile.Count];
             for (int i = 0; i < Stockpile.Count; i++) before[i] = colony.Stock[(Resource)i];
@@ -88,7 +94,22 @@ namespace Regolith.Sim
                 if (m.Def.EnergyOutput > 0) supply += m.Def.EnergyOutput * staffing * Sunlight(state, m);
                 demand += m.Def.EnergyDraw * staffing;
             }
+            // Batteries charge from surplus and discharge into deficits.
+            double capacity = colony.EnergyCapacity;
+            colony.StoredEnergy = Math.Min(colony.StoredEnergy, capacity);
+            if (supply < demand)
+            {
+                double discharge = Math.Min(demand - supply, colony.StoredEnergy);
+                colony.StoredEnergy -= discharge;
+                supply += discharge;
+            }
+            else
+            {
+                colony.StoredEnergy += Math.Min((supply - demand) * BatteryEfficiency, capacity - colony.StoredEnergy);
+            }
+
             double powerRatio = demand <= 0 ? 1.0 : Math.Min(1.0, supply / demand);
+            if (powerRatio < 1.0) colony.HadBrownout = true;
 
             // 4. Production chains, in priority order so upstream output feeds downstream input today.
             foreach (var m in active)
@@ -107,17 +128,33 @@ namespace Regolith.Sim
                 foreach (var input in def.Inputs)
                     colony.Stock[input.Resource] -= input.PerDay * efficiency;
 
-                double multiplier = OutputMultiplier(m, state.Map.GetTile(m.Coord));
+                var tile = state.Map.GetTile(m.Coord);
+                double pioneer = PioneerSystem.ModuleBonus(state, colony, m);
+                double multiplier = OutputMultiplier(m, tile) * Modifiers.OutputMultiplier(faction, m.Type) * pioneer;
                 foreach (var output in def.Outputs)
                     colony.Stock[output.Resource] += output.PerDay * efficiency * multiplier;
 
+                var mined = DepositCatalog.Get(tile.Deposit)?.MinedResource;
+                if (def.ExtractionRate > 0 && mined.HasValue)
+                    colony.Stock[mined.Value] += def.ExtractionRate * efficiency * pioneer;
+
+                report.Science += def.Science * efficiency * pioneer;
                 m.Efficiency = efficiency;
+            }
+
+            // Automatic tile yields (Civ-style): surface robots and survey work across the whole territory.
+            // Tile yields are per month, spread evenly over the days.
+            foreach (var c in colony.Territory)
+            {
+                var y = state.Map.GetTile(c).Yields;
+                colony.Stock[Resource.Materials] += y.Materials / DaysPerMonth;
+                report.Science += y.Science / DaysPerMonth;
             }
 
             // 5. The crew breathes, drinks and eats. Running out is lethal.
             foreach (var r in LifeSupport)
             {
-                double need = colony.Pops * ConsumptionPerPop;
+                double need = colony.Pops * ConsumptionPerPop * Modifiers.CrewUse(faction, r);
                 if (colony.Stock[r] >= need)
                 {
                     colony.Stock[r] -= need;
@@ -147,6 +184,10 @@ namespace Regolith.Sim
             report.EnergySupply = supply;
             report.EnergyDemand = demand;
             colony.LastReport = report;
+
+            report.Science *= PioneerSystem.ScienceMultiplier(state, faction);
+            faction.SciencePerDay += report.Science;
+            ResearchSystem.AddScience(state, faction, report.Science);
         }
 
         static double Staffing(Module m) => m.Def.Jobs == 0 ? 1.0 : m.Workers / (double)m.Def.Jobs;
@@ -154,14 +195,15 @@ namespace Regolith.Sim
         static double Sunlight(GameState state, Module m) =>
             m.Def.IsSolar ? Bodies.SolarAvailability(state.Body, state.Map.GetTile(m.Coord), state.Day) : 1.0;
 
-        /// <summary>How the tile under a module affects its output.</summary>
+        /// <summary>How the tile under a module (its ice, minerals and deposit) affects its output.</summary>
         public static double OutputMultiplier(Module m, Tile tile)
         {
+            double deposit = DepositCatalog.Multiplier(tile.Deposit, m.Type);
             switch (m.Type)
             {
-                case ModuleType.IceMine: return tile.Ice;
-                case ModuleType.Foundry: return 1.0 + tile.Minerals;
-                default: return 1.0;
+                case ModuleType.IceMine: return tile.Ice * deposit;
+                case ModuleType.Foundry: return (1.0 + tile.Minerals) * deposit;
+                default: return deposit;
             }
         }
 

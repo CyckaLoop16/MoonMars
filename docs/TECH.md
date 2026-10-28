@@ -24,9 +24,8 @@
   - **Deterministic ticks**: seeded RNG and no frame-time dependence. This enables replays,
     reproducible bug reports, and lockstep multiplayer later.
   - **Headless AI simulation**: run whole AI-vs-AI campaigns at max speed to balance the game
-- **Time model: fixed-tick, real-time with pause.** 1 tick = 1 in-game day; speed controls only
-  change how many ticks run per real second. The view interpolates between ticks. Nothing in the
-  sim reads frame time, which keeps it deterministic.
+- **Time model: turn-based on a daily sim.** 1 tick = 1 in-game day; End Turn runs ticks to the
+  1st of the next month. Nothing in the sim reads frame time, which keeps it deterministic.
 - **Multiple worlds:** the top-level state is a `SolarSystem` holding bodies (Moon, Mars, …), each
   with its own `WorldMap`, plus abstract outposts for Act III.
 - Player actions will be **commands** (`FoundColony`, `PlaceModule`, `AssignPioneer`, `SetResearch`…),
@@ -50,6 +49,7 @@ replaces placeholders without code changes:
 | Asset | Drop-in location | Placeholder until then |
 |---|---|---|
 | Colony module model | `Unity/Assets/Regolith/Resources/Modules/<ModuleType>.prefab` (e.g. `SolarArray.prefab`; pivot at the base, ~1 unit across) | Coloured hex column |
+| Pioneer figure | `Unity/Assets/Regolith/Resources/Pioneers/<Expertise>.prefab` (e.g. `Engineer.prefab`), or `Pioneer.prefab` for all; pivot at the feet, ~0.25 units tall, facing +Z | Coloured suit + white helmet |
 | Terrain | (slot planned with the URP terrain pass) | Vertex-coloured terraced hexes |
 
 ## Rendering

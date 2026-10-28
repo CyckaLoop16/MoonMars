@@ -24,10 +24,16 @@ Y=0 and bottoms at Y=-0.18. They align with HexMapRenderer's grid and allow 60°
 rotations. Interior relief can extend above and below zero. Rock cluster pivots
 sit at ground level and need positioning onto the chosen terrain surface.
 
-These are standalone art prefabs ready for placement or a terrain-rendering pass.
-The current map renderer still builds its own terrain mesh. Replacing that mesh
-requires matching collision, building ground height, resource indicators and
-selection outlines to these surfaces. No simulation or terrain rules are changed.
+The map renderer now combines these meshes into generated Moon maps. Highlands,
+mare, shadowed craters, rims, peaks of light and lava-tube features select matching
+art; seeded variations add small cosmetic impact craters and both rock clusters.
+Art skirts are removed in favour of the map's continuous terrace walls. Picking
+uses the combined terrain mesh. Resource markers and selection outlines follow
+the relief. Geometry is combined into the map's existing 16x16 chunks. Territory
+and foundation changes rebuild only affected chunks. Occupied hexes become level construction pads, including while under
+construction, so building feet and ramps stay at the existing ground height.
+Territory tint is preserved. Mars and missing lunar assets use the original
+flat-top rendering path. No simulation or terrain rules are changed.
 The lava-tube model has a dark inset, without a traversable cave interior.
 
 OBJ + MTL source exports use Unity Y-up and tile units, matching the native
@@ -44,3 +50,7 @@ geometry. `Regolith > Art > Check and Preview Lunar Surfaces` validates all eigh
 Unity imports, then saves actual Unity renders under `ArtPreviews/LunarUnity`
 and an import report at `ArtPreviews/LunarImportCheck.txt`. This also runs after
 an editor reload when the report is missing or stale.
+
+`Regolith > Art > Check Lunar Map Integration` also verifies repeatable generation,
+terrain picking, foundation heights, outlines, Mars fallback and a 64x44
+map build. It saves `ArtPreviews/LunarMapUnity.png` and a validation report.
