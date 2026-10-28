@@ -1,0 +1,4 @@
+PASS: Unity 6000.7.0b6
+Both Resources prefabs resolve; mesh, normals, colours and shader validated.
+2668 vertices / 1426 triangles / one material.
+Rendered HabitatUnity.png in an isolated editor preview scene.

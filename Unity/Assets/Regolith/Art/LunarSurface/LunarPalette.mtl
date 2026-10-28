@@ -1,0 +1,31 @@
+newmtl Dust
+Kd 0.615686 0.619608 0.600000
+Ks 0 0 0
+
+newmtl Highland
+Kd 0.709804 0.701961 0.647059
+Ks 0 0 0
+
+newmtl Basalt
+Kd 0.341176 0.380392 0.415686
+Ks 0 0 0
+
+newmtl Rock
+Kd 0.545098 0.572549 0.576471
+Ks 0 0 0
+
+newmtl RockLight
+Kd 0.721569 0.721569 0.674510
+Ks 0 0 0
+
+newmtl Shadow
+Kd 0.188235 0.231373 0.290196
+Ks 0 0 0
+
+newmtl Ice
+Kd 0.600000 0.698039 0.721569
+Ks 0 0 0
+
+newmtl Cut
+Kd 0.341176 0.372549 0.407843
+Ks 0 0 0

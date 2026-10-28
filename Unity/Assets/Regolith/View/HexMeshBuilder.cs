@@ -41,6 +41,15 @@ namespace Regolith.View
             _triangles.Clear();
         }
 
+        /// <summary>Append imported art whose vertex colours are already in render space.</summary>
+        public void AddRenderSpaceTriangle(Vector3 a, Vector3 b, Vector3 c, Color ca, Color cb, Color cc)
+        {
+            int start = _vertices.Count;
+            _vertices.Add(a); _vertices.Add(b); _vertices.Add(c);
+            _colors.Add(ca); _colors.Add(cb); _colors.Add(cc);
+            _triangles.Add(start); _triangles.Add(start + 1); _triangles.Add(start + 2);
+        }
+
         public void AddHexTop(Vector3 center, float height, float size, Color color)
         {
             int start = _vertices.Count;

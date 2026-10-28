@@ -8,7 +8,7 @@ namespace Regolith.View
     /// <summary>
     /// Builds one mesh of terraced hex prisms for the whole map. Lighting is baked into
     /// vertex colours so the prototype needs no textures and works in any render pipeline.
-    /// Placeholder visuals: final terrain art will replace this.
+    /// Lunar surface art is batched into the same mesh and picking collider.
     /// </summary>
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
     public sealed class HexMapRenderer : MonoBehaviour
@@ -26,6 +26,9 @@ namespace Regolith.View
 
         readonly HexMeshBuilder _builder = new HexMeshBuilder();
         readonly Dictionary<TerrainType, Color> _terrainColors = new Dictionary<TerrainType, Color>();
+        readonly LunarTerrainArt _lunarArt = new LunarTerrainArt();
+        readonly Dictionary<HexCoord, LunarTerrainArt.Surface> _surfaces = new Dictionary<HexCoord, LunarTerrainArt.Surface>();
+        readonly HashSet<HexCoord> _foundations = new HashSet<HexCoord>();
 
         WorldMap _map;
         Mesh _mesh;
@@ -72,7 +75,7 @@ namespace Regolith.View
             line.transform.SetParent(transform, false);
             line.sharedMaterial = _material;
             line.loop = true;
-            line.positionCount = 6;
+            line.positionCount = 48;
             line.widthMultiplier = width;
             line.startColor = line.endColor = HexMeshBuilder.ToRenderSpace(color);
             line.shadowCastingMode = ShadowCastingMode.Off;
@@ -81,10 +84,14 @@ namespace Regolith.View
         }
 
         /// <summary>Rebuilds the map mesh. <paramref name="territory"/> tints claimed hexes with their owner's colour.</summary>
-        public void Build(WorldMap map, IReadOnlyDictionary<HexCoord, Color> territory = null)
+        public void Build(WorldMap map, IReadOnlyDictionary<HexCoord, Color> territory = null,
+            IEnumerable<HexCoord> occupied = null)
         {
             _map = map;
             _builder.Clear();
+            _surfaces.Clear();
+            _foundations.Clear();
+            if (occupied != null) _foundations.UnionWith(occupied);
 
             foreach (var tile in map.Tiles)
             {
@@ -108,7 +115,7 @@ namespace Regolith.View
         public void SetHovered(Tile tile) => PlaceOutline(_hoverOutline, tile, 0.95f);
         public void SetSelected(Tile tile) => PlaceOutline(_selectOutline, tile, 0.88f);
 
-        static void PlaceOutline(LineRenderer line, Tile tile, float scale)
+        void PlaceOutline(LineRenderer line, Tile tile, float scale)
         {
             if (tile == null)
             {
@@ -117,11 +124,27 @@ namespace Regolith.View
             }
 
             var center = ToWorld(tile.Coord);
-            float h = TopHeight(tile) + 0.03f;
-            for (int i = 0; i < 6; i++)
-                line.SetPosition(i, HexMeshBuilder.Corner(center, i, h, HexSize * scale));
+            for (int i = 0; i < 48; i++)
+            {
+                int edge = i / 8;
+                var a = HexMeshBuilder.Corner(center, edge, 0f, HexSize * scale);
+                var b = HexMeshBuilder.Corner(center, edge + 1, 0f, HexSize * scale);
+                var p = Vector3.Lerp(a, b, (i % 8) / 8f);
+                p.y = SurfaceHeight(tile, p) + .04f;
+                line.SetPosition(i, p);
+            }
             line.enabled = true;
         }
+
+        public float SurfaceHeight(Tile tile, Vector3 point)
+        {
+            var center = ToWorld(tile.Coord);
+            return TopHeight(tile) + (_surfaces.TryGetValue(tile.Coord, out var surface)
+                ? surface.HeightAt(point.x - center.x, point.z - center.z) : 0f);
+        }
+
+        float MarkerHeight(Tile tile, float x, float z, float radius) => TopHeight(tile) + .025f +
+            (_surfaces.TryGetValue(tile.Coord, out var surface) ? surface.MarkerHeight(x, z, radius) : 0f);
 
         void AddTile(Tile tile, Color? tint)
         {
@@ -131,7 +154,14 @@ namespace Regolith.View
             if (tint.HasValue) baseColor = Color.Lerp(baseColor, tint.Value, TerritoryTint);
 
             // Top face: brighter on higher terraces.
-            _builder.AddHexTop(center, top, HexSize, HexMeshBuilder.Shade(baseColor, 0.9f + 0.05f * HeightLevel(tile)));
+            var surface = _map.Body == BodyId.Moon
+                ? _lunarArt.GetSurface(tile, _map.Seed, _foundations.Contains(tile.Coord)) : null;
+            if (surface != null)
+            {
+                _surfaces[tile.Coord] = surface;
+                surface.AppendTo(_builder, new Vector3(center.x, top, center.z), tint);
+            }
+            else _builder.AddHexTop(center, top, HexSize, HexMeshBuilder.Shade(baseColor, 0.9f + 0.05f * HeightLevel(tile)));
 
             // Side walls only where this tile stands above its neighbour (or at the map edge).
             for (int i = 0; i < 6; i++)
@@ -148,15 +178,14 @@ namespace Regolith.View
             }
 
             // Resource pips, matching the bonuses in Tile.Yields and the ice-mine threshold.
-            float pipY = top + 0.01f;
             if (tile.Terrain != TerrainType.PolarIce && tile.Ice >= 0.4f)
-                _builder.AddHexTop(center + new Vector3(-0.38f, 0f, -0.3f), pipY, 0.17f, IceColor);
+                _builder.AddHexTop(center + new Vector3(-0.38f, 0f, -0.3f), MarkerHeight(tile, -.38f, -.3f, .17f), 0.17f, IceColor);
             if (tile.Minerals >= 0.7f)
-                _builder.AddHexTop(center + new Vector3(0.38f, 0f, -0.3f), pipY, 0.17f, MineralColor);
+                _builder.AddHexTop(center + new Vector3(0.38f, 0f, -0.3f), MarkerHeight(tile, .38f, -.3f, .17f), 0.17f, MineralColor);
             if (tile.Feature == TileFeature.LavaTube)
-                _builder.AddHexTop(center + new Vector3(0f, 0f, 0.35f), pipY, 0.24f, LavaTubeColor);
+                _builder.AddHexTop(center + new Vector3(0f, 0f, 0.35f), MarkerHeight(tile, 0f, .35f, .24f), 0.24f, LavaTubeColor);
             if (tile.Feature == TileFeature.PeakOfLight)
-                _builder.AddHexTop(center + new Vector3(0f, 0f, 0.35f), pipY, 0.2f, PeakColor);
+                _builder.AddHexTop(center + new Vector3(0f, 0f, 0.35f), MarkerHeight(tile, 0f, .35f, .2f), 0.2f, PeakColor);
         }
     }
 }

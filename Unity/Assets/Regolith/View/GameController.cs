@@ -130,7 +130,7 @@ namespace Regolith.View
                 foreach (var c in colony.Territory) territory[c] = color;
             }
 
-            _mapRenderer.Build(State.Map, territory);
+            _mapRenderer.Build(State.Map, territory, State.Colonies.SelectMany(c => c.Modules).Select(m => m.Coord));
             _moduleRenderer.Build(State);
             _mapRenderer.SetHovered(Hovered);
             _mapRenderer.SetSelected(Selected);

@@ -1,0 +1,9 @@
+PASS: Unity 6000.7.0b6
+LunarHighlands: 458 triangles; geometry, material, bounds and render OK.
+LunarMare: 458 triangles; geometry, material, bounds and render OK.
+SmallImpactCrater: 458 triangles; geometry, material, bounds and render OK.
+ShadowedCrater: 464 triangles; geometry, material, bounds and render OK.
+CraterRim: 458 triangles; geometry, material, bounds and render OK.
+LavaTubeEntrance: 458 triangles; geometry, material, bounds and render OK.
+BoulderClusterA: 190 triangles; geometry, material, bounds and render OK.
+BoulderClusterB: 190 triangles; geometry, material, bounds and render OK.
