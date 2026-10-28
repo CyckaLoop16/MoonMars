@@ -37,7 +37,13 @@ namespace Waystation.Sim
         public const double CommsTrafficFactor = 0.8;
         /// <summary>Extra holding-pattern slots per comms array online.</summary>
         public const int CommsHoldingSlots = 2;
-        public const double ReputationFromLounge = 0.3;
+        /// <summary>Reputation when a ship gets what it came for…</summary>
+        public const double ReputationNeedMet = 0.4;
+        /// <summary>…and when it leaves without it.</summary>
+        public const double ReputationNeedFailed = 1.5;
+        public const double ReputationPerWish = 0.2;
+        /// <summary>Each kind of service on offer shortens the gap between arrivals by this factor.</summary>
+        public const double ServiceTrafficFactor = 0.94;
         /// <summary>Generators start below this battery level (while the station is short of power)…</summary>
         public const double GeneratorStartCharge = 0.2;
         /// <summary>…and stop once the battery is back above this.</summary>
@@ -120,6 +126,7 @@ namespace Waystation.Sim
             if (b.Def.IsHub) return "The Waystation Pad is the heart of the station";
             if (b.ShipId != null) return "A ship is using it";
             if (b.Def.IsFloor && s.ModuleAt(b.Origin) is Building top) return $"Remove the {top.Def.Name.ToLowerInvariant()} on top first";
+            if (s.People.Any(p => p.BuildingId == b.Id && (p.State == PersonState.Visiting || p.State == PersonState.Queueing))) return "People are inside";
             return null;
         }
 
@@ -249,6 +256,7 @@ namespace Waystation.Sim
             Power(s);
             Traffic(s);
             foreach (var ship in s.Ships.ToList()) UpdateShip(s, ship);
+            Crew.Step(s);
             Dock(s);
             s.Ships.RemoveAll(x => x.State == ShipState.Gone);
             Fuel(s);
@@ -262,13 +270,15 @@ namespace Waystation.Sim
             if (s.Tick < s.NextArrivalTick) return;
 
             double interval = Rules.BaseArrivalSeconds * (1.6 - s.Reputation / 100.0) * (0.6 + 0.8 * s.Rng.NextDouble())
-                * Math.Pow(Rules.CommsTrafficFactor, s.CommsArraysOnline);
+                * Math.Pow(Rules.CommsTrafficFactor, s.CommsArraysOnline)
+                * Math.Pow(Rules.ServiceTrafficFactor, Math.Min(6, s.ServicesOffered.Count()));
             s.NextArrivalTick = s.Tick + Math.Max(1, Rules.Ticks(interval));
 
-            bool hangar = s.Buildings.Any(b => b.Connected && b.Def.CanServe(ShipClass.Hauler));
-            var cls = hangar && s.Rng.NextDouble() < 0.15 + s.Reputation / 500.0 ? ShipClass.Hauler : ShipClass.Shuttle;
+            var role = PickRole(s);
+            var roleDef = ShipRoles.Get(role);
+            var cls = roleDef.Hull;
             var def = ShipCatalog.Get(cls);
-            var name = ShipCatalog.RandomName(s.Rng);
+            var name = ShipCatalog.RandomName(s.Rng, role);
 
             int waiting = s.Ships.Count(x => x.State == ShipState.Hailing || x.State == ShipState.Approaching);
             if (waiting >= Rules.MaxHolding + Rules.CommsHoldingSlots * s.CommsArraysOnline)
@@ -283,15 +293,61 @@ namespace Waystation.Sim
                 Id = s.NextShipId++,
                 Name = name,
                 Class = cls,
+                Role = role,
                 Livery = s.Rng.Next(6),
                 FuelNeeded = Math.Round(def.MinFuel + (def.MaxFuel - def.MinFuel) * s.Rng.NextDouble()),
                 NeedsRepair = s.Rng.NextDouble() < def.RepairChance,
                 MaxPatienceTicks = Rules.Ticks(def.PatienceSeconds),
                 ArrivedTick = s.Tick,
+                Crew = s.Rng.Next(roleDef.MinCrew, roleDef.MaxCrew + 1),
             };
+            ship.Errands.AddRange(RollErrands(s, roleDef, ship.NeedsRepair));
             ship.PatienceTicks = ship.MaxPatienceTicks;
             ship.Enter(ShipState.Approaching, Rules.Ticks(Rules.ApproachSeconds));
             s.Ships.Add(ship);
+        }
+
+        /// <summary>Who's arriving: a weighted pick among the roles this station attracts right now.</summary>
+        static ShipRole PickRole(Station s)
+        {
+            bool hangar = s.Buildings.Any(b => b.Connected && b.Def.CanServe(ShipClass.Hauler));
+            var options = new List<(ShipRole role, double weight)>();
+            foreach (var def in ShipRoles.All)
+            {
+                if (def.Hull == ShipClass.Hauler && !hangar) continue;
+                if (def.AttractedBy is BuildingType attractor && !s.Buildings.Any(b => b.Type == attractor && b.Operating)) continue;
+                double weight = def.Role == ShipRole.Freighter ? def.Weight * (0.5 + s.Reputation / 100.0) : def.Weight;
+                options.Add((def.Role, weight));
+            }
+
+            double roll = s.Rng.NextDouble() * options.Sum(o => o.weight);
+            foreach (var (role, weight) in options)
+            {
+                if (roll < weight) return role;
+                roll -= weight;
+            }
+            return options[options.Count - 1].role;
+        }
+
+        /// <summary>The need (if the role has one), then a few distinct wishes from the role's list.</summary>
+        static IEnumerable<Errand> RollErrands(Station s, ShipRoleDef def, bool damaged)
+        {
+            if (def.Need is ServiceType need) yield return new Errand { Service = need, IsNeed = true };
+
+            var pool = def.Wishes.ToList();
+            int count = s.Rng.Next(def.MinWishes, def.MaxWishes + 1);
+            // A damaged ship wants parts if it can get them.
+            if (damaged && pool.Remove(ServiceType.Parts))
+            {
+                yield return new Errand { Service = ServiceType.Parts };
+                count--;
+            }
+            for (int i = 0; i < count && pool.Count > 0; i++)
+            {
+                int k = s.Rng.Next(pool.Count);
+                yield return new Errand { Service = pool[k] };
+                pool.RemoveAt(k);
+            }
         }
 
         static void UpdateShip(Station s, Ship ship)
@@ -335,6 +391,9 @@ namespace Waystation.Sim
         {
             var building = s.GetBuilding(ship.BuildingId ?? -1);
 
+            // 0. The crew heads out onto the station while the ship is seen to.
+            if (!ship.Disembarked) Crew.Disembark(s, ship, building);
+
             // 1. Refuel from the station tank (the pumps slow down in a brownout).
             if (ship.FuelLoaded < ship.FuelNeeded)
             {
@@ -360,27 +419,56 @@ namespace Waystation.Sim
                 ship.Repaired = true;
             }
 
-            // 3. Pay and go.
+            // 3. Wait for everyone to come back aboard.
+            if (!Crew.AllAboard(s, ship)) return;
+
+            // 4. Pay and go. (Services were paid for at each building.)
             var def = ShipCatalog.Get(ship.Class);
             double fuel = ship.FuelLoaded * Rules.FuelSellPrice;
             double repairs = ship.Repaired ? def.RepairFee : 0;
-            // A lounge seat for the crew, if one is free: they spend money and leave happier.
-            int docked = s.Ships.Count(x => x.State == ShipState.Servicing);
-            double services = docked <= s.LoungeSeats ? def.ServicesFee : 0;
-            double bill = def.LandingFee + fuel + repairs + services;
+            double bill = def.LandingFee + fuel + repairs;
             s.Earn(def.LandingFee, LedgerLine.LandingFees, building);
             s.Earn(fuel, LedgerLine.FuelSales, building);
             if (repairs > 0) s.Earn(repairs, LedgerLine.Repairs, building);
-            if (services > 0) s.Earn(services, LedgerLine.Services, building);
             s.ShipsServed++;
-            s.Reputation += def.ReputationOnServed + (services > 0 ? Rules.ReputationFromLounge : 0);
+            s.Reputation += def.ReputationOnServed + Satisfaction(s, ship);
             if (building != null) building.ShipsServed++;
             s.Report($"{ship.Name} paid {bill:0} cr{(ship.Repaired ? " (refuel + repairs)" : "")}.", EventKind.Revenue, building?.Id, bill);
             ship.Enter(ShipState.Departing, Rules.Ticks(Rules.DepartingSeconds));
         }
 
+        /// <summary>Reputation from what the ship got out of its visit; reports a missed need.</summary>
+        static double Satisfaction(Station s, Ship ship)
+        {
+            double change = 0;
+            foreach (var errand in ship.Errands)
+            {
+                if (errand.Outcome != ErrandOutcome.Met) errand.Outcome = ErrandOutcome.Failed;
+                if (errand.IsNeed)
+                {
+                    if (errand.Outcome == ErrandOutcome.Met)
+                    {
+                        change += Rules.ReputationNeedMet;
+                    }
+                    else
+                    {
+                        change -= Rules.ReputationNeedFailed;
+                        s.ShipsDisappointed++;
+                        var provider = Services.Provider(errand.Service);
+                        s.Report($"{ship.Name} left disappointed: no {provider.Name.ToLowerInvariant()} they could get to. Reputation −{Rules.ReputationNeedFailed:0.#}.", EventKind.Warning);
+                    }
+                }
+                else if (errand.Outcome == ErrandOutcome.Met)
+                {
+                    change += Rules.ReputationPerWish;
+                }
+            }
+            return change;
+        }
+
         static void LeaveAngry(Station s, Ship ship, string why)
         {
+            Crew.Recall(s, ship);
             ship.Angry = true;
             s.ShipsLostAngry++;
             s.Reputation -= Rules.ReputationLostWhenAngry;

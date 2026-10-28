@@ -21,15 +21,6 @@ namespace Waystation.View
             { BuildingType.Foundation, "F" },
         };
 
-        static readonly Dictionary<BuildCategory, string> CategoryIcons = new Dictionary<BuildCategory, string>
-        {
-            { BuildCategory.Landing, "landing" },
-            { BuildCategory.Structure, "structure" },
-            { BuildCategory.Power, "power" },
-            { BuildCategory.Fuel, "fuel" },
-            { BuildCategory.Services, "services" },
-        };
-
         readonly GameController _game;
         readonly UiRoot _ui;
         readonly Label _hint;
@@ -61,8 +52,7 @@ namespace Waystation.View
             foreach (BuildCategory category in Enum.GetValues(typeof(BuildCategory)))
             {
                 var c = category;
-                string icon = CategoryIcons.TryGetValue(c, out var i) ? i : "build";
-                _tabs[c] = Ui.IconTextButton(icon, c.ToString(), () => ShowCategory(c)).AddTo(tabs);
+                _tabs[c] = Ui.IconTextButton(Icons.For(c), c.ToString(), () => ShowCategory(c)).AddTo(tabs);
             }
 
             _cards = Ui.El("ws-cards").AddTo(dock);
@@ -91,7 +81,7 @@ namespace Waystation.View
             else
             {
                 image.AddToClassList("ws-tile-image--icon");
-                Ui.SetIcon(image, CategoryIcons.TryGetValue(def.Category, out var icon) ? icon : "build");
+                Ui.SetIcon(image, def.Provides is ServiceType service ? Icons.For(service) : Icons.For(def.Category));
             }
             Ui.Text(def.Name, "ws-tile-name").AddTo(tile);
             Ui.Text($"{def.Cost:N0}", "ws-tile-cost").AddTo(tile);
@@ -121,8 +111,11 @@ namespace Waystation.View
             if (def.GeneratorOutput > 0) stats.Add($"+{def.GeneratorOutput:0} kW backup");
             if (def.BatteryCapacity > 0) stats.Add($"stores {def.BatteryCapacity / 1000:0.#} MJ");
             if (def.FuelCapacity > 0) stats.Add($"+{def.FuelCapacity:0} fuel");
+            if (def.Provides is ServiceType service) stats.Add($"{Services.Name(service)} · {def.Capacity} at a time · {def.VisitFee:0} cr a visit");
             stats.Add($"upkeep {def.UpkeepPerMinute:0.#}/min");
             lines.Add(string.Join(" · ", stats));
+            var brings = ShipRoles.All.Where(r => r.AttractedBy == def.Type).Select(r => r.Name).ToList();
+            if (brings.Count > 0) lines.Add("Brings " + string.Join(", ", brings) + " ships.");
             if (def.RequiresFoundation) lines.Add("Place on foundations.");
             return string.Join("\n", lines);
         }

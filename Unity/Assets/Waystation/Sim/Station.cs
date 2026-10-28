@@ -107,7 +107,38 @@ namespace Waystation.Sim
         /// <summary>Hailing ships are cleared automatically (ATC, or <see cref="AutoAssign"/> in tests and tools).</summary>
         public bool AutoClearance => AutoAssign || AtcOnline;
         public int CommsArraysOnline => SystemsOnline ? Math.Min(3, Buildings.Count(b => b.Def.Comms && b.Operating)) : 0;
-        public int LoungeSeats => SystemsOnline ? Buildings.Where(b => b.Operating).Sum(b => b.Def.LoungeSeats) : 0;
+        /// <summary>Service types on offer right now (connected, switched on, powered).</summary>
+        public IEnumerable<ServiceType> ServicesOffered => SystemsOnline
+            ? Buildings.Where(b => b.Operating && b.Def.Provides != null).Select(b => b.Def.Provides.Value).Distinct()
+            : Enumerable.Empty<ServiceType>();
+
+        // People out on the station.
+        public readonly List<Person> People = new List<Person>();
+        public int NextPersonId = 1;
+        public int ShipsDisappointed;
+
+        readonly HashSet<Cell> _walkable = new HashSet<Cell>();
+        int _walkRevision = -1;
+
+        /// <summary>
+        /// Can people walk on this cell? Walkways, bare foundations, pads and hangars yes; modules no
+        /// (people walk up to them).
+        /// </summary>
+        public bool IsWalkable(Cell c)
+        {
+            if (_walkRevision != Revision)
+            {
+                _walkRevision = Revision;
+                _walkable.Clear();
+                foreach (var b in Buildings)
+                {
+                    bool deck = b.Type == BuildingType.Walkway || b.Def.Serves.Length > 0 || (b.Def.IsFloor && ModuleAt(b.Origin) == null);
+                    if (!deck) continue;
+                    foreach (var cell in b.Footprint()) _walkable.Add(cell);
+                }
+            }
+            return _walkable.Contains(c);
+        }
 
         public Station(int width, int height, int seed)
         {

@@ -13,7 +13,11 @@ namespace Waystation.View
     /// FX: exhaust plumes (harder burns on landing and take-off) with an engine light that washes over
     /// the pads; ships that need repairs trail smoke and throw sparks until a hangar fixes them.
     ///
-    /// Art drop-in slots: Resources/Ships/Shuttle.prefab, Resources/Ships/Hauler.prefab
+    /// Each role flies in its own colours (USM olive and blue, Guild white and orange, corporate black
+    /// and gold, merchant green); travellers and freighters wear worn, mismatched paint.
+    ///
+    /// Art drop-in slots: Resources/Ships/&lt;ShipRole&gt;.prefab (e.g. Military.prefab) first, then
+    /// Resources/Ships/Shuttle.prefab, Resources/Ships/Hauler.prefab
     /// (nose along +Z, pivot at the bottom of the landing gear, ~1–2 units long). Optional attachment
     /// points: child transforms named "FX_Engine…" (one exhaust each, pointing backwards along their -Z)
     /// and "FX_Damage" (smoke and sparks). Without them, default positions per class are used.
@@ -39,7 +43,22 @@ namespace Waystation.View
         {
             ("#6b6f73", "#7a3418"), ("#4b5320", "#b8942a"), ("#2d2f33", "#a3141f"),
             ("#7d6b55", "#2d2f33"), ("#55606b", "#c9c2b3"), ("#3b3b3b", "#8a4b22"),
+            // Role colours: merchant, USM, Explorers' Guild, corporate.
+            ("#3d5f55", "#b8942a"), ("#4a5238", "#2f6fbf"), ("#c9c2b3", "#d0611f"), ("#1c1d21", "#b8902a"),
         };
+        const int WornLiveries = 6;
+
+        static int LiveryFor(Ship ship)
+        {
+            switch (ship.Role)
+            {
+                case ShipRole.Merchant: return WornLiveries;
+                case ShipRole.Military: return WornLiveries + 1;
+                case ShipRole.Explorer: return WornLiveries + 2;
+                case ShipRole.Executive: return WornLiveries + 3;
+                default: return ship.Livery % WornLiveries;
+            }
+        }
         static readonly Color Glass = MeshBuilder.Hex("#1f3a3c");
         static readonly Color Engine = MeshBuilder.Hex("#1c1d21");
         static readonly Color Glow = MeshBuilder.Hex("#ffb347");
@@ -49,7 +68,7 @@ namespace Waystation.View
 
         readonly Dictionary<int, Visual> _visuals = new Dictionary<int, Visual>();
         readonly Dictionary<(ShipClass, int), Mesh> _meshes = new Dictionary<(ShipClass, int), Mesh>();
-        readonly Dictionary<ShipClass, GameObject> _prefabs = new Dictionary<ShipClass, GameObject>();
+        readonly Dictionary<(ShipClass, ShipRole), GameObject> _prefabs = new Dictionary<(ShipClass, ShipRole), GameObject>();
         Material _material;
         Station _station;
         int _gridWidth, _gridHeight;
@@ -189,8 +208,12 @@ namespace Waystation.View
 
         Visual Create(Ship ship)
         {
-            if (!_prefabs.TryGetValue(ship.Class, out var prefab))
-                _prefabs[ship.Class] = prefab = Resources.Load<GameObject>($"Ships/{ship.Class}");
+            if (!_prefabs.TryGetValue((ship.Class, ship.Role), out var prefab))
+            {
+                prefab = Resources.Load<GameObject>($"Ships/{ship.Role}");
+                if (prefab == null) prefab = Resources.Load<GameObject>($"Ships/{ship.Class}");
+                _prefabs[(ship.Class, ship.Role)] = prefab;
+            }
 
             GameObject go;
             if (prefab != null)
@@ -201,7 +224,7 @@ namespace Waystation.View
             {
                 go = new GameObject();
                 go.transform.SetParent(transform, false);
-                var key = (ship.Class, ship.Livery % Liveries.Length);
+                var key = (ship.Class, LiveryFor(ship));
                 if (!_meshes.TryGetValue(key, out var mesh)) _meshes[key] = mesh = Placeholder(key.Item1, key.Item2);
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;
                 go.AddComponent<MeshRenderer>().sharedMaterial = _material;

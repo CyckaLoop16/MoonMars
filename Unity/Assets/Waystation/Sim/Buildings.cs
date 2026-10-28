@@ -61,6 +61,16 @@ namespace Waystation.Sim
         PilotLounge,
         CommsArray,
         AtcTower,
+
+        // Service buildings (on foundations): what ships' crews and passengers come for.
+        Cantina,
+        ObservationDeck,
+        TradingOutpost,
+        Bazaar,
+        PartsDepot,
+        MilitaryBarracks,
+        ExplorersGuild,
+        CorporateOffice,
     }
 
     /// <summary>Build-menu tabs. New categories (services, utilities…) slot in here.</summary>
@@ -70,7 +80,14 @@ namespace Waystation.Sim
         Structure,
         Power,
         Fuel,
-        Services,
+        /// <summary>Running the station: comms and traffic control.</summary>
+        Operations,
+        /// <summary>Official business: the military, the Explorers' Guild, corporations.</summary>
+        Business,
+        /// <summary>Rest, food and fun.</summary>
+        Leisure,
+        /// <summary>Trade and shopping.</summary>
+        Commerce,
     }
 
     public sealed class BuildingDef
@@ -113,8 +130,13 @@ namespace Waystation.Sim
 
         /// <summary>Fuel made per second while running (refineries).</summary>
         public double RefineRate;
-        /// <summary>Docked crews this module can look after at once (pilot lounges).</summary>
-        public int LoungeSeats;
+        /// <summary>The service people come here for (service buildings).</summary>
+        public ServiceType? Provides;
+        /// <summary>Visitors inside at once; more queue at the door.</summary>
+        public int Capacity;
+        public double VisitSeconds;
+        /// <summary>What each visitor pays.</summary>
+        public double VisitFee;
         /// <summary>Boosts traffic and the holding pattern (comms arrays).</summary>
         public bool Comms;
         /// <summary>Clears hailing ships to free pads automatically (air traffic control).</summary>
@@ -201,21 +223,84 @@ namespace Waystation.Sim
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.PilotLounge, Name = "Pilot Lounge", Width = 2, Height = 2, Cost = 1400,
-                Description = "Bunks, a bar and bad coffee. Docked crews spend money here (3 crews at a time) and leave happier.",
-                Category = BuildCategory.Services, RequiresFoundation = true, UpkeepPerMinute = 10, PowerUse = 3, LoungeSeats = 3,
+                Type = BuildingType.PilotLounge, Name = "Pilot Lounge", Width = 2, Height = 2, Cost = 1000,
+                Description = "Bunks, showers and bad coffee. Somewhere to rest between jumps.",
+                Category = BuildCategory.Leisure, RequiresFoundation = true, UpkeepPerMinute = 8, PowerUse = 3,
+                Provides = ServiceType.Rest, Capacity = 4, VisitSeconds = 14, VisitFee = 18,
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.CommsArray, Name = "Comms Array", Width = 2, Height = 2, Cost = 1800,
                 Description = "Long-range dish broadcasting the station's beacon. More traffic, and room for more ships in the holding pattern.",
-                Category = BuildCategory.Services, RequiresFoundation = true, UpkeepPerMinute = 12, PowerUse = 4, Comms = true,
+                Category = BuildCategory.Operations, RequiresFoundation = true, UpkeepPerMinute = 12, PowerUse = 4, Comms = true,
             });
             Add(new BuildingDef
             {
                 Type = BuildingType.AtcTower, Name = "Traffic Control", Width = 2, Height = 2, Cost = 4000,
                 Description = "Air traffic control tower. Clears hailing ships to free pads automatically while it has power.",
-                Category = BuildCategory.Services, RequiresFoundation = true, UpkeepPerMinute = 30, PowerUse = 5, Atc = true,
+                Category = BuildCategory.Operations, RequiresFoundation = true, UpkeepPerMinute = 30, PowerUse = 5, Atc = true,
+            });
+
+            // ---- Leisure
+            Add(new BuildingDef
+            {
+                Type = BuildingType.Cantina, Name = "Cantina", Width = 2, Height = 2, Cost = 900,
+                Description = "Noodles, rotgut and a jukebox nobody can turn off.",
+                Category = BuildCategory.Leisure, RequiresFoundation = true, UpkeepPerMinute = 7, PowerUse = 3,
+                Provides = ServiceType.Food, Capacity = 4, VisitSeconds = 10, VisitFee = 22,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.ObservationDeck, Name = "Observation Deck", Width = 3, Height = 2, Cost = 1300,
+                Description = "A long armoured window onto the planet below. Travellers pay to watch the sunrise.",
+                Category = BuildCategory.Leisure, RequiresFoundation = true, UpkeepPerMinute = 6, PowerUse = 2,
+                Provides = ServiceType.Sightseeing, Capacity = 6, VisitSeconds = 12, VisitFee = 15,
+            });
+
+            // ---- Commerce
+            Add(new BuildingDef
+            {
+                Type = BuildingType.TradingOutpost, Name = "Trading Outpost", Width = 3, Height = 3, Cost = 2200,
+                Description = "Cargo brokers and a scales-and-scanners customs floor. Freighters and merchants need one; the station takes a cut.",
+                Category = BuildCategory.Commerce, RequiresFoundation = true, UpkeepPerMinute = 14, PowerUse = 4,
+                Provides = ServiceType.Trade, Capacity = 3, VisitSeconds = 14, VisitFee = 70,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.Bazaar, Name = "Bazaar", Width = 2, Height = 2, Cost = 1100,
+                Description = "Stalls selling rations, trinkets and things that fell off a freighter.",
+                Category = BuildCategory.Commerce, RequiresFoundation = true, UpkeepPerMinute = 7, PowerUse = 2,
+                Provides = ServiceType.Shopping, Capacity = 5, VisitSeconds = 10, VisitFee = 25,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.PartsDepot, Name = "Parts Depot", Width = 2, Height = 2, Cost = 1400,
+                Description = "Salvaged and new ship parts. Explorers and damaged freighters stock up here.",
+                Category = BuildCategory.Commerce, RequiresFoundation = true, UpkeepPerMinute = 9, PowerUse = 4,
+                Provides = ServiceType.Parts, Capacity = 2, VisitSeconds = 8, VisitFee = 60,
+            });
+
+            // ---- Business
+            Add(new BuildingDef
+            {
+                Type = BuildingType.MilitaryBarracks, Name = "USM Barracks", Width = 3, Height = 2, Cost = 2600,
+                Description = "A United Systems of Mankind outpost. Brings USM patrols to the station; the USM pays a stipend for every marine who reports in.",
+                Category = BuildCategory.Business, RequiresFoundation = true, UpkeepPerMinute = 10, PowerUse = 5,
+                Provides = ServiceType.Military, Capacity = 4, VisitSeconds = 16, VisitFee = 45,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.ExplorersGuild, Name = "Explorers' Guild", Width = 2, Height = 2, Cost = 2000,
+                Description = "A chapter house of the Explorers' Guild. Brings guild surveyors, who pay to file their charts.",
+                Category = BuildCategory.Business, RequiresFoundation = true, UpkeepPerMinute = 10, PowerUse = 3,
+                Provides = ServiceType.Survey, Capacity = 3, VisitSeconds = 12, VisitFee = 55,
+            });
+            Add(new BuildingDef
+            {
+                Type = BuildingType.CorporateOffice, Name = "Corporate Office", Width = 2, Height = 3, Cost = 2400,
+                Description = "Glass, carpet and a receptionist. Brings executive shuttles, who pay well and expect a lot.",
+                Category = BuildCategory.Business, RequiresFoundation = true, UpkeepPerMinute = 12, PowerUse = 4,
+                Provides = ServiceType.Corporate, Capacity = 2, VisitSeconds = 14, VisitFee = 90,
             });
         }
 
@@ -237,6 +322,8 @@ namespace Waystation.Sim
         public int? ShipId;
         public double Earned;
         public int ShipsServed;
+        /// <summary>Visitors served (service buildings).</summary>
+        public int Visits;
         /// <summary>Switched on by the player (see <see cref="BuildingDef.CanToggle"/>).</summary>
         public bool Enabled = true;
         /// <summary>Doing its job this tick: a generator burning fuel, a refinery cracking ice.</summary>

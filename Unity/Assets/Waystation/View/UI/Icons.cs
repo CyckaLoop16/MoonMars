@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Waystation.Sim;
 
 namespace Waystation.View
 {
@@ -20,6 +21,37 @@ namespace Waystation.View
             if (tex == null) tex = Draw(Shape(name));
             Cache[name] = tex;
             return tex;
+        }
+
+        public static string For(ServiceType service) => service.ToString().ToLowerInvariant();
+
+        public static string For(BuildCategory category)
+        {
+            switch (category)
+            {
+                case BuildCategory.Landing: return "landing";
+                case BuildCategory.Structure: return "structure";
+                case BuildCategory.Power: return "power";
+                case BuildCategory.Fuel: return "fuel";
+                case BuildCategory.Operations: return "hail";
+                case BuildCategory.Business: return "corporate";
+                case BuildCategory.Leisure: return "food";
+                case BuildCategory.Commerce: return "trade";
+                default: return "build";
+            }
+        }
+
+        public static string For(ShipRole role)
+        {
+            switch (role)
+            {
+                case ShipRole.Freighter: return "hauler";
+                case ShipRole.Merchant: return "trade";
+                case ShipRole.Military: return "military";
+                case ShipRole.Explorer: return "survey";
+                case ShipRole.Executive: return "corporate";
+                default: return "shuttle";
+            }
         }
 
         /// <summary>Signed distance (in 0..1 icon space, y up): negative inside the shape.</summary>
@@ -126,6 +158,43 @@ namespace Waystation.View
                         Seg(p, V(0.5f, 0.42f), V(0.5f, 0.6f), 0.045f), Circle(p, V(0.5f, 0.31f), 0.045f));
                 case "build":
                     return p => Union(Box(p, V(0.5f, 0.22f), V(0.34f, 0.07f)), Box(p, V(0.5f, 0.44f), V(0.22f, 0.07f)), Box(p, V(0.5f, 0.66f), V(0.1f, 0.07f)));
+                // Services
+                case "rest": // a bed
+                    return p => Union(Box(p, V(0.5f, 0.38f), V(0.36f, 0.07f)), Box(p, V(0.18f, 0.42f), V(0.05f, 0.22f)), Box(p, V(0.82f, 0.32f), V(0.05f, 0.13f)),
+                        Box(p, V(0.32f, 0.54f), V(0.1f, 0.06f)) - 0.02f, Box(p, V(0.6f, 0.5f), V(0.2f, 0.04f)));
+                case "food": // a mug
+                    return p => Union(Box(p, V(0.42f, 0.42f), V(0.2f, 0.24f)) - 0.03f, Ring(p, V(0.66f, 0.44f), 0.11f, 0.045f),
+                        Seg(p, V(0.34f, 0.8f), V(0.38f, 0.92f), 0.03f), Seg(p, V(0.48f, 0.8f), V(0.52f, 0.92f), 0.03f));
+                case "sightseeing": // an eye: a lens outline and a pupil
+                    return p =>
+                    {
+                        float outer = Mathf.Max(Circle(p, V(0.5f, 0.15f), 0.5f), Circle(p, V(0.5f, 0.85f), 0.5f));
+                        float inner = Mathf.Max(Circle(p, V(0.5f, 0.2f), 0.43f), Circle(p, V(0.5f, 0.8f), 0.43f));
+                        return Union(Subtract(outer, inner), Circle(p, C, 0.11f));
+                    };
+                case "trade": // a crate
+                    return p => Union(Subtract(Box(p, C, V(0.34f, 0.3f)), Box(p, C, V(0.27f, 0.23f))), Seg(p, V(0.24f, 0.28f), V(0.76f, 0.72f), 0.04f), Seg(p, V(0.24f, 0.72f), V(0.76f, 0.28f), 0.04f));
+                case "shopping": // a bag
+                    return p => Union(Box(p, V(0.5f, 0.38f), V(0.3f, 0.26f)) - 0.02f, Subtract(Ring(p, V(0.5f, 0.66f), 0.14f, 0.04f), Box(p, V(0.5f, 0.5f), V(0.3f, 0.1f))));
+                case "parts": // a gear
+                    return p =>
+                    {
+                        float d = Ring(p, C, 0.22f, 0.07f);
+                        for (int i = 0; i < 8; i++)
+                        {
+                            float a = i * Mathf.PI / 4f;
+                            var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                            d = Mathf.Min(d, Seg(p, C + dir * 0.26f, C + dir * 0.38f, 0.06f));
+                        }
+                        return d;
+                    };
+                case "military": // a shield with a chevron
+                    return p => Subtract(Polygon(p, V(0.2f, 0.84f), V(0.8f, 0.84f), V(0.8f, 0.48f), V(0.5f, 0.1f), V(0.2f, 0.48f)),
+                        Union(Seg(p, V(0.32f, 0.56f), V(0.5f, 0.4f), 0.045f), Seg(p, V(0.68f, 0.56f), V(0.5f, 0.4f), 0.045f)));
+                case "survey": // a compass star
+                    return p => Union(Polygon(p, Star(4, 0.42f, 0.1f)), Ring(p, C, 0.24f, 0.03f));
+                case "corporate": // a briefcase
+                    return p => Union(Box(p, V(0.5f, 0.42f), V(0.36f, 0.24f)) - 0.02f, Subtract(Box(p, V(0.5f, 0.7f), V(0.14f, 0.08f)), Box(p, V(0.5f, 0.7f), V(0.08f, 0.04f))));
                 case "info":
                 default:
                     return p => Union(Ring(p, C, 0.36f, 0.05f), Seg(p, V(0.5f, 0.28f), V(0.5f, 0.52f), 0.05f), Circle(p, V(0.5f, 0.68f), 0.055f));

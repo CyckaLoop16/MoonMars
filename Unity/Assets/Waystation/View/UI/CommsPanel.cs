@@ -16,6 +16,7 @@ namespace Waystation.View
             public VisualElement Root;
             public Label Name, Info, Patience;
             public VisualElement Icon;
+            public readonly List<System.Action> Updaters = new List<System.Action>();
             public Bar PatienceBar;
             public VisualElement Pads;
             public string PadKey;
@@ -86,7 +87,7 @@ namespace Waystation.View
             var card = new HailCard { Root = Ui.El("ws-ship-card") };
 
             var top = Ui.El("ws-row").AddTo(card.Root);
-            card.Icon = Ui.Icon(ship.Class == ShipClass.Hauler ? "hauler" : "shuttle", "ws-icon--comms").AddTo(top);
+            card.Icon = Ui.Icon(Icons.For(ship.Role), "ws-icon--comms").AddTo(top);
             card.Icon.style.marginRight = 6;
             card.Name = Ui.Text(ship.Name, "ws-ship-name", "ws-grow").AddTo(top);
             card.Name.RegisterCallback<ClickEvent>(_ =>
@@ -96,7 +97,9 @@ namespace Waystation.View
             });
             card.Patience = Ui.Text("", "ws-small").AddTo(top);
 
-            card.Info = Ui.Text("", "ws-small").AddTo(card.Root);
+            var details = Ui.El("ws-row").AddTo(card.Root);
+            card.Info = Ui.Text("", "ws-small", "ws-grow").AddTo(details);
+            ShipUi.ErrandIcons(ship, _game.Station, _ui, card.Updaters).AddTo(details);
             card.PatienceBar = new Bar().AddTo(card.Root);
             card.Pads = Ui.El("ws-row").AddTo(card.Root);
             card.Pads.style.flexWrap = Wrap.Wrap;
@@ -115,7 +118,8 @@ namespace Waystation.View
             Ui.Set(card.Patience, $"{ship.PatienceTicks / (double)Station.TicksPerSecond:0}s");
             Ui.Tone(card.Patience, patience < 0.33 ? "ws-bad" : patience < 0.66 ? "ws-warn" : "ws-muted");
             card.PatienceBar.Set(patience, Bar.Health(patience));
-            Ui.Set(card.Info, $"{ShipCatalog.Get(ship.Class).Name} · {ship.FuelNeeded:0} fuel{(ship.NeedsRepair ? " · repairs" : "")}");
+            Ui.Set(card.Info, $"{ShipRoles.Get(ship.Role).Name} · {ship.FuelNeeded:0} fuel{(ship.NeedsRepair ? " · repairs" : "")}");
+            foreach (var update in card.Updaters) update();
             Ui.Tone(card.Info, "ws-muted");
             card.Root.EnableInClassList("ws-ship-card--urgent", patience < 0.33);
             card.Root.EnableInClassList("ws-ship-card--picking", _game.ClearingShip == ship);

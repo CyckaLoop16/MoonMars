@@ -28,10 +28,14 @@ new landing pads.
 - **Power:** solar arrays (sunlight only), battery banks, a backup fuel cell generator, brownouts that
   slow everything down; switch modules off to save power
 - **Modules on foundations:** solar array, battery bank, fuel cell generator, fuel tank, ice refinery,
-  pilot lounge (extra income), comms array (more traffic), traffic control (automatic clearance)
+  comms array (more traffic), traffic control (automatic clearance)
+- **Ships with needs and wishes:** travellers, freighters, merchants, USM patrols, Guild explorers and
+  executives each want different things. Their people **walk out** to your **Business** (USM Barracks,
+  Explorers' Guild, Corporate Office), **Leisure** (Pilot Lounge, Cantina, Observation Deck) and
+  **Commerce** (Trading Outpost, Bazaar, Parts Depot) buildings, pay, and walk back before the ship leaves
 - **Pads** show numbers and status lights (green free · amber cleared · red occupied · grey offline)
 - **Economy:** fuel margins, landing and repair fees, upkeep, automatic tanker restocks, reputation-driven traffic
-- **Grim-dark look:** URP (set up automatically), bloom/vignette/grain/grade, pools of sodium light,
+- **Grim-dark look:** URP (set up automatically), bloom/vignette/grade, pools of sodium light,
   failing lamps, red beacons, engine plumes, smoking damaged ships, welding sparks, venting fuel lines
 - **HUD (UI Toolkit):** top bar, tabbed build bar, comms panel, inspector, toasts, labels over pads and
   ships, floating income, station log (`L`), ledger with charts (`M`), pause menu (`Esc`)

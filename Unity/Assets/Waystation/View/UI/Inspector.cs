@@ -177,12 +177,24 @@ namespace Waystation.View
                 Row("Holds", () => $"{def.FuelCapacity:0} units");
                 Row("Station fuel", () => $"{s.FuelStock:0} / {s.FuelCapacity:0}");
             }
-            if (def.LoungeSeats > 0)
+            if (def.Provides is ServiceType service)
             {
-                Ui.Text("Lounge", "ws-subheading").AddTo(Root);
-                Row("Docked crews", () => $"{s.Ships.Count(x => x.State == ShipState.Servicing)} / {s.LoungeSeats} seats");
-                Row("Crews spend", () => $"{ShipCatalog.Get(ShipClass.Shuttle).ServicesFee:0} cr (shuttle) · {ShipCatalog.Get(ShipClass.Hauler).ServicesFee:0} cr (hauler)");
-                Row("Earned (station)", () => Ui.Money(s.Ledger.Totals[(int)LedgerLine.Services]));
+                Ui.Text(Services.Name(service), "ws-subheading").AddTo(Root);
+                Row("Inside", () => $"{Crew.Visitors(s, b)} / {def.Capacity}");
+                Row("Waiting", () => s.People.Count(p => p.BuildingId == b.Id && p.State == PersonState.Queueing).ToString());
+                Row("Each visit", () => $"{def.VisitFee:0} cr · {def.VisitSeconds:0}s");
+                Row("Visits", () => b.Visits.ToString());
+                Row("Earned", () => Ui.Money(b.Earned));
+                var brings = ShipRoles.All.Where(r => r.AttractedBy == def.Type).Select(r => r.Name).ToList();
+                if (brings.Count > 0) Row("Brings", () => string.Join(", ", brings));
+                var status = Ui.Text("", "ws-small").AddTo(Root);
+                _updaters.Add(() =>
+                {
+                    bool open = b.Operating && s.SystemsOnline;
+                    Ui.Show(status, !open);
+                    Ui.Set(status, !b.Connected ? "Closed: not connected" : !b.Enabled ? "Closed: switched off" : "Closed: not enough power");
+                    Ui.Tone(status, "ws-bad");
+                });
             }
             if (def.Comms)
             {
@@ -213,11 +225,13 @@ namespace Waystation.View
             var s = _game.Station;
             var cls = ShipCatalog.Get(ship.Class);
             var header = Ui.El("ws-window-header").AddTo(Root);
-            Ui.Icon(ship.Class == ShipClass.Hauler ? "hauler" : "shuttle", "ws-icon--big", "ws-icon--comms").AddTo(header).style.marginRight = 6;
+            var role = ShipRoles.Get(ship.Role);
+            Ui.Icon(Icons.For(ship.Role), "ws-icon--big", "ws-icon--comms").AddTo(header).style.marginRight = 6;
             Ui.Heading(ship.Name).AddTo(header).AddToClassList("ws-grow");
             Ui.IconButton("close", _game.ClearSelection).AddTo(header);
 
-            Ui.Text($"{cls.Name} · fee {cls.LandingFee:0} cr", "ws-small", "ws-muted").AddTo(Root);
+            var subtitle = Ui.Text($"{role.Name} · {cls.Name.ToLowerInvariant()} · {ship.Crew} aboard", "ws-small", "ws-muted").AddTo(Root);
+            _ui.Tooltip(subtitle, () => role.Description);
             var state = Ui.Text("", "ws-small").AddTo(Root);
             _updaters.Add(() =>
             {
@@ -235,6 +249,27 @@ namespace Waystation.View
                 double p = ship.MaxPatienceTicks > 0 ? ship.PatienceTicks / (double)ship.MaxPatienceTicks : 1;
                 patience.Set(p, Bar.Health(p));
             });
+
+            if (ship.Errands.Count > 0)
+            {
+                Ui.Text("Wants", "ws-subheading").AddTo(Root);
+                foreach (var errand in ship.Errands)
+                {
+                    var e = errand;
+                    var row = Ui.El("ws-table-row").AddTo(Root);
+                    var left = Ui.El("ws-row").AddTo(row);
+                    var icon = Ui.Icon(Icons.For(e.Service)).AddTo(left);
+                    icon.style.marginRight = 6;
+                    Ui.Text(Services.Name(e.Service) + (e.IsNeed ? " (need)" : ""), "ws-small").AddTo(left);
+                    var status = Ui.Text("", "ws-small", "ws-muted").AddTo(row);
+                    _updaters.Add(() =>
+                    {
+                        Ui.IconTone(icon, ShipUi.Tone(s, ship, e));
+                        Ui.Set(status, ShipUi.Status(s, ship, e));
+                    });
+                }
+                Row("Out on the station", () => Crew.Of(s, ship).Count().ToString());
+            }
 
             Ui.Text("Fuel", "ws-subheading").AddTo(Root);
             var fuel = new Bar().AddTo(Root);

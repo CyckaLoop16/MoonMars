@@ -84,9 +84,49 @@ Modules must stand entirely on foundations (a foundation can't be removed from u
 | Fuel Cell Generator | 1×2 | 700 | 4 | +12 kW backup | Starts on low battery, burns 0.3 fuel/s |
 | Fuel Tank | 2×2 | 500 | 2 | – | +600 fuel capacity |
 | Ice Refinery | 2×3 | 2,200 | 18 | −14 kW | Makes 1 fuel/s from comet ice, only on spare power |
-| Pilot Lounge | 2×2 | 1,400 | 10 | −3 kW | 3 docked crews at a time spend 20 (shuttle) / 45 (hauler) cr, +0.3 reputation |
 | Comms Array | 2×2 | 1,800 | 12 | −4 kW | ×1.25 traffic and +2 holding slots each (up to 3) |
 | Traffic Control | 2×2 | 4,000 | 30 | −5 kW | Clears hailing ships to free pads automatically |
+
+## Ships, people and services
+
+Every ship has a **role**, and every role wants different things. When a ship docks, its crew and
+passengers **walk out** over walkways, foundations and pads to the buildings they want, **queue** if
+it's full, spend a while **inside** (paying per visit), and walk back. **The ship can't leave until
+everyone is aboard**, so service buildings close to the pads turn ships around faster, and far-flung
+or unreachable ones hold pads up or never get used.
+
+- **Need:** what the ship came for. If there's nowhere to get it, the ship leaves **disappointed**
+  (reputation −1.5); met, +0.4.
+- **Wishes:** nice to have (0–2 per ship). Each one met is +0.2 reputation and the visit fee.
+- Most roles only come once the station has the building they're after, so building services
+  **opens new traffic**. Every kind of service on offer also brings a little more traffic overall.
+
+| Role | Hull | Comes when | Needs | Wishes |
+|---|---|---|---|---|
+| Traveller | shuttle | always | – | rest, food, sightseeing, shopping (1–2) |
+| Freighter | hauler | a hangar exists | trade | food, rest, parts |
+| Merchant | shuttle | Trading Outpost | trade | shopping, food |
+| USM Patrol | shuttle | USM Barracks | report to the USM | food, rest |
+| Guild Explorer | shuttle | Explorers' Guild | file a survey | parts, shopping, rest |
+| Executive | shuttle | Corporate Office | a business meeting | sightseeing, food |
+
+Service buildings, all built on foundations, in three categories:
+
+| Category | Building | Size | Cost | Upkeep | Power | Service | Capacity | Visit | Fee |
+|---|---|---|---|---|---|---|---|---|---|
+| Business | USM Barracks | 3×2 | 2,600 | 10 | −5 kW | report to the USM | 4 | 16 s | 45 |
+| Business | Explorers' Guild | 2×2 | 2,000 | 10 | −3 kW | file a survey | 3 | 12 s | 55 |
+| Business | Corporate Office | 2×3 | 2,400 | 12 | −4 kW | business meeting | 2 | 14 s | 90 |
+| Leisure | Pilot Lounge | 2×2 | 1,000 | 8 | −3 kW | rest | 4 | 14 s | 18 |
+| Leisure | Cantina | 2×2 | 900 | 7 | −3 kW | food & drink | 4 | 10 s | 22 |
+| Leisure | Observation Deck | 3×2 | 1,300 | 6 | −2 kW | sightseeing | 6 | 12 s | 15 |
+| Commerce | Trading Outpost | 3×3 | 2,200 | 14 | −4 kW | trade cargo | 3 | 14 s | 70 |
+| Commerce | Bazaar | 2×2 | 1,100 | 7 | −2 kW | shopping | 5 | 10 s | 25 |
+| Commerce | Parts Depot | 2×2 | 1,400 | 9 | −4 kW | spare parts | 2 | 8 s | 60 |
+
+People walk only on walkways, bare foundations and pads (not through modules); they enter a building
+from any walkable cell next to it. Below 50% power, services close. A building with people inside
+can't be demolished.
 
 ## Next ideas (not built yet)
 

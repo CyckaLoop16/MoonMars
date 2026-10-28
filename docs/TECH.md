@@ -39,6 +39,9 @@ drop-in slot. Put a prefab at the path and it replaces the placeholder with no c
 | Moving parts | `.../Resources/Buildings/SolarArray_Wing.prefab`, `CommsArray_Dish.prefab`, `AtcTower_Radar.prefab` | Wing: panels face +Y (code turns it to the sun); dish faces +Z; radar spins about Y |
 | Shuttle | `.../Resources/Ships/Shuttle.prefab` | Nose along +Z, pivot at the bottom of the gear, ~1.5 units long |
 | Hauler | `.../Resources/Ships/Hauler.prefab` | Nose along +Z, ~2.5 units long |
+| Ships by role | `.../Resources/Ships/<ShipRole>.prefab` (Traveller, Freighter, Merchant, Military, Explorer, Executive) | Used before the hull prefab when present |
+| Service buildings | `.../Resources/Buildings/Cantina.prefab`, `ObservationDeck`, `PilotLounge`, `TradingOutpost`, `Bazaar`, `PartsDepot`, `MilitaryBarracks`, `ExplorersGuild`, `CorporateOffice` | Base at Y=0 (on foundations); footprint per DESIGN.md |
+| People | `.../Resources/People/<ShipRole>.prefab`, or `People/Person.prefab` for everyone | Pivot at the feet, facing +Z, ~0.35 units tall |
 
 ### Style brief for GPT (grim-dark)
 

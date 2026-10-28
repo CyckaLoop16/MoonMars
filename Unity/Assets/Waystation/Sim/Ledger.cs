@@ -10,7 +10,9 @@ namespace Waystation.Sim
         LandingFees,
         FuelSales,
         Repairs,
-        Services,
+        Business,
+        Leisure,
+        Commerce,
         Refunds,
         // Expenses
         FuelPurchases,
@@ -38,7 +40,7 @@ namespace Waystation.Sim
     public sealed class Ledger
     {
         public static readonly int LineCount = Enum.GetValues(typeof(LedgerLine)).Length;
-        public static readonly LedgerLine[] IncomeLines = { LedgerLine.LandingFees, LedgerLine.FuelSales, LedgerLine.Repairs, LedgerLine.Services, LedgerLine.Refunds };
+        public static readonly LedgerLine[] IncomeLines = { LedgerLine.LandingFees, LedgerLine.FuelSales, LedgerLine.Repairs, LedgerLine.Business, LedgerLine.Leisure, LedgerLine.Commerce, LedgerLine.Refunds };
         public static readonly LedgerLine[] ExpenseLines = { LedgerLine.FuelPurchases, LedgerLine.Upkeep, LedgerLine.Construction };
         /// <summary>Minutes of history kept for charts.</summary>
         public const int HistoryMinutes = 30;
@@ -58,13 +60,21 @@ namespace Waystation.Sim
                 case LedgerLine.LandingFees: return "Landing fees";
                 case LedgerLine.FuelSales: return "Fuel sales";
                 case LedgerLine.Repairs: return "Repairs";
-                case LedgerLine.Services: return "Lounge services";
+                case LedgerLine.Business: return "Business";
+                case LedgerLine.Leisure: return "Leisure";
+                case LedgerLine.Commerce: return "Commerce";
                 case LedgerLine.Refunds: return "Salvage refunds";
                 case LedgerLine.FuelPurchases: return "Fuel purchases";
                 case LedgerLine.Upkeep: return "Upkeep";
                 default: return "Construction";
             }
         }
+
+        /// <summary>The income line for a service building's category.</summary>
+        public static LedgerLine LineFor(BuildCategory category) =>
+            category == BuildCategory.Business ? LedgerLine.Business
+            : category == BuildCategory.Commerce ? LedgerLine.Commerce
+            : LedgerLine.Leisure;
 
         public void Record(long tick, LedgerLine line, double amount)
         {

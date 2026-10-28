@@ -210,18 +210,6 @@ namespace Waystation.Sim.Tests
         }
 
         [Test]
-        public void LoungesEarnFromDockedCrews()
-        {
-            var sim = GameSetup.NewStation(3);
-            var s = sim.Station;
-            s.Money = 100000;
-            sim.Execute(new PlaceBuilding(BuildingType.PilotLounge, FoundationTests.Foundations(sim, 2, 2)), out _);
-            s.AutoAssign = true;
-            sim.Advance(5 * 60);
-            Assert.That(s.Ledger.Totals[(int)LedgerLine.Services], Is.GreaterThan(0));
-        }
-
-        [Test]
         public void SwitchedOffPadsTakeNoShips()
         {
             var sim = GameSetup.NewStation(1);

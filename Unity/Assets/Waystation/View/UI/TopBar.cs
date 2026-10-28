@@ -118,7 +118,8 @@ namespace Waystation.View
 
             Ui.Set(_traffic, $"{s.ShipsServed}");
             int lost = s.ShipsLostAngry + s.ShipsDiverted;
-            Ui.Set(_trafficSub, s.AutoClearance ? $"{lost} lost · auto" : $"{lost} lost");
+            string sub = s.ShipsDisappointed > 0 ? $"{lost} lost · {s.ShipsDisappointed} let down" : $"{lost} lost";
+            Ui.Set(_trafficSub, s.AutoClearance ? sub + " · auto" : sub);
 
             Ui.Set(_clock, Ui.Clock(s.Seconds));
             _grid.EnableInClassList("ws-button--on", _game.GridVisible);

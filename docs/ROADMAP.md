@@ -41,6 +41,13 @@
 - Placement animation (drop, thump, dust, sparks, flash) and a dust puff on demolish
 - Brighter scene: higher ambient, planetshine fill light, stronger sun, lighter grade
 
+## P1.2: Ships, people and services ✅
+- Ship roles (traveller, freighter, merchant, USM patrol, Guild explorer, executive) with needs and wishes
+- People who walk out to service buildings, queue, visit, pay and walk back; ships wait for them
+- Nine service buildings in Business, Leisure and Commerce; buildings that bring new kinds of traffic
+- HUD: role icons and need/wish icons on comms cards, a "Wants" list in the ship inspector,
+  visitors and earnings for service buildings
+
 ## P1: Feel & feedback
 - Playtest and tune the first 15 minutes
 - Ship arrival/landing polish: thrusters, landing lights, refuelling hose, docking clamps

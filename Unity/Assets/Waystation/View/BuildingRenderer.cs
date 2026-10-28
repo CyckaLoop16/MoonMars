@@ -19,7 +19,8 @@ namespace Waystation.View
     ///   Resources/Buildings/Walkway_Deck.prefab, Walkway_Railing.prefab (+Z edge), Walkway_Lamp.prefab
     ///   Resources/Buildings/Foundation.prefab, Foundation_Edge.prefab (+Z edge)
     ///   Modules (base at the foundation deck, Y=0): SolarArray, BatteryBank, FuelCellGenerator, FuelTank,
-    ///   IceRefinery, PilotLounge, CommsArray, AtcTower; moving parts SolarArray_Wing (panels face +Y),
+    ///   IceRefinery, PilotLounge, CommsArray, AtcTower, Cantina, ObservationDeck, TradingOutpost, Bazaar,
+    ///   PartsDepot, MilitaryBarracks, ExplorersGuild, CorporateOffice; moving parts SolarArray_Wing (panels face +Y),
     ///   CommsArray_Dish (faces +Z), AtcTower_Radar (spins about Y).
     /// Lamps and effects are added in code on top of any art, at the positions noted in docs/TECH.md.
     /// </summary>
@@ -49,6 +50,21 @@ namespace Waystation.View
         static readonly Color TankPaint = MeshBuilder.Hex("#a8562a");
         static readonly Color Casing = MeshBuilder.Hex("#3a4048");
         static readonly Color Charge = MeshBuilder.Hex("#3cff7a");
+        static readonly Color CantinaWall = MeshBuilder.Hex("#6b3a2a");
+        static readonly Color CommerceSign = MeshBuilder.Hex("#5aff8a");
+        static readonly Color ContainerA = MeshBuilder.Hex("#a8562a");
+        static readonly Color ContainerB = MeshBuilder.Hex("#2f6f73");
+        static readonly Color ContainerC = MeshBuilder.Hex("#7a6a2a");
+        static readonly Color[] Awnings = { MeshBuilder.Hex("#a3141f"), MeshBuilder.Hex("#b8942a"), MeshBuilder.Hex("#2f6f73"), MeshBuilder.Hex("#6b4a62") };
+        static readonly Color Olive = MeshBuilder.Hex("#4a5238");
+        static readonly Color OliveDark = MeshBuilder.Hex("#2b2f22");
+        static readonly Color UsmBlue = MeshBuilder.Hex("#5ab4ff");
+        static readonly Color UsmFlag = MeshBuilder.Hex("#2f4f8f");
+        static readonly Color Sandbag = MeshBuilder.Hex("#6e6450");
+        static readonly Color GuildOrange = MeshBuilder.Hex("#d0611f");
+        static readonly Color CorporateGlass = MeshBuilder.Hex("#1e2228");
+        static readonly Color OfficeLight = MeshBuilder.Hex("#e8f0ff");
+        static readonly Color Gold = MeshBuilder.Hex("#b8902a");
 
         public static readonly Color Sodium = MeshBuilder.Hex("#ff9a3c");
         static readonly Color WorkLight = MeshBuilder.Hex("#cfe0ff");
@@ -383,9 +399,28 @@ namespace Waystation.View
                         FxLight.Create(t, new Vector3(0f, 1.9f, 0f), Glass, 1.4f, 3.5f);
                         FxLight.Create(t, new Vector3(0.6f, 0.45f, -0.6f), Charge, 0.8f, 1.6f, FxLightMode.Pulse);
                     }
-                    if (b.Type == BuildingType.PilotLounge) FxLight.Create(t, new Vector3(0.5f, 1.0f, 0.4f), Neon, 0.9f, 2.4f, FxLightMode.Flicker);
                     if (b.Type == BuildingType.FuelTank) FxLight.Create(t, new Vector3(0f, 1.9f, 0f), Alarm, 0.8f, 1.8f, FxLightMode.Pulse);
+                    var sign = SignLight(b.Type);
+                    if (sign.HasValue) FxLight.Create(t, sign.Value.position, sign.Value.color, 1.0f, 2.6f, sign.Value.mode);
                     break;
+            }
+        }
+
+        /// <summary>The glow of a service building's sign: neon for leisure, green for commerce, cold blue-white for business.</summary>
+        static (Vector3 position, Color color, FxLightMode mode)? SignLight(BuildingType type)
+        {
+            switch (type)
+            {
+                case BuildingType.PilotLounge: return (new Vector3(0f, 0.6f, -0.9f), Window, FxLightMode.Steady);
+                case BuildingType.Cantina: return (new Vector3(0.2f, 0.95f, -0.65f), Neon, FxLightMode.Flicker);
+                case BuildingType.ObservationDeck: return (new Vector3(0f, 0.7f, 0f), Glass, FxLightMode.Steady);
+                case BuildingType.TradingOutpost: return (new Vector3(0.2f, 0.8f, -0.9f), CommerceSign, FxLightMode.Steady);
+                case BuildingType.Bazaar: return (new Vector3(0f, 0.7f, 0f), Window, FxLightMode.Pulse);
+                case BuildingType.PartsDepot: return (new Vector3(0.05f, 0.72f, -0.7f), CommerceSign, FxLightMode.Steady);
+                case BuildingType.MilitaryBarracks: return (new Vector3(0.1f, 0.6f, -0.9f), UsmBlue, FxLightMode.Steady);
+                case BuildingType.ExplorersGuild: return (new Vector3(0f, 1.3f, 0f), GuildOrange, FxLightMode.Pulse);
+                case BuildingType.CorporateOffice: return (new Vector3(0f, 1.45f, -1.3f), OfficeLight, FxLightMode.Steady);
+                default: return null;
             }
         }
 
@@ -657,19 +692,6 @@ namespace Waystation.View
                     b.AddBox(new Vector3(-0.85f, 0.55f, 0.6f), new Vector3(0.04f, 0.9f, 1.1f), Radiator);
                     break;
 
-                case BuildingType.PilotLounge:
-                    b.AddBox(new Vector3(0f, 0.43f, 0f), new Vector3(1.6f, 0.8f, 1.4f), HabWhite);
-                    b.AddBox(new Vector3(0f, 0.87f, 0f), new Vector3(1.5f, 0.08f, 1.3f), Post);
-                    b.AddBox(new Vector3(0f, 0.52f, 0.705f), new Vector3(1.3f, 0.14f, 0.02f), Lamp(Window), 0f, glow * 0.8f);
-                    b.AddBox(new Vector3(0f, 0.52f, -0.705f), new Vector3(0.9f, 0.14f, 0.02f), Lamp(Window), 0f, glow * 0.8f);
-                    b.AddBox(new Vector3(0.805f, 0.52f, 0f), new Vector3(0.02f, 0.14f, 1.1f), Lamp(Window), 0f, glow * 0.8f);
-                    b.AddBox(new Vector3(-0.805f, 0.52f, 0f), new Vector3(0.02f, 0.14f, 1.1f), Lamp(Window), 0f, glow * 0.8f);
-                    b.AddBox(new Vector3(0.5f, 0.98f, 0.4f), new Vector3(0.42f, 0.14f, 0.04f), Lamp(Neon), 0f, glow);
-                    b.AddBox(new Vector3(0.6f, 0.3f, -0.72f), new Vector3(0.35f, 0.5f, 0.06f), Stripe);
-                    b.AddBox(new Vector3(-0.45f, 0.98f, -0.3f), new Vector3(0.4f, 0.16f, 0.3f), Rust);
-                    b.AddBox(new Vector3(-0.6f, 1.2f, 0.4f), new Vector3(0.03f, 0.5f, 0.03f), Post);
-                    break;
-
                 case BuildingType.CommsArray:
                     foreach (var (sx, sz) in new[] { (1, 1), (1, -1), (-1, 1), (-1, -1) })
                         b.AddBox(new Vector3(sx * 0.15f, 0.6f, sz * 0.15f), new Vector3(0.04f, 1.2f, 0.04f), Post);
@@ -694,6 +716,117 @@ namespace Waystation.View
                     b.AddPrism(new Vector3(0f, 2.2f, 0f), 0.5f, 0.06f, 8, Hull, 22.5f);
                     b.AddBox(new Vector3(0f, 2.33f, 0f), new Vector3(0.06f, 0.22f, 0.06f), Post);
                     b.AddBox(new Vector3(0.6f, 0.45f, -0.6f), new Vector3(0.1f, 0.1f, 0.1f), Lamp(Charge), 45f, glow);
+                    break;
+
+                // ---- Leisure
+                case BuildingType.Cantina:
+                    b.AddBox(new Vector3(0.05f, 0.38f, 0.05f), new Vector3(1.55f, 0.7f, 1.45f), CantinaWall);
+                    b.AddBox(new Vector3(0.05f, 0.76f, 0.05f), new Vector3(1.65f, 0.06f, 1.55f), Post);
+                    b.AddBox(new Vector3(0.05f, 0.42f, -0.68f), new Vector3(1.2f, 0.16f, 0.02f), Lamp(Window), 0f, glow * 0.8f);
+                    b.AddBox(new Vector3(0.84f, 0.42f, 0.05f), new Vector3(0.02f, 0.16f, 1.1f), Lamp(Window), 0f, glow * 0.8f);
+                    b.AddBox(new Vector3(-0.35f, 0.25f, -0.69f), new Vector3(0.3f, 0.45f, 0.03f), GrateSlat);
+                    b.AddBox(new Vector3(0.2f, 0.95f, -0.45f), new Vector3(0.7f, 0.2f, 0.05f), Lamp(Neon), 0f, glow);
+                    b.AddBox(new Vector3(0.2f, 0.86f, -0.45f), new Vector3(0.04f, 0.14f, 0.04f), Post);
+                    b.AddPrism(new Vector3(0.55f, 0.79f, 0.45f), 0.1f, 0.35f, 6, Rust);
+                    b.AddBox(new Vector3(-0.4f, 0.86f, 0.4f), new Vector3(0.35f, 0.16f, 0.3f), Hull);
+                    break;
+
+                case BuildingType.ObservationDeck:
+                    b.AddBox(new Vector3(0f, 0.18f, 0f), new Vector3(w - 0.3f, 0.3f, h - 0.3f), Hull);
+                    b.AddBox(new Vector3(0f, 0.55f, 0.05f), new Vector3(w - 0.5f, 0.42f, h - 0.6f), Lamp(Glass), 0f, glow * 0.25f);
+                    for (int i = 0; i < 6; i++)
+                        b.AddBox(new Vector3(-(w - 0.5f) / 2f + i * (w - 0.5f) / 5f, 0.55f, 0.05f), new Vector3(0.05f, 0.45f, h - 0.55f), Post);
+                    b.AddBox(new Vector3(0f, 0.78f, 0.05f), new Vector3(w - 0.45f, 0.05f, h - 0.55f), Post);
+                    b.AddBox(new Vector3(0f, 0.36f, -(h - 0.3f) / 2f), new Vector3(0.9f, 0.08f, 0.04f), Lamp(Window), 0f, glow);
+                    break;
+
+                case BuildingType.PilotLounge:
+                    b.AddBox(new Vector3(0f, 0.43f, 0f), new Vector3(1.6f, 0.8f, 1.4f), HabWhite);
+                    b.AddBox(new Vector3(0f, 0.87f, 0f), new Vector3(1.5f, 0.08f, 1.3f), Post);
+                    b.AddBox(new Vector3(0f, 0.52f, 0.705f), new Vector3(1.3f, 0.14f, 0.02f), Lamp(Window), 0f, glow * 0.8f);
+                    b.AddBox(new Vector3(0f, 0.52f, -0.705f), new Vector3(0.9f, 0.14f, 0.02f), Lamp(Window), 0f, glow * 0.8f);
+                    b.AddBox(new Vector3(0.805f, 0.52f, 0f), new Vector3(0.02f, 0.14f, 1.1f), Lamp(Window), 0f, glow * 0.8f);
+                    b.AddBox(new Vector3(-0.805f, 0.52f, 0f), new Vector3(0.02f, 0.14f, 1.1f), Lamp(Window), 0f, glow * 0.8f);
+                    b.AddBox(new Vector3(0.6f, 0.3f, -0.72f), new Vector3(0.35f, 0.5f, 0.06f), Stripe);
+                    b.AddBox(new Vector3(-0.45f, 0.98f, -0.3f), new Vector3(0.4f, 0.16f, 0.3f), Rust);
+                    b.AddBox(new Vector3(-0.6f, 1.2f, 0.4f), new Vector3(0.03f, 0.5f, 0.03f), Post);
+                    break;
+
+                // ---- Commerce
+                case BuildingType.TradingOutpost:
+                    b.AddBox(new Vector3(0.2f, 0.48f, 0.3f), new Vector3(2.2f, 0.9f, 1.9f), Hull);
+                    b.AddBox(new Vector3(0.2f, 0.96f, 0.3f), new Vector3(2.3f, 0.06f, 2.0f), Post);
+                    b.AddBox(new Vector3(0.2f, 0.32f, -0.66f), new Vector3(1.0f, 0.55f, 0.03f), GrateSlat);
+                    for (int i = 0; i < 4; i++)
+                        b.AddBox(new Vector3(-0.25f + i * 0.3f, 0.42f, -0.68f), new Vector3(0.02f, 0.55f, 0.02f), Stripe);
+                    b.AddBox(new Vector3(0.2f, 0.8f, -0.66f), new Vector3(1.4f, 0.14f, 0.03f), Lamp(CommerceSign), 0f, glow);
+                    // Containers stacked on the open side, and a loading crane.
+                    b.AddBox(new Vector3(-1.05f, 0.2f, -0.9f), new Vector3(0.55f, 0.32f, 0.9f), ContainerA);
+                    b.AddBox(new Vector3(-1.05f, 0.52f, -0.9f), new Vector3(0.55f, 0.32f, 0.9f), ContainerB);
+                    b.AddBox(new Vector3(1.2f, 0.2f, -1.0f), new Vector3(0.6f, 0.32f, 0.5f), ContainerC);
+                    b.AddBox(new Vector3(1.15f, 0.7f, 1.1f), new Vector3(0.08f, 1.4f, 0.08f), Stripe);
+                    b.AddBox(new Vector3(0.75f, 1.38f, 1.1f), new Vector3(0.9f, 0.08f, 0.08f), Stripe);
+                    b.AddBox(new Vector3(0.35f, 1.15f, 1.1f), new Vector3(0.02f, 0.45f, 0.02f), Post);
+                    break;
+
+                case BuildingType.Bazaar:
+                    foreach (var (x, z, awning) in new[] { (-0.45f, -0.4f, 0), (0.45f, -0.4f, 1), (-0.45f, 0.45f, 2), (0.45f, 0.45f, 3) })
+                    {
+                        b.AddBox(new Vector3(x, 0.2f, z), new Vector3(0.6f, 0.34f, 0.55f), Hull);
+                        b.AddBox(new Vector3(x, 0.42f, z - 0.12f), new Vector3(0.68f, 0.04f, 0.42f), Awnings[awning]);
+                        b.AddBox(new Vector3(x, 0.22f, z - 0.29f), new Vector3(0.5f, 0.06f, 0.03f), Lamp(Window), 0f, glow * 0.7f);
+                    }
+                    for (int i = 0; i < 7; i++)
+                        b.AddBox(new Vector3(-0.75f + i * 0.25f, 0.62f, 0.02f), new Vector3(0.04f, 0.04f, 0.04f), Lamp(i % 2 == 0 ? Window : CommerceSign), 45f, glow);
+                    b.AddBox(new Vector3(0f, 0.62f, 0.02f), new Vector3(1.6f, 0.01f, 0.01f), Post);
+                    break;
+
+                case BuildingType.PartsDepot:
+                    b.AddBox(new Vector3(0.05f, 0.42f, 0.15f), new Vector3(1.5f, 0.78f, 1.2f), Casing);
+                    b.AddBox(new Vector3(0.05f, 0.83f, 0.15f), new Vector3(1.6f, 0.05f, 1.3f), Post);
+                    for (int i = 0; i < 6; i++)
+                        b.AddBox(new Vector3(0.05f, 0.1f + i * 0.1f, -0.46f), new Vector3(0.9f, 0.04f, 0.02f), i % 2 == 0 ? Stripe : GrateSlat);
+                    b.AddBox(new Vector3(0.05f, 0.72f, -0.47f), new Vector3(0.9f, 0.08f, 0.02f), Lamp(CommerceSign), 0f, glow);
+                    b.AddPrism(new Vector3(0.6f, 0.03f, -0.65f), 0.12f, 0.08f, 8, Rust);
+                    b.AddPrism(new Vector3(0.62f, 0.11f, -0.65f), 0.1f, 0.08f, 8, Hull);
+                    b.AddBox(new Vector3(-0.55f, 0.15f, -0.7f), new Vector3(0.3f, 0.22f, 0.22f), Rust, 15f);
+                    break;
+
+                // ---- Business
+                case BuildingType.MilitaryBarracks:
+                    b.AddBox(new Vector3(0.1f, 0.42f, 0.05f), new Vector3(2.4f, 0.78f, 1.45f), Olive);
+                    b.AddBox(new Vector3(0.1f, 0.84f, 0.05f), new Vector3(2.5f, 0.07f, 1.55f), OliveDark);
+                    for (int i = 0; i < 5; i++)
+                        b.AddBox(new Vector3(-0.85f + i * 0.45f, 0.55f, -0.68f), new Vector3(0.2f, 0.06f, 0.02f), Lamp(UsmBlue), 0f, glow * 0.8f);
+                    b.AddBox(new Vector3(0.1f, 0.3f, -0.69f), new Vector3(0.4f, 0.5f, 0.03f), OliveDark);
+                    b.AddBox(new Vector3(0.1f, 0.62f, -0.70f), new Vector3(0.5f, 0.06f, 0.02f), Lamp(UsmBlue), 0f, glow);
+                    // Sandbagged sentry post, flag mast, antenna.
+                    b.AddBox(new Vector3(1.15f, 0.1f, -0.6f), new Vector3(0.3f, 0.18f, 0.3f), Sandbag);
+                    b.AddBox(new Vector3(1.15f, 0.7f, 0.55f), new Vector3(0.04f, 1.3f, 0.04f), Post);
+                    b.AddBox(new Vector3(1.15f, 1.2f, 0.37f), new Vector3(0.02f, 0.22f, 0.34f), UsmFlag);
+                    b.AddBox(new Vector3(-0.9f, 1.05f, 0.4f), new Vector3(0.03f, 0.45f, 0.03f), Post);
+                    break;
+
+                case BuildingType.ExplorersGuild:
+                    b.AddPrism(new Vector3(0f, 0.05f, 0f), 0.72f, 0.75f, 8, HabWhite, 22.5f);
+                    b.AddPrism(new Vector3(0f, 0.45f, 0f), 0.74f, 0.1f, 8, GuildOrange, 22.5f);
+                    b.AddSpike(new Vector3(0f, 0.8f, 0f), new Vector3(0f, 1.25f, 0f), 0.7f, 8, Post, 22.5f);
+                    b.AddPrism(new Vector3(0f, 0.25f, 0f), 0.735f, 0.12f, 8, Lamp(Window), 22.5f, glow * 0.6f);
+                    // A telescope pointing out into the dark.
+                    b.AddSpike(new Vector3(0.25f, 1.05f, 0.2f), new Vector3(0.55f, 1.45f, 0.5f), 0.09f, 6, Hull);
+                    b.AddBox(new Vector3(0f, 1.27f, 0f), new Vector3(0.08f, 0.08f, 0.08f), Lamp(GuildOrange), 45f, glow);
+                    break;
+
+                case BuildingType.CorporateOffice:
+                    b.AddBox(new Vector3(0f, 0.8f, 0.1f), new Vector3(1.4f, 1.5f, 2.3f), CorporateGlass);
+                    for (int row = 0; row < 5; row++)
+                    {
+                        b.AddBox(new Vector3(0f, 0.25f + row * 0.28f, -1.06f), new Vector3(1.2f, 0.08f, 0.02f), Lamp(OfficeLight), 0f, glow * 0.55f);
+                        b.AddBox(new Vector3(0.71f, 0.25f + row * 0.28f, 0.1f), new Vector3(0.02f, 0.08f, 2.1f), Lamp(OfficeLight), 0f, glow * 0.55f);
+                    }
+                    b.AddBox(new Vector3(0f, 1.56f, 0.1f), new Vector3(1.5f, 0.04f, 2.4f), Gold);
+                    b.AddBox(new Vector3(0f, 1.45f, -1.07f), new Vector3(0.6f, 0.1f, 0.02f), Lamp(Gold), 0f, glow);
+                    b.AddPrism(new Vector3(0f, 1.58f, 0.4f), 0.45f, 0.03f, 10, Post);
                     break;
             }
             return b.ToMesh(type + (powered ? "" : "_Dark"));

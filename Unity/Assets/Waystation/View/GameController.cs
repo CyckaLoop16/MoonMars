@@ -34,6 +34,7 @@ namespace Waystation.View
         WorldRenderer _world;
         BuildingRenderer _buildings;
         ShipRenderer _ships;
+        PeopleRenderer _people;
         SkyCycle _sky;
         UiRoot _ui;
         LineRenderer _ghostOutline;
@@ -91,6 +92,7 @@ namespace Waystation.View
 
             _buildings = new GameObject("Buildings").AddComponent<BuildingRenderer>();
             _ships = new GameObject("Ships").AddComponent<ShipRenderer>();
+            _people = new GameObject("People").AddComponent<PeopleRenderer>();
             CreateGhost();
             _ui = gameObject.AddComponent<UiRoot>();
             _ui.Init(this);
@@ -125,6 +127,7 @@ namespace Waystation.View
             _world.Build(Station.Width, Station.Height, seed, _camera);
             _buildings.Bind(Station);
             _ships.Bind(Station);
+            _people.Bind(Station);
             _sky.Bind(Station);
             float half = Station.Width / 2f + 6f;
             _cameraRig.Init(_camera, Vector3.zero, Rect.MinMaxRect(-half, -half, half, half));
