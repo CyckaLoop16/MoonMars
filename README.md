@@ -1,15 +1,15 @@
 # Regolith
 
-*Working title.* A turn-based colonization 4X on Mars (and later the Moon).
-**Civilization VI**'s hex map, districts and tech trees, plus **Stellaris**-style factions,
-events and politics, plus the survival logistics of a **city builder**.
+*Working title.* A real-time-with-pause **grand strategy 4X with a city-builder core**,
+somewhere between **Civilization VI**, **Hearts of Iron IV** and **Stellaris**.
 
-Start with a handful of colonists and a supply line to Earth that opens once every 26 months.
-End as a self-sufficient Martian civilization, or as Earth's most profitable outpost.
+Rival factions race from the **Moon → Mars → Beyond** over a ~20-hour campaign. Build colonies
+hex by hex, outmaneuver rivals from cold war to open conflict, and lead through **Pioneers**:
+named characters who age, scheme and become legends.
 
 - 📐 [Design brainstorm](docs/DESIGN.md): pillars, mechanics, victory conditions
 - 🛠️ [Tech stack & architecture](docs/TECH.md): why Unity, sim/view split
-- 🗺️ [Roadmap](docs/ROADMAP.md): milestones M0 → M7
+- 🗺️ [Roadmap](docs/ROADMAP.md): milestones M0 → M8 (Moon slice first)
 
 ## Status: M0 (foundations)
 

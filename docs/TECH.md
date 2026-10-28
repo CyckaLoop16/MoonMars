@@ -21,11 +21,17 @@
 - `Regolith.Sim` has **no `UnityEngine` references**, enforced by its asmdef
   (`noEngineReferences: true`). That gives us:
   - **Unit tests without Unity** (`dotnet test` in `Tests/`, also usable in CI with no Unity license)
-  - **Deterministic turns**: seeded RNG and no frame-time dependence. This enables replays,
+  - **Deterministic ticks**: seeded RNG and no frame-time dependence. This enables replays,
     reproducible bug reports, and lockstep multiplayer later.
-  - **Headless AI simulation**: run thousands of AI-vs-AI turns to balance the game
-- Player actions will be **commands** (`FoundColony`, `QueueBuild`, `SetResearch`…) applied by
-  the sim. The UI and the AI issue the same commands, which also gives us save files and undo.
+  - **Headless AI simulation**: run whole AI-vs-AI campaigns at max speed to balance the game
+- **Time model: fixed-tick, real-time with pause.** 1 tick = 1 in-game day; speed controls only
+  change how many ticks run per real second. The view interpolates between ticks. Nothing in the
+  sim reads frame time, which keeps it deterministic.
+- **Multiple worlds:** the top-level state is a `SolarSystem` holding bodies (Moon, Mars, …), each
+  with its own `WorldMap`, plus abstract outposts for Act III.
+- Player actions will be **commands** (`FoundColony`, `PlaceModule`, `AssignPioneer`, `SetResearch`…),
+  queued and applied by the sim on tick boundaries. The UI and the AI issue the same commands,
+  which also gives us save files and undo.
 - The view only reads sim state and renders it. It never mutates the sim directly.
 
 ## Content pipeline

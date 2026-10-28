@@ -1,46 +1,55 @@
 # Roadmap
 
-Each milestone should end with something playable.
+The campaign's acts double as the development plan: **ship the Moon first**, then Mars,
+then Beyond. Each milestone ends with something playable.
 
-## M0: Foundations ✅ (this commit)
+## M0: Foundations ✅
 - Repo, design docs, tech decisions
 - Pure-C# sim: hex math, seeded noise, procedural Mars map generator, tile yields
-- Unity view: 3D terraced hex map, strategy camera, hover tile inspector, regenerate map
+- Unity view: 3D terraced hex map, strategy camera, hover tile inspector
 - Sim unit tests (`dotnet test`)
 
-## M1: First colony & the turn loop
-- Turn manager, `EndTurn` command
-- Landing: choose a site, found a colony, claim surrounding hexes
-- Pops, Life Support balance, growth/starvation
-- Production queue with a few modules (Habitat, Solar Array, ISRU Plant, Greenhouse)
-- Minimal UI Toolkit HUD: resource bar, colony panel, end-turn button
+## M1: Clock & colony core (on the Moon)
+- Tick engine: 1 tick = 1 day, pause plus 5 speeds, monthly economy pass
+- Command queue (player and AI issue the same commands, applied on tick boundaries)
+- Lunar map generator: south pole, shadowed ice craters, peaks of light
+- Found a colony; place modules on hexes; power → ISRU → greenhouse chain
+- Pops & jobs, life support, growth/decline
+- HUD: time controls, resource bar, colony panel (UI Toolkit)
 
-## M2: Modules, adjacency & logistics
-- District-style module placement on hexes with adjacency bonuses
-- Power grid and resource chains with cascading shortfalls
-- Rovers and construction crews (units, movement costs, pathfinding)
+## M2: Pioneers
+- Characters: roles, traits, skills, age, death
+- Council seats and Administrators with modifiers
+- Event system v1 (anomalies, character events)
 
-## M3: Research & society
-- Engineering tree and Society tree, data-driven
-- Boosts triggered by gameplay ("Eurekas")
-- Save/load, built on the command log
+## M3: Rivals I: the Treaty era
+- 2 AI factions (utility AI using the same commands as the player)
+- Territory claims, Influence, loyalty pressure, espionage and sabotage
+- Research tree v1 with boosts; directive trees v1 for 2–3 factions
 
-## M4: Earth
-- Sponsors and charters (origins/ethics)
-- Launch windows and cargo ordering
-- Loyalty vs. Martian Identity pressure
-- Event system with the first anomaly chains
+## M4: Act I vertical slice: "Luna" 🎯
+- Earth relations: blocs, funding, cargo
+- Act goal: self-sufficiency + lunar fuel depot
+- Save/load
+- **Playtest milestone: is the Moon fun start to finish?**
 
-## M5: Rivals
-- AI colonies (utility-based AI using the same commands as the player)
-- Diplomacy and Influence, Interplanetary Council
-- Colonist factions and stability
+## M5: System view & Mars
+- System map (Earth, Moon, Mars), transfer routes, launch windows
+- Mars map (the M0 generator), dust storms
+- Moon colonies become fuel and shipyard hubs
+- All 5 factions
 
-## M6: Win conditions & presentation
-- Victory conditions, end-game screen
-- URP, real terrain shading, module models, dust storm VFX, audio
-- Balance pass using headless AI-vs-AI runs
+## M6: Conflict & independence
+- The Treaty breaking; security units on hex map; supply = life-support range
+- Independence mechanics, System Council
+- Generational Pioneers (Mars-born traits)
 
-## M7: The Moon & beyond
-- Lunar map preset and planet parameters
-- Modding: load content from JSON
+## M7: Act III: Beyond
+- Outposts on the system map (belt, Jovian/Saturnian moons)
+- Endgame crisis
+- All victory conditions
+
+## M8: Presentation & balance
+- URP, terrain shading, module models, VFX (dust storms, launches), audio
+- Balance via headless AI-vs-AI runs
+- UI polish, tutorial, onboarding
