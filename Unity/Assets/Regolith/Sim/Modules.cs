@@ -8,11 +8,13 @@ namespace Regolith.Sim
         Water,
         Food,
         Materials,
+        RareEarths,
+        PlatinumMetals,
     }
 
     public sealed class Stockpile
     {
-        public const int Count = 4;
+        public const int Count = 6;
         readonly double[] _amounts = new double[Count];
 
         public double this[Resource r]
@@ -34,6 +36,7 @@ namespace Regolith.Sim
         Foundry,
         Lab,
         BatteryBank,
+        MineralExtractor,
     }
 
     public readonly struct Flow
@@ -67,6 +70,8 @@ namespace Regolith.Sim
         public double EnergyStorage;
         /// <summary>Tech needed before this can be built, if any.</summary>
         public TechId? RequiredTech;
+        /// <summary>Mines the strategic deposit under it at this rate per day, instead of fixed outputs.</summary>
+        public double ExtractionRate;
         public Flow[] Inputs = new Flow[0];
         public Flow[] Outputs = new Flow[0];
     }
@@ -147,6 +152,13 @@ namespace Regolith.Sim
                 Description = "Charges from surplus daylight power and carries the colony through the night.",
                 EnergyStorage = 60,
             });
+            Add(new ModuleDef
+            {
+                Type = ModuleType.MineralExtractor, Name = "Mineral Extractor", MaterialCost = 40, BuildDays = 12, Jobs = 2, Priority = 10,
+                RequiredTech = TechId.MineralBeneficiation,
+                Description = "Mines and concentrates a strategic deposit (rare earths or platinum) for export to Earth.",
+                EnergyDraw = 3, ExtractionRate = 0.5,
+            });
         }
 
         static void Add(ModuleDef def) => Defs[def.Type] = def;
@@ -160,6 +172,9 @@ namespace Regolith.Sim
         {
             if (type == ModuleType.IceMine)
                 return tile.Ice >= 0.4f ? null : "Not enough ice here";
+
+            if (type == ModuleType.MineralExtractor)
+                return DepositCatalog.Get(tile.Deposit)?.Kind == DepositKind.Strategic ? null : "Needs a strategic deposit (rare earths or platinum)";
 
             if (tile.Terrain == TerrainType.ShadowedCrater)
                 return "Too cold and dark for anything but an ice mine";

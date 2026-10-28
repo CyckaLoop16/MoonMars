@@ -11,9 +11,9 @@ namespace Regolith.Sim.Tests
         public static readonly HexCoord IceCrater = HexCoord.FromOffset(9, 8);
         public static readonly HexCoord Peak = HexCoord.FromOffset(7, 8);
 
-        public static Simulation NewGame()
+        public static Simulation NewGame(int seed = 0)
         {
-            var map = new WorldMap(16, 16, 0, BodyId.Moon);
+            var map = new WorldMap(16, 16, seed, BodyId.Moon);
             for (int row = 0; row < 16; row++)
             for (int col = 0; col < 16; col++)
             {
@@ -110,7 +110,10 @@ namespace Regolith.Sim.Tests
             Assert.That(solar.IsBuilt, Is.False);
             sim.Advance(1);
             Assert.That(solar.IsBuilt, Is.True);
-            Assert.That(habitat.BuildDaysRemaining, Is.EqualTo(ModuleCatalog.Get(ModuleType.Habitat).BuildDays));
+            // The founding commander administers the base, so it builds a little faster than the catalogue time.
+            int habitatDays = Modifiers.BuildDays(sim.State, colony, ModuleCatalog.Get(ModuleType.Habitat));
+            Assert.That(habitatDays, Is.LessThan(ModuleCatalog.Get(ModuleType.Habitat).BuildDays));
+            Assert.That(habitat.BuildDaysRemaining, Is.EqualTo(habitatDays));
 
             sim.Advance(10);
             Assert.That(habitat.IsBuilt, Is.True);

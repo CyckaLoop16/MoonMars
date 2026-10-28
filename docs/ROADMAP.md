@@ -26,21 +26,25 @@ then Beyond. Each milestone ends with something playable.
 
 **Act I (Luna) vertical slice, in build order:**
 
-## M3: Earth
-- Credits: monthly funding from your sponsor
-- Cargo orders: crew, materials, prefab modules (the Moon is 3 days away, so cargo arrives next turn)
-- Earth objectives ("operate an ice mine by 2042") that raise funding: Act I's goals
-- Mineral Extractor: mine strategic deposits and export them for Credits
+## M3: Earth ✅ (prototype)
+- Credits: monthly sponsor funding (base 100, raised by objectives and the Earth Liaison)
+- Cargo orders: crew rotations, materials, life-support supplies, specialist Pioneers; 3-day transit
+- 8 Earth objectives (Boots on the Regolith → Lunar Exports), each paying out and raising funding
+- Mineral Extractor (research Mineral Beneficiation) mines rare earths / platinum for export
 
 ## M4: Exploration & expansion
 - Rovers as units: movement costs, fog of war
 - Survey sites: LCROSS impact site (Cabeus), the Athena lander (Mons Mouton), anomalies (grounded)
 - Outposts and a second colony; territory growth over time
 
-## M5: Pioneers
-- Named characters: roles, traits, skills, age; rare accidents and near misses
-- Council seats and Administrators with modifiers
-- Event system v1
+## M5: Pioneers ✅ (prototype)
+- Named characters with expertise (Engineer, Scientist, Explorer, Administrator), skill 1–5, age, traits
+- Assignments: specialist at a module (output bonus), colony Administrator (faster construction),
+  council seats (Chief Scientist, Chief Engineer, Earth Liaison)
+- Experience: a year in a role raises skill; crowded colonies produce new Pioneers
+- Rare, assignment-dependent accidents with near misses first (earning the Survivor trait); memorial
+- Visible on the map: each Pioneer walks to their post and moves around it (placeholder figures)
+- [ ] Event system v1 (anomalies, character events), protégés, old age
 
 ## M6: Rivals (Treaty era)
 - 2–3 AI factions using the same commands as the player

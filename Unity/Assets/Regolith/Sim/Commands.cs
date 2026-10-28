@@ -70,6 +70,16 @@ namespace Regolith.Sim
             state.Colonies.Add(colony);
             state.Revision++;
             state.Report($"{Name} has landed. {StartingPops} crew on the surface.");
+
+            // The first landing brings the founding Pioneers: a commander and two specialists.
+            if (!state.Pioneers.Any(p => p.FactionId == FactionId))
+            {
+                var commander = PioneerCatalog.Create(state, FactionId, colony.Id, Expertise.Administrator, 2);
+                commander.Assignment = Assignment.AsAdministrator(colony.Id);
+                PioneerCatalog.Create(state, FactionId, colony.Id, Expertise.Engineer, 2);
+                PioneerCatalog.Create(state, FactionId, colony.Id, Expertise.Scientist, 2);
+                state.Report($"Founding Pioneers: {string.Join(", ", state.Pioneers.Where(p => p.FactionId == FactionId).Select(p => p.Name))}. {commander.Name} takes command.");
+            }
         }
     }
 
@@ -110,7 +120,7 @@ namespace Regolith.Sim
             var colony = state.GetColony(ColonyId);
             var def = ModuleCatalog.Get(Type);
             colony.Stock[Resource.Materials] -= def.MaterialCost;
-            int days = Modifiers.BuildDays(state.GetFaction(colony.FactionId), def);
+            int days = Modifiers.BuildDays(state, colony, def);
             colony.Modules.Add(new Module(Type, At, days));
             state.Revision++;
             state.Report($"{colony.Name}: construction of {def.Name} queued ({days} days).");

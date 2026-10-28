@@ -38,6 +38,7 @@ namespace Regolith.View
             { ModuleType.Foundry, new Placeholder(new Color(0.88f, 0.5f, 0.2f), 0.4f, 0.45f) },
             { ModuleType.Lab, new Placeholder(new Color(0.7f, 0.55f, 0.92f), 0.4f, 0.45f) },
             { ModuleType.BatteryBank, new Placeholder(new Color(0.95f, 0.85f, 0.25f), 0.2f, 0.4f) },
+            { ModuleType.MineralExtractor, new Placeholder(new Color(0.75f, 0.4f, 0.55f), 0.3f, 0.5f) },
         };
 
         static readonly Placeholder Fallback = new Placeholder(Color.magenta, 0.3f, 0.45f);

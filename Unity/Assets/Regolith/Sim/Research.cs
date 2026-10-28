@@ -13,6 +13,7 @@ namespace Regolith.Sim
         ClosedLoopLifeSupport,
         KilopowerReactors,
         AdditiveConstruction,
+        MineralBeneficiation,
     }
 
     public enum TechTier
@@ -99,6 +100,15 @@ namespace Regolith.Sim
                 BoostText = "Operate a Regolith Foundry",
                 BoostCondition = (s, f) => HasBuilt(s, f, ModuleType.Foundry),
             });
+            Add(new TechDef
+            {
+                Id = TechId.MineralBeneficiation, Name = "Mineral Beneficiation", Cost = 250,
+                Prerequisites = new[] { TechId.RegolithSintering },
+                Description = "Magnetic and electrostatic separation concentrates valuable minerals. Unlocks the Mineral Extractor.",
+                BoostText = "Claim a strategic deposit",
+                BoostCondition = (s, f) => s.ColoniesOf(f).Any(c => c.Territory.Any(h =>
+                    DepositCatalog.Get(s.Map.GetTile(h).Deposit)?.Kind == DepositKind.Strategic)),
+            });
         }
 
         static void Add(TechDef def)
@@ -129,6 +139,13 @@ namespace Regolith.Sim
 
         public static int BuildDays(Faction f, ModuleDef def) =>
             f.Has(TechId.AdditiveConstruction) ? (int)Math.Ceiling(def.BuildDays * 0.75) : def.BuildDays;
+
+        /// <summary>Build time including research and the colony's Administrator and Chief Engineer.</summary>
+        public static int BuildDays(GameState s, Colony c, ModuleDef def)
+        {
+            var f = s.GetFaction(c.FactionId);
+            return Math.Max(1, (int)Math.Ceiling(BuildDays(f, def) * PioneerSystem.BuildTimeMultiplier(s, f, c)));
+        }
     }
 
     public static class ResearchSystem

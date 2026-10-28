@@ -128,11 +128,17 @@ namespace Regolith.Sim
                 foreach (var input in def.Inputs)
                     colony.Stock[input.Resource] -= input.PerDay * efficiency;
 
-                double multiplier = OutputMultiplier(m, state.Map.GetTile(m.Coord)) * Modifiers.OutputMultiplier(faction, m.Type);
+                var tile = state.Map.GetTile(m.Coord);
+                double pioneer = PioneerSystem.ModuleBonus(state, colony, m);
+                double multiplier = OutputMultiplier(m, tile) * Modifiers.OutputMultiplier(faction, m.Type) * pioneer;
                 foreach (var output in def.Outputs)
                     colony.Stock[output.Resource] += output.PerDay * efficiency * multiplier;
 
-                report.Science += def.Science * efficiency;
+                var mined = DepositCatalog.Get(tile.Deposit)?.MinedResource;
+                if (def.ExtractionRate > 0 && mined.HasValue)
+                    colony.Stock[mined.Value] += def.ExtractionRate * efficiency * pioneer;
+
+                report.Science += def.Science * efficiency * pioneer;
                 m.Efficiency = efficiency;
             }
 
@@ -179,6 +185,7 @@ namespace Regolith.Sim
             report.EnergyDemand = demand;
             colony.LastReport = report;
 
+            report.Science *= PioneerSystem.ScienceMultiplier(state, faction);
             faction.SciencePerDay += report.Science;
             ResearchSystem.AddScience(state, faction, report.Science);
         }

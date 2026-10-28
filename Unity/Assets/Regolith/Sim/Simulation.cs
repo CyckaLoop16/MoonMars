@@ -34,7 +34,15 @@ namespace Regolith.Sim
         {
             State.Day++;
             Economy.RunDay(State);
-            if (State.Date.Day == 1) Economy.RunMonth(State);
+            EarthSystem.RunDay(State);
+            PioneerSystem.RunDay(State);
+
+            if (State.Date.Day == 1)
+            {
+                Economy.RunMonth(State);
+                EarthSystem.RunMonth(State);
+                PioneerSystem.RunMonth(State);
+            }
         }
 
         public void Advance(int days)
@@ -80,7 +88,10 @@ namespace Regolith.Sim
         {
             var (width, height) = Dimensions(size);
             var state = new GameState(LunarMapGenerator.Generate(width, height, seed));
-            state.Factions.Add(new Faction { Id = PlayerFactionId, Name = "Atlantic Accord", Color = "#4f8fe6" });
+            state.Factions.Add(new Faction
+            {
+                Id = PlayerFactionId, Name = "Atlantic Accord", Color = "#4f8fe6", Credits = EarthCatalog.StartingCredits,
+            });
             state.Report("Landing approved. Choose a site for the first base: near ice, near sunlight.");
             return new Simulation(state);
         }

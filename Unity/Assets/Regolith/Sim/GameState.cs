@@ -20,6 +20,10 @@ namespace Regolith.Sim
         /// <summary>Science per day on the last simulated day, for the UI.</summary>
         public double SciencePerDay;
 
+        public double Credits;
+        public double UnitsExported;
+        public readonly HashSet<ObjectiveId> CompletedObjectives = new HashSet<ObjectiveId>();
+
         public bool Has(TechId tech) => Researched.Contains(tech);
     }
 
@@ -103,6 +107,11 @@ namespace Regolith.Sim
         public readonly List<Faction> Factions = new List<Faction>();
         public readonly List<Colony> Colonies = new List<Colony>();
         public readonly List<GameEvent> Log = new List<GameEvent>();
+        public readonly List<Pioneer> Pioneers = new List<Pioneer>();
+        public readonly List<Shipment> Shipments = new List<Shipment>();
+        /// <summary>The sim's only source of randomness, seeded from the map, so games replay exactly.</summary>
+        public readonly Random Rng;
+        public int NextPioneerId = 1;
         /// <summary>Bumped whenever something the map shows changes (territory, modules), so views know to rebuild.</summary>
         public int Revision;
         public int NextColonyId = 1;
@@ -110,6 +119,7 @@ namespace Regolith.Sim
         public GameState(WorldMap map)
         {
             Map = map;
+            Rng = new Random(unchecked(map.Seed * 7919 + 17));
         }
 
         public DateTime Date => StartDate.AddDays(Day);

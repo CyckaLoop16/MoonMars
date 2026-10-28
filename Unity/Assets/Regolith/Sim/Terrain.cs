@@ -60,6 +60,8 @@ namespace Regolith.Sim
         public Yields TileBonus;
         public ModuleType[] BoostedModules = new ModuleType[0];
         public double Multiplier = 1.0;
+        /// <summary>Strategic deposits: the stockpile a Mineral Extractor fills.</summary>
+        public Resource? MinedResource;
     }
 
     public static class DepositCatalog
@@ -86,13 +88,13 @@ namespace Regolith.Sim
             {
                 Type = Deposit.RareEarths, Kind = DepositKind.Strategic, Name = "Rare-Earth Elements", Color = "#e0609e",
                 Description = "KREEP-rich crust from the South Pole–Aitken basin. Strategic: needed for electronics and prized by Earth.",
-                TileBonus = new Yields(0, 0, 0, 1),
+                TileBonus = new Yields(0, 0, 0, 1), MinedResource = Resource.RareEarths,
             });
             Add(new DepositDef
             {
                 Type = Deposit.PlatinumMetals, Kind = DepositKind.Strategic, Name = "Platinum-Group Metals", Color = "#e8e8f2",
                 Description = "Remnants of a metallic asteroid impactor. Strategic: catalysts for fuel cells and electrolysis.",
-                TileBonus = new Yields(1, 0, 0, 0),
+                TileBonus = new Yields(1, 0, 0, 0), MinedResource = Resource.PlatinumMetals,
             });
         }
 

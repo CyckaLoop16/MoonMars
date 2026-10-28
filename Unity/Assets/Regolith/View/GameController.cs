@@ -20,6 +20,7 @@ namespace Regolith.View
         StrategyCamera _cameraRig;
         HexMapRenderer _mapRenderer;
         ModuleRenderer _moduleRenderer;
+        PioneerRenderer _pioneerRenderer;
         Hud _hud;
         int _renderedRevision = -1;
 
@@ -61,6 +62,7 @@ namespace Regolith.View
 
             _mapRenderer = new GameObject("HexMap").AddComponent<HexMapRenderer>();
             _moduleRenderer = new GameObject("Modules").AddComponent<ModuleRenderer>();
+            _pioneerRenderer = new GameObject("Pioneers").AddComponent<PioneerRenderer>();
             _hud = gameObject.AddComponent<Hud>();
             _hud.Init(this);
 
@@ -81,6 +83,7 @@ namespace Regolith.View
             LastTurnChange = null;
             LastTurnStartDay = 0;
             _mapRenderer.Build(State.Map);
+            _pioneerRenderer.Bind(State);
             _renderedRevision = -1;
             RefreshVisuals();
 
@@ -155,6 +158,17 @@ namespace Regolith.View
             if (tile == Hovered) return;
             Hovered = tile;
             _mapRenderer.SetHovered(tile);
+        }
+
+        public Camera Camera => _camera;
+        public float CameraDistance => _cameraRig != null ? _cameraRig.Distance : 0f;
+
+        public bool TryGetPioneerPosition(int pioneerId, out Vector3 position) =>
+            _pioneerRenderer.TryGetPosition(pioneerId, out position);
+
+        public void FocusOnPioneer(int pioneerId)
+        {
+            if (_pioneerRenderer.TryGetPosition(pioneerId, out var position)) _cameraRig.FocusOn(position);
         }
 
         /// <summary>Runs a player command; on failure the reason is shown in the HUD.</summary>

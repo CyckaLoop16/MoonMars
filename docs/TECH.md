@@ -49,6 +49,7 @@ replaces placeholders without code changes:
 | Asset | Drop-in location | Placeholder until then |
 |---|---|---|
 | Colony module model | `Unity/Assets/Regolith/Resources/Modules/<ModuleType>.prefab` (e.g. `SolarArray.prefab`; pivot at the base, ~1 unit across) | Coloured hex column |
+| Pioneer figure | `Unity/Assets/Regolith/Resources/Pioneers/<Expertise>.prefab` (e.g. `Engineer.prefab`), or `Pioneer.prefab` for all; pivot at the feet, ~0.25 units tall, facing +Z | Coloured suit + white helmet |
 | Terrain | (slot planned with the URP terrain pass) | Vertex-coloured terraced hexes |
 
 ## Rendering

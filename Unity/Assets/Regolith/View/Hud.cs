@@ -15,7 +15,12 @@ namespace Regolith.View
         {
             Tile,
             Research,
+            Earth,
+            Pioneers,
         }
+
+        /// <summary>Pioneer name labels show when the camera is closer than this.</summary>
+        const float PioneerLabelDistance = 25f;
 
         const float TopBarHeight = 30f;
         const float PanelWidth = 400f;
@@ -27,7 +32,8 @@ namespace Regolith.View
         static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
         GameController _game;
-        GUIStyle _wrap, _rich, _small, _error, _richButton, _landmark, _landmarkShadow;
+        GUIStyle _wrap, _rich, _small, _error, _richButton, _landmark, _landmarkShadow, _pioneerLabel;
+        int _selectedPioneerId;
         Vector2 _panelScroll, _reportScroll;
         Tab _tab;
         ICommand _pending;
@@ -68,6 +74,7 @@ namespace Regolith.View
             EnsureStyles();
 
             DrawLandmarkLabels();
+            DrawPioneerLabels();
             DrawTopBar();
             DrawPanel();
             DrawTurnReport();
@@ -87,6 +94,29 @@ namespace Regolith.View
                 normal = { textColor = new Color(1f, 0.95f, 0.8f) },
             };
             _landmarkShadow = new GUIStyle(_landmark) { normal = { textColor = new Color(0f, 0f, 0f, 0.8f) } };
+            _pioneerLabel = new GUIStyle(_landmark) { fontSize = 11, fontStyle = FontStyle.Normal, richText = true };
+        }
+
+        void DrawPioneerLabels()
+        {
+            var cam = _game.Camera;
+            if (cam == null || Event.current.type != EventType.Repaint) return;
+            bool close = _game.CameraDistance < PioneerLabelDistance;
+
+            foreach (var p in _game.State.Pioneers.Where(p => p.IsAlive && p.FactionId == GameSetup.PlayerFactionId))
+            {
+                bool selected = p.Id == _selectedPioneerId;
+                if (!close && !selected) continue;
+                if (!_game.TryGetPioneerPosition(p.Id, out var pos)) continue;
+
+                var sp = cam.WorldToScreenPoint(pos + Vector3.up * 0.35f);
+                if (sp.z <= 0f) continue;
+
+                var color = selected ? "#ffcc55" : "#" + ColorUtility.ToHtmlStringRGB(PioneerRenderer.ColorOf(p.Expertise));
+                var rect = new Rect(sp.x - 90f, Screen.height - sp.y - 10f, 180f, 20f);
+                GUI.Label(new Rect(rect.x + 1f, rect.y + 1f, rect.width, rect.height), p.Name, _landmarkShadow);
+                GUI.Label(rect, $"<color={color}>{p.Name}</color>", _pioneerLabel);
+            }
         }
 
         // ---------------------------------------------------------------- map labels
@@ -141,6 +171,8 @@ namespace Regolith.View
                 GUILayout.Label($"Power <color={powerColor}>{r.EnergySupply:0.0}/{r.EnergyDemand:0.0}</color>{battery}", _rich, GUILayout.Width(200));
             }
 
+            var player = _game.Player;
+            GUILayout.Label($"Credits <b>{player.Credits:0}</b> (+{EarthSystem.Funding(state, player):0})", _rich, GUILayout.Width(150));
             GUILayout.Label(ResearchStatus(), _rich, GUILayout.Width(300));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
@@ -187,9 +219,10 @@ namespace Regolith.View
             GUILayout.BeginArea(PanelRect, GUI.skin.box);
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(_tab == Tab.Tile ? "<b>Tile & Colony</b>" : "Tile & Colony", _richButton)) _deferred = () => _tab = Tab.Tile;
-            var researchLabel = _game.Player.CurrentResearch == null ? "Research <color=#ffcc55>(!)</color>" : "Research";
-            if (GUILayout.Button(_tab == Tab.Research ? $"<b>{researchLabel}</b>" : researchLabel, _richButton)) _deferred = () => _tab = Tab.Research;
+            TabButton(Tab.Tile, "Tile");
+            TabButton(Tab.Research, _game.Player.CurrentResearch == null ? "Research <color=#ffcc55>(!)</color>" : "Research");
+            TabButton(Tab.Earth, "Earth");
+            TabButton(Tab.Pioneers, "Pioneers");
             GUILayout.EndHorizontal();
 
             _panelScroll = GUILayout.BeginScrollView(_panelScroll);
@@ -197,13 +230,23 @@ namespace Regolith.View
             if (Time.unscaledTime - _game.LastErrorTime < 3f)
                 GUILayout.Label($"<b>{_game.LastError}</b>", _error);
 
-            if (_tab == Tab.Tile) DrawTileTab();
-            else DrawResearchTab();
+            switch (_tab)
+            {
+                case Tab.Tile: DrawTileTab(); break;
+                case Tab.Research: DrawResearchTab(); break;
+                case Tab.Earth: DrawEarthTab(); break;
+                default: DrawPioneersTab(); break;
+            }
 
             GUILayout.FlexibleSpace();
             GUILayout.Label("Enter end turn · LMB select · WASD/RMB pan · Q/E rotate · wheel zoom · R new map", _small);
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        void TabButton(Tab tab, string label)
+        {
+            if (GUILayout.Button(_tab == tab ? $"<b>{label}</b>" : label, _richButton)) _deferred = () => _tab = tab;
         }
 
         void DrawTileTab()
@@ -307,7 +350,7 @@ namespace Regolith.View
             {
                 var place = new PlaceModule(colony.Id, tile.Coord, def.Type);
                 string bonus = DepositCatalog.Multiplier(tile.Deposit, def.Type) > 1.0 ? "  <color=#88dd88>+50% here</color>" : "";
-                if (ActionButton($"{def.Name}  ·  {def.MaterialCost} mat  ·  {Modifiers.BuildDays(_game.Player, def)} d{bonus}", place.Validate(state)))
+                if (ActionButton($"{def.Name}  ·  {def.MaterialCost} mat  ·  {Modifiers.BuildDays(state, colony, def)} d{bonus}", place.Validate(state)))
                     _pending = place;
             }
         }
@@ -330,7 +373,37 @@ namespace Regolith.View
             if (def.Science > 0) GUILayout.Label($"Science {def.Science * module.Efficiency * Economy.DaysPerMonth:0}/turn");
             if (def.EnergyStorage > 0) GUILayout.Label($"Stores up to {def.EnergyStorage:0} energy");
             if (DepositCatalog.Multiplier(tile.Deposit, def.Type) > 1.0) GUILayout.Label("<color=#88dd88>Deposit bonus: +50% output</color>", _rich);
-            if (def.Inputs.Length + def.Outputs.Length > 0 || def.IsSolar || def.Science > 0) GUILayout.Label($"Running at {module.Efficiency:P0}");
+            if (def.Inputs.Length + def.Outputs.Length > 0 || def.IsSolar || def.Science > 0 || def.ExtractionRate > 0)
+                GUILayout.Label($"Running at {module.Efficiency:P0}");
+
+            DrawModuleSpecialist(colony, module);
+        }
+
+        void DrawModuleSpecialist(Colony colony, Module module)
+        {
+            var state = _game.State;
+            var best = PioneerCatalog.BestFor(module.Type);
+            if (best == null) return;
+
+            GUILayout.Space(6);
+            var current = PioneerSystem.AtModule(state, colony, module.Coord);
+            if (current != null)
+            {
+                double bonus = PioneerSystem.ModuleBonus(state, colony, module) - 1.0;
+                GUILayout.Label($"Specialist: <b>{current.Name}</b> ({current.Expertise}, skill {current.Skill}) <color=#88dd88>+{bonus:P0}</color>", _rich);
+                if (GUILayout.Button("Recall specialist", _richButton))
+                    _pending = new AssignPioneer(current.FactionId, current.Id, Assignment.None);
+                return;
+            }
+
+            GUILayout.Label($"<b>Assign a specialist</b> (best: {best})", _rich);
+            foreach (var p in PioneerSystem.Living(state, _game.Player))
+            {
+                var assign = new AssignPioneer(p.FactionId, p.Id, Assignment.ToModule(colony.Id, module.Coord));
+                string match = p.Expertise == best ? " <color=#88dd88>(match)</color>" : "";
+                if (ActionButton($"{p.Name} · {p.Expertise} {p.Skill}{match} · now: {AssignmentText(p)}", assign.Validate(state)))
+                    _pending = assign;
+            }
         }
 
         void DrawColony(Colony colony)
@@ -390,6 +463,150 @@ namespace Regolith.View
             GUI.enabled = true;
             if (error != null) GUILayout.Label(error, _small);
             return clicked && error == null;
+        }
+
+        // ---------------------------------------------------------------- Earth
+
+        void DrawEarthTab()
+        {
+            var state = _game.State;
+            var f = _game.Player;
+            var colony = _game.PlayerColony;
+
+            GUILayout.Label($"<b>Earth</b> · {f.Credits:0} credits · funding +{EarthSystem.Funding(state, f):0} per turn", _rich);
+            GUILayout.Label("Your sponsor funds the mission and sets objectives. Each one completed pays out and permanently raises your funding.", _small);
+
+            GUILayout.Space(6);
+            GUILayout.Label("<b>Objectives</b>", _rich);
+            foreach (var o in EarthCatalog.Objectives)
+            {
+                bool done = f.CompletedObjectives.Contains(o.Id);
+                string status = done ? "<color=#88dd88>done</color>" : $"+{o.Reward:0} cr, +{o.FundingIncrease:0}/turn";
+                GUILayout.Label($"{(done ? "<color=#88dd88>[x]</color>" : "[ ]")} <b>{o.Name}</b>: {o.Description}  {status}", _small);
+            }
+
+            GUILayout.Space(8);
+            GUILayout.Label($"<b>Order cargo</b> (arrives in {EarthCatalog.TransitDays(state.Body)} days)", _rich);
+            if (colony == null)
+            {
+                GUILayout.Label("Land a base first.", _small);
+                return;
+            }
+
+            foreach (var cargo in EarthCatalog.AllCargo.Where(c => c.Type != CargoType.Specialist))
+            {
+                var order = new OrderCargo(f.Id, colony.Id, cargo.Type);
+                if (ActionButton($"{cargo.Name} · {cargo.Cost:0} cr · {cargo.Description}", order.Validate(state))) _pending = order;
+            }
+
+            var specialist = EarthCatalog.Get(CargoType.Specialist);
+            GUILayout.Label($"{specialist.Name} · {specialist.Cost:0} cr · {specialist.Description}", _small);
+            GUILayout.BeginHorizontal();
+            foreach (Expertise e in System.Enum.GetValues(typeof(Expertise)))
+            {
+                var order = new OrderCargo(f.Id, colony.Id, CargoType.Specialist, e);
+                GUI.enabled = order.Validate(state) == null;
+                if (GUILayout.Button(e.ToString(), _richButton)) _pending = order;
+                GUI.enabled = true;
+            }
+            GUILayout.EndHorizontal();
+
+            var inbound = state.Shipments.Where(x => x.FactionId == f.Id).ToList();
+            if (inbound.Count > 0)
+                GUILayout.Label("In transit: " + string.Join(", ", inbound.Select(x => $"{EarthCatalog.Get(x.Cargo).Name} ({x.ArrivalDay - state.Day} d)")), _small);
+
+            GUILayout.Space(8);
+            GUILayout.Label("<b>Exports</b>", _rich);
+            foreach (var r in new[] { Resource.RareEarths, Resource.PlatinumMetals })
+            {
+                double units = System.Math.Floor(colony.Stock[r]);
+                var export = new ExportToEarth(f.Id, colony.Id, r);
+                if (ActionButton($"Export {units:0} {r} · +{units * EarthCatalog.ExportPrice(r):0} cr", export.Validate(state))) _pending = export;
+            }
+            GUILayout.Label("Strategic deposits are mined by a Mineral Extractor (research Mineral Beneficiation).", _small);
+        }
+
+        // ---------------------------------------------------------------- Pioneers
+
+        void DrawPioneersTab()
+        {
+            var state = _game.State;
+            var f = _game.Player;
+
+            GUILayout.Label("<b>Council</b>", _rich);
+            foreach (CouncilSeat seat in System.Enum.GetValues(typeof(CouncilSeat)))
+            {
+                var holder = PioneerSystem.OnCouncil(state, f, seat);
+                GUILayout.Label($"{PioneerCatalog.Describe(seat)}: <b>{(holder != null ? holder.Name : "vacant")}</b>", _small);
+            }
+
+            GUILayout.Space(8);
+            var living = PioneerSystem.Living(state, f).ToList();
+            GUILayout.Label($"<b>Pioneers</b> ({living.Count})", _rich);
+            if (living.Count == 0) GUILayout.Label("Your founding Pioneers arrive with the first landing.", _small);
+
+            foreach (var p in living)
+            {
+                bool selected = p.Id == _selectedPioneerId;
+                var color = "#" + ColorUtility.ToHtmlStringRGB(PioneerRenderer.ColorOf(p.Expertise));
+                GUILayout.Label($"<color={color}><b>{p.Name}</b></color> · {p.Expertise} {p.Skill}/{PioneerCatalog.MaxSkill} · age {p.Age(state)}", _rich);
+                GUILayout.Label(string.Join("\n", p.Traits.Select(PioneerCatalog.Describe)), _small);
+                GUILayout.Label($"Now: {AssignmentText(p)} · accident risk {PioneerSystem.MonthlyRisk(state, p):P2}/turn", _small);
+
+                GUILayout.BeginHorizontal();
+                int id = p.Id;
+                if (GUILayout.Button(selected ? "<b>Focus</b>" : "Focus", _richButton))
+                    _deferred = () => { _selectedPioneerId = id; _game.FocusOnPioneer(id); };
+
+                var colony = _game.PlayerColony;
+                if (colony != null) AssignButton(p, "Admin", Assignment.AsAdministrator(colony.Id));
+                AssignButton(p, "Sci", Assignment.OnCouncil(CouncilSeat.ChiefScientist));
+                AssignButton(p, "Eng", Assignment.OnCouncil(CouncilSeat.ChiefEngineer));
+                AssignButton(p, "Liaison", Assignment.OnCouncil(CouncilSeat.EarthLiaison));
+                AssignButton(p, "Off duty", Assignment.None);
+                GUILayout.EndHorizontal();
+                GUILayout.Label("To put them on a module, select the module's tile.", _small);
+                GUILayout.Space(6);
+            }
+
+            var fallen = state.Pioneers.Where(p => !p.IsAlive && p.FactionId == f.Id).ToList();
+            if (fallen.Count > 0)
+            {
+                GUILayout.Space(6);
+                GUILayout.Label("<b>In memoriam</b>", _rich);
+                foreach (var p in fallen)
+                    GUILayout.Label($"{p.Name} ({p.Expertise}), {GameState.StartDate.AddDays(p.DiedDay ?? 0).ToString("MMM yyyy", Invariant)}: {p.CauseOfDeath}", _small);
+            }
+        }
+
+        void AssignButton(Pioneer p, string label, Assignment assignment)
+        {
+            var command = new AssignPioneer(p.FactionId, p.Id, assignment);
+            GUI.enabled = command.Validate(_game.State) == null;
+            if (GUILayout.Button(label, _richButton)) _pending = command;
+            GUI.enabled = true;
+        }
+
+        string AssignmentText(Pioneer p)
+        {
+            var state = _game.State;
+            switch (p.Assignment.Kind)
+            {
+                case AssignmentKind.Module:
+                    var colony = state.GetColony(p.Assignment.ColonyId);
+                    return $"{colony?.ModuleAt(p.Assignment.Module)?.Def.Name ?? "module"} at {colony?.Name}";
+                case AssignmentKind.Administrator:
+                    return $"Administrator of {state.GetColony(p.Assignment.ColonyId)?.Name}";
+                case AssignmentKind.Council:
+                    return p.Assignment.Seat switch
+                    {
+                        CouncilSeat.ChiefScientist => "Chief Scientist",
+                        CouncilSeat.ChiefEngineer => "Chief Engineer",
+                        _ => "Earth Liaison",
+                    };
+                default:
+                    return "off duty";
+            }
         }
 
         // ---------------------------------------------------------------- turn report

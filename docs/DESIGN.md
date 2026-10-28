@@ -122,7 +122,13 @@ role changes from home to supply base.
 **Pops** are the population. Each has a **faction leaning** (Loyalist, Martian-first,
 Technocrat, Corporatist…) and **needs**. Their mood drives stability.
 
-**Pioneers** are named characters drawn from your pops or sent from Earth:
+**Pioneers** are named characters drawn from your pops or sent from Earth. They are visible on
+the map: each one walks to their post (their module, or their colony's hab) and moves around there.
+
+*Implemented so far (Act I):* expertise (Engineer, Scientist, Explorer, Administrator) with
+skill 1–5; traits (Meticulous, Bold, Botanist, Ice Driller, Tinkerer, Diplomat, Survivor);
+assignments to a module (output bonus), as colony Administrator (faster construction), or to a
+council seat (Chief Scientist, Chief Engineer, Earth Liaison). The full design:
 
 | Role | Inspired by | Does |
 |---|---|---|
