@@ -21,9 +21,10 @@ namespace Regolith.View
         static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
         GameController _game;
-        GUIStyle _wrap, _rich, _small, _error, _richButton;
+        GUIStyle _wrap, _rich, _small, _error, _richButton, _landmark, _landmarkShadow;
         Vector2 _panelScroll;
         ICommand _pending;
+        System.Action _deferred;
 
         Rect TopBarRect => new Rect(0f, 0f, Screen.width, TopBarHeight);
         Rect PanelRect => new Rect(Margin, TopBarHeight + Margin, PanelWidth, Screen.height - TopBarHeight - LogHeight - 3 * Margin);
@@ -40,8 +41,15 @@ namespace Regolith.View
 
         void Update()
         {
-            // Commands from button clicks run here, not inside OnGUI, so the layout never
+            // Button clicks run here, not inside OnGUI, so the layout never
             // changes between IMGUI's layout and event passes.
+            if (_deferred != null)
+            {
+                var action = _deferred;
+                _deferred = null;
+                action();
+            }
+
             if (_pending == null) return;
             _game.TryExecute(_pending);
             _pending = null;
@@ -52,6 +60,7 @@ namespace Regolith.View
             if (_game == null || _game.Sim == null) return;
             EnsureStyles();
 
+            DrawLandmarkLabels();
             DrawTopBar();
             DrawPanel();
             DrawLog();
@@ -65,6 +74,35 @@ namespace Regolith.View
             _small = new GUIStyle(_wrap) { fontSize = 11 };
             _error = new GUIStyle(_rich) { normal = { textColor = new Color(1f, 0.45f, 0.4f) } };
             _richButton = new GUIStyle(GUI.skin.button) { richText = true };
+            _landmark = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = 13,
+                normal = { textColor = new Color(1f, 0.95f, 0.8f) },
+            };
+            _landmarkShadow = new GUIStyle(_landmark) { normal = { textColor = new Color(0f, 0f, 0f, 0.8f) } };
+        }
+
+        // ---------------------------------------------------------------- map labels
+
+        void DrawLandmarkLabels()
+        {
+            var cam = Camera.main;
+            if (cam == null || Event.current.type != EventType.Repaint) return;
+
+            var map = _game.State.Map;
+            foreach (var landmark in map.Landmarks)
+            {
+                var tile = map.GetTile(landmark.Center);
+                if (tile == null) continue;
+
+                var world = HexMapRenderer.ToWorld(landmark.Center) + Vector3.up * (HexMapRenderer.TopHeight(tile) + 0.6f);
+                var sp = cam.WorldToScreenPoint(world);
+                if (sp.z <= 0f) continue;
+
+                var rect = new Rect(sp.x - 100f, Screen.height - sp.y - 12f, 200f, 24f);
+                GUI.Label(new Rect(rect.x + 1f, rect.y + 1f, rect.width, rect.height), landmark.Name, _landmarkShadow);
+                GUI.Label(rect, landmark.Name, _landmark);
+            }
         }
 
         // ---------------------------------------------------------------- top bar
@@ -77,11 +115,23 @@ namespace Regolith.View
 
             GUILayout.Label($"<b>{state.Date.ToString("d MMM yyyy", Invariant)}</b>", _rich, GUILayout.Width(100));
 
-            if (GUILayout.Button(_game.Speed == 0 ? "> Play" : "|| Pause", GUILayout.Width(70))) _game.TogglePause();
-            for (int s = 1; s < GameController.DaysPerSecond.Length; s++)
+            if (GUILayout.Button(_game.TurnBased ? "Mode: Turns" : "Mode: Real-time", GUILayout.Width(120)))
+                _deferred = _game.ToggleMode;
+
+            if (_game.TurnBased)
             {
-                var label = _game.Speed == s ? $"<b>[{s}]</b>" : s.ToString();
-                if (GUILayout.Button(label, _richButton, GUILayout.Width(30))) _game.SetSpeed(s);
+                GUILayout.Label($"<b>Turn {_game.Sim.Turn}</b>", _rich, GUILayout.Width(70));
+                if (GUILayout.Button("End turn >", GUILayout.Width(100))) _deferred = _game.EndTurn;
+            }
+            else
+            {
+                if (GUILayout.Button(_game.Speed == 0 ? "> Play" : "|| Pause", GUILayout.Width(70))) _deferred = _game.TogglePause;
+                for (int s = 1; s < GameController.DaysPerSecond.Length; s++)
+                {
+                    int speed = s;
+                    var label = _game.Speed == s ? $"<b>[{s}]</b>" : s.ToString();
+                    if (GUILayout.Button(label, _richButton, GUILayout.Width(30))) _deferred = () => _game.SetSpeed(speed);
+                }
             }
 
             GUILayout.Space(12);
@@ -92,10 +142,10 @@ namespace Regolith.View
             {
                 var r = colony.LastReport;
                 GUILayout.Label($"<b>{colony.Name}</b>  Crew {colony.Pops}/{colony.Housing}", _rich, GUILayout.Width(190));
-                GUILayout.Label(StockLabel("O2", colony, Resource.Oxygen), _rich, GUILayout.Width(120));
-                GUILayout.Label(StockLabel("Water", colony, Resource.Water), _rich, GUILayout.Width(135));
-                GUILayout.Label(StockLabel("Food", colony, Resource.Food), _rich, GUILayout.Width(130));
-                GUILayout.Label(StockLabel("Materials", colony, Resource.Materials), _rich, GUILayout.Width(160));
+                GUILayout.Label(StockLabel("O2", colony, Resource.Oxygen), _rich, GUILayout.Width(130));
+                GUILayout.Label(StockLabel("Water", colony, Resource.Water), _rich, GUILayout.Width(145));
+                GUILayout.Label(StockLabel("Food", colony, Resource.Food), _rich, GUILayout.Width(140));
+                GUILayout.Label(StockLabel("Materials", colony, Resource.Materials), _rich, GUILayout.Width(170));
                 var powerColor = r.EnergySupply + 1e-6 >= r.EnergyDemand ? "white" : "#ff7766";
                 GUILayout.Label($"Power <color={powerColor}>{r.EnergySupply:0.0}/{r.EnergyDemand:0.0}</color>", _rich, GUILayout.Width(120));
             }
@@ -116,11 +166,14 @@ namespace Regolith.View
                 : $"Lunar NIGHT: sunrise in {Bodies.LunarSynodicDays - phase:0} d";
         }
 
-        static string StockLabel(string name, Colony colony, Resource r)
+        /// <summary>Stock with its change: per day in real-time, over the last turn in turn mode.</summary>
+        string StockLabel(string name, Colony colony, Resource r)
         {
-            double net = colony.LastReport.NetOf(r);
+            bool perTurn = _game.TurnBased && _game.LastTurnChange != null;
+            double net = perTurn ? _game.LastTurnChange[(int)r] : colony.LastReport.NetOf(r);
             string color = net < -1e-6 ? "#ff7766" : net > 1e-6 ? "#88dd88" : "white";
-            return $"{name} {colony.Stock[r]:0} <color={color}>({net:+0.0;-0.0;0})</color>";
+            string change = perTurn ? $"{net:+0;-0;0}/turn" : $"{net:+0.0;-0.0;0}/d";
+            return $"{name} {colony.Stock[r]:0} <color={color}>({change})</color>";
         }
 
         // ---------------------------------------------------------------- side panel
@@ -138,7 +191,7 @@ namespace Regolith.View
             {
                 GUILayout.Label("<b>REGOLITH</b> · Act I: Luna", _rich);
                 GUILayout.Label(_game.PlayerColony == null
-                    ? "Click a tile to inspect it. Land your first base next to a permanently shadowed crater (water ice) and, ideally, a peak of light (near-constant sunlight)."
+                    ? "Click a tile to inspect it. Land your first base next to a permanently shadowed crater (water ice) and, ideally, a peak of light (near-constant sunlight). The rim of Shackleton, at the pole, is the classic choice."
                     : "Click a tile to inspect it or build on it.", _wrap);
             }
             else
@@ -153,8 +206,25 @@ namespace Regolith.View
                 DrawColony(_game.PlayerColony);
             }
 
+            if (_game.PlayerColony == null)
+            {
+                GUILayout.Space(10);
+                GUILayout.Label("<b>New map</b>", _rich);
+                GUILayout.BeginHorizontal();
+                foreach (MapSize size in System.Enum.GetValues(typeof(MapSize)))
+                {
+                    var (w, h) = GameSetup.Dimensions(size);
+                    var label = size == _game.MapSize ? $"<b>{size}</b>" : size.ToString();
+                    var mapSize = size;
+                    if (GUILayout.Button(new GUIContent(label, $"{w}x{h} hexes"), _richButton)) _deferred = () => _game.NewGame(mapSize);
+                }
+                GUILayout.EndHorizontal();
+            }
+
             GUILayout.FlexibleSpace();
-            GUILayout.Label("Space pause · 1-5 speed · LMB select · WASD/RMB pan · Q/E rotate · wheel zoom · R new map", _small);
+            GUILayout.Label(_game.TurnBased
+                ? "Enter end turn · T real-time · LMB select · WASD/RMB pan · Q/E rotate · wheel zoom · R new map"
+                : "Space pause · 1-5 speed · T turns · LMB select · WASD/RMB pan · Q/E rotate · wheel zoom · R new map", _small);
             GUILayout.EndScrollView();
             GUILayout.EndArea();
         }
@@ -168,6 +238,13 @@ namespace Regolith.View
             if (tile.Feature == TileFeature.PeakOfLight) GUILayout.Label("Peak of light: sunlit ~90% of the time, even at night.", _wrap);
             if (tile.Feature == TileFeature.LavaTube) GUILayout.Label("Lava tube: natural radiation shelter.", _wrap);
             if (tile.Feature == TileFeature.CraterRim) GUILayout.Label("Crater rim: exposed strata.", _wrap);
+
+            var landmark = _game.State.Map.LandmarkAt(tile.Coord);
+            if (landmark != null)
+            {
+                GUILayout.Label($"<b>{landmark.Name}</b> ({landmark.Kind.ToString().ToLowerInvariant()}, ~{landmark.Radius * 2 * LunarMapGenerator.KmPerHex:0} km)", _rich);
+                GUILayout.Label(landmark.Description, _wrap);
+            }
 
             var owner = _game.State.ColonyOwning(tile.Coord);
             if (owner != null) GUILayout.Label($"Territory of <b>{owner.Name}</b>", _rich);

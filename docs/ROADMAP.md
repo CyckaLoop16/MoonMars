@@ -16,7 +16,9 @@ then Beyond. Each milestone ends with something playable.
 - [x] Land a base; place modules on hexes; power → ISRU → greenhouse chain
 - [x] Pops & jobs, life support, growth/decline, lunar day/night
 - [x] Prototype HUD: time controls, resource bar, colony panel, event log (IMGUI placeholder)
-- [ ] Playtest in Unity and tune the opening (first 90 days)
+- [x] Real lunar south-pole geography; map sizes up to 168×110; chunked rendering
+- [x] Turn-based mode (1 turn = 1 month) alongside real-time, for comparison
+- [ ] Playtest in Unity: **decide real-time vs turns**; tune the opening (first 90 days)
 - [ ] Player-set job priorities, demolish/cancel construction
 
 ## M2: Pioneers

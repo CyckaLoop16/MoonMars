@@ -16,6 +16,8 @@ namespace Regolith.Sim
         LunarHighlands,
         LunarMare,
         ShadowedCrater,
+        LunarMassif,
+        EjectaBlanket,
     }
 
     public enum TileFeature
@@ -91,6 +93,10 @@ namespace Regolith.Sim
                 "Dark plains of ancient lava. Smooth, rich in iron and titanium.");
             Add(TerrainType.ShadowedCrater, "Permanently Shadowed Crater", "#2c303a", new Yields(0, 0, 3, 1), 3,
                 "Has not seen sunlight in two billion years. −230 °C and full of water ice.");
+            Add(TerrainType.LunarMassif, "Lunar Massif", "#8e8a83", new Yields(2, 0, 0, 0), 4,
+                "Kilometres-high mountain. Hard going, but the summits catch the low polar Sun.");
+            Add(TerrainType.EjectaBlanket, "Fresh Ejecta", "#cfcbc3", new Yields(2, 0, 0, 1), 2,
+                "Bright debris thrown out by a young impact. Rough, but rich in exposed minerals.");
         }
 
         static void Add(TerrainType type, string name, string color, Yields yields, int moveCost, string description)

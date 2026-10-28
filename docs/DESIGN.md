@@ -48,7 +48,20 @@ The endgame crisis is weighted by how far the system as a whole has pushed into 
 
 ## Time & pacing
 
-- **Real-time with pause**, 5 speeds. 1 tick = 1 day. The economy resolves monthly.
+**Open decision: real-time with pause, or monthly turns?** Both run on the same daily
+simulation, and the prototype has a toggle (`T`) so we can playtest both before committing.
+
+| | Real-time with pause (Stellaris, HOI4) | Monthly turns (Civ) |
+|---|---|---|
+| Feel | City-builder flow; things happen *to* you | Deliberate; every decision is considered |
+| Lunar night, dust storms | Felt as they happen | Shown as a turn's net result; stockpiles must buffer them |
+| Managing several worlds | Gets hectic; needs automation and governors | Natural: review each world every turn |
+| Rival AI and diplomacy | Harder; AI must act continuously | Easier and stronger; clean decision points |
+| Events and Pioneers | Pop-ups pause the game | Fit a turn report naturally |
+
+- Simulation: 1 tick = 1 day from Jan 2040; the economy resolves daily, crew arrivals monthly.
+- Turn mode: 1 turn = 1 calendar month of daily ticks. Later acts may use longer turns, as
+  Civ's eras speed up.
 - The campaign runs **~2040 → ~2160**. That's about three generations of Pioneers, so the
   founders you start with are retired or dead by the end.
 - Target: **~20 hours** for a full campaign. Act I ≈ 4h, Act II ≈ 10h, Act III ≈ 5h.
@@ -59,8 +72,11 @@ There's no hard reset between acts. Your Moon colonies keep running when Mars op
 role changes from home to supply base.
 
 ### Act I: Luna (2040–2065) · the foothold
-- Small hex map: the south polar region, with ice in permanently shadowed craters and
-  "peaks of eternal light" for solar power.
+- The real lunar south pole at 3 km per hex (up to ~500 km across): Shackleton,
+  de Gerlache, Shoemaker, Haworth, Cabeus, the Malapert Massif and Mons Mouton at their true
+  positions and sizes, with procedural craters, debris fields and terrain between them.
+  Ice sits in permanently shadowed craters, and "peaks of eternal light" provide solar power.
+  The far side (inside the South Pole–Aitken basin) is mineral-rich.
 - Earth is **3 days away**: supply is easy, but Earth's control is strongest here.
 - 2–3 rival factions land within sight of each other. Ice deposits are few and contested.
 - **Act goal:** become self-sufficient and build the first **lunar fuel depot / shipyard**.

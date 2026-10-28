@@ -200,6 +200,18 @@ namespace Regolith.Sim.Tests
         }
 
         [Test]
+        public void TurnsAdvanceOneCalendarMonth()
+        {
+            var sim = TestMaps.NewGame();
+            Assert.That(sim.Turn, Is.EqualTo(1));
+            sim.AdvanceToNextMonth();
+            Assert.That(sim.State.Date, Is.EqualTo(new System.DateTime(2040, 2, 1)));
+            sim.AdvanceToNextMonth();
+            Assert.That(sim.State.Date, Is.EqualTo(new System.DateTime(2040, 3, 1)));
+            Assert.That(sim.Turn, Is.EqualTo(3));
+        }
+
+        [Test]
         public void CalendarStartsIn2040AndMonthlyPassRuns()
         {
             var sim = TestMaps.NewGame();
@@ -211,28 +223,51 @@ namespace Regolith.Sim.Tests
 
     public class LunarMapGeneratorTests
     {
-        [TestCase(1)]
-        [TestCase(42)]
-        [TestCase(777)]
-        public void HasThePolarPuzzlePieces(int seed)
+        [TestCase(1, MapSize.Small)]
+        [TestCase(42, MapSize.Standard)]
+        [TestCase(777, MapSize.Large)]
+        [TestCase(3, MapSize.Huge)]
+        public void HasThePolarPuzzlePieces(int seed, MapSize size)
         {
-            var map = LunarMapGenerator.Generate(GameSetup.LunarMapWidth, GameSetup.LunarMapHeight, seed);
+            var (width, height) = GameSetup.Dimensions(size);
+            var map = LunarMapGenerator.Generate(width, height, seed);
 
             Assert.That(map.Body, Is.EqualTo(BodyId.Moon));
-            Assert.That(map.TileCount, Is.EqualTo(GameSetup.LunarMapWidth * GameSetup.LunarMapHeight));
+            Assert.That(map.TileCount, Is.EqualTo(width * height));
 
             var shadowed = map.Tiles.Where(t => t.Terrain == TerrainType.ShadowedCrater).ToList();
             Assert.That(shadowed, Is.Not.Empty);
             Assert.That(shadowed.All(t => t.Ice >= 0.55f));
-            Assert.That(map.Tiles.Any(t => t.Feature == TileFeature.PeakOfLight));
+
+            int peaks = map.Tiles.Count(t => t.Feature == TileFeature.PeakOfLight);
+            Assert.That(peaks, Is.GreaterThan(5));
+            Assert.That(peaks, Is.LessThan(map.TileCount / 20), "peaks of light should be scarce");
+        }
+
+        [Test]
+        public void RealLandmarksSitWhereTheyShould()
+        {
+            var (width, height) = GameSetup.Dimensions(MapSize.Large);
+            var map = LunarMapGenerator.Generate(width, height, 9);
+            var pole = HexCoord.FromOffset(width / 2, height / 2);
+
+            var shackleton = map.Landmarks.Single(l => l.Name == "Shackleton");
+            Assert.That(shackleton.Center.DistanceTo(pole), Is.LessThanOrEqualTo(4), "Shackleton is at the pole");
+            Assert.That(map.GetTile(shackleton.Center).Terrain, Is.EqualTo(TerrainType.ShadowedCrater));
+            Assert.That(map.LandmarkAt(shackleton.Center).Name, Is.EqualTo("Shackleton"));
+
+            // Malapert faces Earth (longitude ~0°, to the right of the pole) and its summit is sunlit.
+            var malapert = map.Landmarks.Single(l => l.Name == "Malapert Massif");
+            Assert.That(malapert.Center.Q, Is.GreaterThan(pole.Q));
+            Assert.That(malapert.Center.WithinRange(2).Any(c => map.GetTile(c)?.Feature == TileFeature.PeakOfLight));
         }
 
         [Test]
         public void Deterministic()
         {
-            var a = LunarMapGenerator.Generate(40, 28, 5);
-            var b = LunarMapGenerator.Generate(40, 28, 5);
-            Assert.That(a.Tiles.All(t => b.GetTile(t.Coord).Terrain == t.Terrain && b.GetTile(t.Coord).Ice == t.Ice));
+            var a = LunarMapGenerator.Generate(96, 64, 5);
+            var b = LunarMapGenerator.Generate(96, 64, 5);
+            Assert.That(a.Tiles.All(t => b.GetTile(t.Coord).Terrain == t.Terrain && b.GetTile(t.Coord).Elevation == t.Elevation));
         }
 
         [Test]

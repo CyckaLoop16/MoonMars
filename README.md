@@ -13,8 +13,8 @@ named characters who age, scheme and become legends.
 
 ## Status: M1 (clock & colony core) in progress
 
-- **Act I map:** procedural lunar south pole, with permanently shadowed ice craters, peaks of light and mare plains
-- **Real-time with pause** (1 tick = 1 day from Jan 2040), including the lunar day/night cycle
+- **Act I map:** the real lunar south pole at 3 km per hex. Named landmarks (Shackleton, de Gerlache, Malapert…) sit at their true positions, with procedural craters between them. Four sizes, up to 168×110 hexes
+- **Real-time with pause *or* monthly turns** (toggle with `T`; still deciding which). 1 tick = 1 day from Jan 2040, including the lunar day/night cycle
 - **Land a base and build modules on hexes:** solar, fission reactor, ice mine, oxygen plant, greenhouse, foundry, habitat
 - **Survival:** a life-support economy with power sharing, crew jobs, lethal shortages and crew arrivals from Earth
 - **Visuals:** placeholders only. Art is produced separately and dropped in (see [TECH.md](docs/TECH.md#art-pipeline))
@@ -41,8 +41,8 @@ docs/                          design + tech docs
    **Commit those.** If it asks to enable the new Input System backend, click **Yes**.
 4. Press **Play** in any scene (even the empty default one). The game boots itself.
 
-Controls: `Space` pause · `1`–`5` speed · left-click select · `WASD`/right-drag pan · `Q`/`E` rotate ·
-wheel zoom · `R` new map.
+Controls: `T` switch real-time / turns · real-time: `Space` pause, `1`–`5` speed · turns: `Enter`
+end turn · left-click select · `WASD`/right-drag pan · `Q`/`E` rotate · wheel zoom · `R` new map.
 
 **First steps:** click a tile next to a dark shadowed crater (ice) and ideally near a yellow-marked
 peak of light, then land your base. Build power first, then the oxygen plant, then an ice mine on

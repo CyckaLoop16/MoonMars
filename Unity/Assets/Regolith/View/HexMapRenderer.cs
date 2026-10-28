@@ -6,16 +6,24 @@ using UnityEngine.Rendering;
 namespace Regolith.View
 {
     /// <summary>
-    /// Builds one mesh of terraced hex prisms for the whole map. Lighting is baked into
-    /// vertex colours so the prototype needs no textures and works in any render pipeline.
-    /// Placeholder visuals: final terrain art will replace this.
+    /// Renders the map as terraced hex prisms, split into chunks so large maps only rebuild what changed.
+    /// Lighting is baked into vertex colours so the prototype needs no textures and works in any
+    /// render pipeline. Placeholder visuals: final terrain art will replace this.
     /// </summary>
-    [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
     public sealed class HexMapRenderer : MonoBehaviour
     {
         public const float HexSize = 1f;
-        public const float LevelHeight = 0.3f;
+        public const float LevelHeight = 0.22f;
         const float TerritoryTint = 0.3f;
+        const int ChunkSize = 16;
+
+        sealed class Chunk
+        {
+            public GameObject GameObject;
+            public Mesh Mesh;
+            public MeshCollider Collider;
+            public readonly List<Tile> Tiles = new List<Tile>();
+        }
 
         static readonly Color IceColor = new Color(0.62f, 0.85f, 1f);
         static readonly Color MineralColor = new Color(0.9f, 0.72f, 0.29f);
@@ -27,13 +35,14 @@ namespace Regolith.View
         readonly HexMeshBuilder _builder = new HexMeshBuilder();
         readonly Dictionary<TerrainType, Color> _terrainColors = new Dictionary<TerrainType, Color>();
 
+        readonly Dictionary<(int, int), Chunk> _chunks = new Dictionary<(int, int), Chunk>();
+        readonly Dictionary<HexCoord, Color> _territory = new Dictionary<HexCoord, Color>();
+
         WorldMap _map;
-        Mesh _mesh;
         Material _material;
         LineRenderer _hoverOutline;
         LineRenderer _selectOutline;
-
-        public MeshCollider Collider { get; private set; }
+        Rect _bounds;
 
         // --- Coordinate helpers (sim plane Y maps to world -Z, so row 0 is at the top) ---
 
@@ -45,19 +54,14 @@ namespace Regolith.View
 
         public static HexCoord FromWorld(Vector3 p) => HexLayout.FromPlane(p.x, -p.z, HexSize);
 
-        public static int HeightLevel(Tile t) => Mathf.Clamp(Mathf.RoundToInt(t.Elevation * 3f), -2, 3);
-        public static float TopHeight(Tile t) => (HeightLevel(t) + 2) * LevelHeight + 0.2f;
+        public static int HeightLevel(Tile t) => Mathf.Clamp(Mathf.RoundToInt(t.Elevation * 3f), -4, 5);
+        public static float TopHeight(Tile t) => (HeightLevel(t) + 4) * LevelHeight + 0.2f;
 
         public static Color ParseColor(string hex) => ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.magenta;
 
         void Awake()
         {
-            _mesh = new Mesh { name = "HexMap", indexFormat = IndexFormat.UInt32 };
-            GetComponent<MeshFilter>().sharedMesh = _mesh;
-            Collider = GetComponent<MeshCollider>();
-
             _material = HexMeshBuilder.CreateMaterial();
-            GetComponent<MeshRenderer>().sharedMaterial = _material;
 
             _hoverOutline = CreateOutline("HoverOutline", HoverColor, 0.06f);
             _selectOutline = CreateOutline("SelectOutline", SelectColor, 0.1f);
@@ -80,29 +84,103 @@ namespace Regolith.View
             return line;
         }
 
-        /// <summary>Rebuilds the map mesh. <paramref name="territory"/> tints claimed hexes with their owner's colour.</summary>
-        public void Build(WorldMap map, IReadOnlyDictionary<HexCoord, Color> territory = null)
+        /// <summary>Builds every chunk for a new map.</summary>
+        public void Build(WorldMap map)
         {
+            foreach (var chunk in _chunks.Values)
+            {
+                Destroy(chunk.GameObject);
+                Destroy(chunk.Mesh);
+            }
+            _chunks.Clear();
+            _territory.Clear();
             _map = map;
-            _builder.Clear();
 
+            float minX = float.MaxValue, minZ = float.MaxValue, maxX = float.MinValue, maxZ = float.MinValue;
             foreach (var tile in map.Tiles)
             {
-                Color? tint = null;
-                if (territory != null && territory.TryGetValue(tile.Coord, out var t)) tint = t;
-                AddTile(tile, tint);
-            }
+                var key = ChunkKey(tile.Coord);
+                if (!_chunks.TryGetValue(key, out var chunk))
+                {
+                    chunk = CreateChunk(key);
+                    _chunks[key] = chunk;
+                }
+                chunk.Tiles.Add(tile);
 
-            _builder.ApplyTo(_mesh);
-            Collider.sharedMesh = null; // force the collider to pick up the rebuilt mesh
-            Collider.sharedMesh = _mesh;
+                var p = ToWorld(tile.Coord);
+                minX = Mathf.Min(minX, p.x); maxX = Mathf.Max(maxX, p.x);
+                minZ = Mathf.Min(minZ, p.z); maxZ = Mathf.Max(maxZ, p.z);
+            }
+            _bounds = Rect.MinMaxRect(minX - HexSize, minZ - HexSize, maxX + HexSize, maxZ + HexSize);
+
+            foreach (var chunk in _chunks.Values) RebuildChunk(chunk);
+            Physics.SyncTransforms();
+            SetHovered(null);
+            SetSelected(null);
+        }
+
+        /// <summary>Tints claimed hexes with their owner's colour, rebuilding only the chunks that changed.</summary>
+        public void SetTerritory(IReadOnlyDictionary<HexCoord, Color> territory)
+        {
+            var dirty = new HashSet<(int, int)>();
+            foreach (var kv in territory)
+                if (!_territory.TryGetValue(kv.Key, out var old) || old != kv.Value)
+                    dirty.Add(ChunkKey(kv.Key));
+            foreach (var c in _territory.Keys)
+                if (!territory.ContainsKey(c))
+                    dirty.Add(ChunkKey(c));
+
+            _territory.Clear();
+            foreach (var kv in territory) _territory[kv.Key] = kv.Value;
+
+            foreach (var key in dirty)
+                if (_chunks.TryGetValue(key, out var chunk))
+                    RebuildChunk(chunk);
+        }
+
+        /// <summary>Point on the map under a screen ray (nudged into the hit prism so walls resolve to the taller tile).</summary>
+        public bool Raycast(Ray ray, out Vector3 point)
+        {
+            if (Physics.Raycast(ray, out var hit, 5000f))
+            {
+                point = hit.point - hit.normal * 0.02f;
+                return true;
+            }
+            point = default;
+            return false;
         }
 
         /// <summary>World-space XZ rectangle covering the map, for camera bounds.</summary>
-        public Rect WorldBounds()
+        public Rect WorldBounds() => _bounds;
+
+        static (int, int) ChunkKey(HexCoord c)
         {
-            var b = _mesh.bounds;
-            return Rect.MinMaxRect(b.min.x, b.min.z, b.max.x, b.max.z);
+            var (col, row) = c.ToOffset();
+            return (Mathf.FloorToInt(col / (float)ChunkSize), Mathf.FloorToInt(row / (float)ChunkSize));
+        }
+
+        Chunk CreateChunk((int, int) key)
+        {
+            var go = new GameObject($"Chunk {key.Item1},{key.Item2}");
+            go.transform.SetParent(transform, false);
+            var mesh = new Mesh { name = go.name, indexFormat = IndexFormat.UInt32 };
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = _material;
+            return new Chunk { GameObject = go, Mesh = mesh, Collider = go.AddComponent<MeshCollider>() };
+        }
+
+        void RebuildChunk(Chunk chunk)
+        {
+            _builder.Clear();
+            foreach (var tile in chunk.Tiles)
+            {
+                Color? tint = null;
+                if (_territory.TryGetValue(tile.Coord, out var t)) tint = t;
+                AddTile(tile, tint);
+            }
+            _builder.ApplyTo(chunk.Mesh);
+            chunk.Collider.sharedMesh = null; // force the collider to pick up the rebuilt mesh
+            chunk.Collider.sharedMesh = chunk.Mesh;
         }
 
         public void SetHovered(Tile tile) => PlaceOutline(_hoverOutline, tile, 0.95f);
@@ -149,7 +227,7 @@ namespace Regolith.View
 
             // Resource pips, matching the bonuses in Tile.Yields and the ice-mine threshold.
             float pipY = top + 0.01f;
-            if (tile.Terrain != TerrainType.PolarIce && tile.Ice >= 0.4f)
+            if (tile.Terrain != TerrainType.PolarIce && tile.Terrain != TerrainType.ShadowedCrater && tile.Ice >= 0.4f)
                 _builder.AddHexTop(center + new Vector3(-0.38f, 0f, -0.3f), pipY, 0.17f, IceColor);
             if (tile.Minerals >= 0.7f)
                 _builder.AddHexTop(center + new Vector3(0.38f, 0f, -0.3f), pipY, 0.17f, MineralColor);

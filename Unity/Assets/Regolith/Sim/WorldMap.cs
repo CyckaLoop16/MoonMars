@@ -41,6 +41,25 @@ namespace Regolith.Sim
         }
     }
 
+    public enum LandmarkKind
+    {
+        Crater,
+        Massif,
+        Ridge,
+    }
+
+    /// <summary>A named geographic feature, shown on the map and in the tile inspector.</summary>
+    public sealed class Landmark
+    {
+        public string Name;
+        public string Description;
+        public LandmarkKind Kind;
+        public HexCoord Center;
+        public int Radius;
+
+        public bool Contains(HexCoord c) => c.DistanceTo(Center) <= Radius;
+    }
+
     public sealed class WorldMap
     {
         public int Width { get; }
@@ -56,6 +75,18 @@ namespace Regolith.Sim
             Height = height;
             Seed = seed;
             Body = body;
+        }
+
+        public readonly List<Landmark> Landmarks = new List<Landmark>();
+
+        /// <summary>The smallest named feature containing this hex, or null.</summary>
+        public Landmark LandmarkAt(HexCoord c)
+        {
+            Landmark best = null;
+            foreach (var l in Landmarks)
+                if (l.Contains(c) && (best == null || l.Radius < best.Radius))
+                    best = l;
+            return best;
         }
 
         public IEnumerable<Tile> Tiles => _tiles.Values;

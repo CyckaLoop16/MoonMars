@@ -6,8 +6,8 @@ using UnityEngine;
 namespace Regolith.View
 {
     /// <summary>
-    /// Prototype entry point: owns the simulation, runs the clock, handles selection and
-    /// forwards player actions to the sim as commands.
+    /// Prototype entry point: owns the simulation, runs the clock (real-time or turn-based),
+    /// handles selection and forwards player actions to the sim as commands.
     /// Auto-spawns when you press Play in any scene, so the project needs no hand-built scene yet.
     /// </summary>
     public sealed class GameController : MonoBehaviour
@@ -18,6 +18,9 @@ namespace Regolith.View
 
         [Tooltip("0 = random seed each run")]
         public int Seed;
+        public MapSize MapSize = MapSize.Large;
+        [Tooltip("Start in turn-based mode (1 turn = 1 month) instead of real-time with pause")]
+        public bool StartTurnBased;
 
         Camera _camera;
         StrategyCamera _cameraRig;
@@ -30,6 +33,8 @@ namespace Regolith.View
 
         public Simulation Sim { get; private set; }
         public int Speed { get; private set; }
+        /// <summary>Turn-based: each End Turn runs a month of the daily sim. Otherwise real-time with pause.</summary>
+        public bool TurnBased { get; private set; }
         public Tile Hovered { get; private set; }
         public Tile Selected { get; private set; }
         public string LastError { get; private set; }
@@ -55,7 +60,7 @@ namespace Regolith.View
             }
             _camera.clearFlags = CameraClearFlags.SolidColor;
             _camera.backgroundColor = new Color(0.02f, 0.02f, 0.04f); // space
-            _camera.farClipPlane = 500f;
+            _camera.farClipPlane = 2000f;
 
             _cameraRig = _camera.GetComponent<StrategyCamera>();
             if (_cameraRig == null) _cameraRig = _camera.gameObject.AddComponent<StrategyCamera>();
@@ -65,19 +70,30 @@ namespace Regolith.View
             _hud = gameObject.AddComponent<Hud>();
             _hud.Init(this);
 
+            TurnBased = StartTurnBased;
             NewGame(Seed != 0 ? Seed : System.Environment.TickCount);
+        }
+
+        public void NewGame(MapSize size)
+        {
+            MapSize = size;
+            NewGame(System.Environment.TickCount);
         }
 
         void NewGame(int seed)
         {
-            Sim = GameSetup.NewLunarGame(seed);
+            Sim = GameSetup.NewLunarGame(seed, MapSize);
             Speed = 0;
+            LastTurnChange = null;
             Selected = null;
             Hovered = null;
+            _mapRenderer.Build(State.Map);
             _renderedRevision = -1;
             RefreshVisuals();
 
+            // Start zoomed in over the pole, where the action is.
             var bounds = _mapRenderer.WorldBounds();
+            _cameraRig.MaxDistance = Mathf.Max(90f, bounds.width * 0.75f);
             _cameraRig.Init(_camera, new Vector3(bounds.center.x, 0f, bounds.center.y), bounds);
         }
 
@@ -92,10 +108,42 @@ namespace Regolith.View
         void HandleKeys()
         {
             if (InputShim.RegeneratePressed()) NewGame(System.Environment.TickCount);
-            if (InputShim.PausePressed()) TogglePause();
+            if (InputShim.ModeTogglePressed()) ToggleMode();
 
+            if (TurnBased)
+            {
+                if (InputShim.EndTurnPressed()) EndTurn();
+                return;
+            }
+
+            if (InputShim.PausePressed()) TogglePause();
             int speed = InputShim.SpeedPressed();
             if (speed > 0) SetSpeed(speed);
+        }
+
+        public void ToggleMode()
+        {
+            TurnBased = !TurnBased;
+            Speed = 0;
+            _accumulator = 0f;
+        }
+
+        /// <summary>How the player colony's stockpiles changed over the last turn (turn mode only).</summary>
+        public double[] LastTurnChange { get; private set; }
+
+        public void EndTurn()
+        {
+            if (!TurnBased) return;
+
+            var colony = PlayerColony;
+            var before = new double[Stockpile.Count];
+            for (int i = 0; i < before.Length && colony != null; i++) before[i] = colony.Stock[(Resource)i];
+
+            Sim.AdvanceToNextMonth();
+
+            if (colony == null) return;
+            LastTurnChange = new double[Stockpile.Count];
+            for (int i = 0; i < before.Length; i++) LastTurnChange[i] = colony.Stock[(Resource)i] - before[i];
         }
 
         public void TogglePause() => SetSpeed(Speed == 0 ? _resumeSpeed : 0);
@@ -108,7 +156,7 @@ namespace Regolith.View
 
         void RunClock()
         {
-            if (Speed == 0) return;
+            if (TurnBased || Speed == 0) return;
 
             _accumulator += Time.unscaledDeltaTime * DaysPerSecond[Speed];
             int ticks = 0;
@@ -130,7 +178,7 @@ namespace Regolith.View
                 foreach (var c in colony.Territory) territory[c] = color;
             }
 
-            _mapRenderer.Build(State.Map, territory);
+            _mapRenderer.SetTerritory(territory);
             _moduleRenderer.Build(State);
             _mapRenderer.SetHovered(Hovered);
             _mapRenderer.SetSelected(Selected);
@@ -147,12 +195,8 @@ namespace Regolith.View
             }
 
             Tile tile = null;
-            var ray = _camera.ScreenPointToRay(mouse);
-            if (_mapRenderer.Collider.Raycast(ray, out var hit, 1000f))
-            {
-                // Nudge into the prism so hits on walls resolve to the taller tile.
-                tile = State.Map.GetTile(HexMapRenderer.FromWorld(hit.point - hit.normal * 0.02f));
-            }
+            if (_mapRenderer.Raycast(_camera.ScreenPointToRay(mouse), out var point))
+                tile = State.Map.GetTile(HexMapRenderer.FromWorld(point));
 
             SetHovered(tile);
             if (InputShim.SelectPressed())

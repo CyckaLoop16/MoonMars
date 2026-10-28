@@ -119,6 +119,27 @@ namespace Regolith.View
             return 0;
         }
 
+        /// <summary>T: switch between real-time and turn-based.</summary>
+        public static bool ModeTogglePressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.T);
+#endif
+        }
+
+        /// <summary>Enter: end the turn (turn-based mode).</summary>
+        public static bool EndTurnPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var k = Keyboard.current;
+            return k != null && (k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame);
+#else
+            return Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+#endif
+        }
+
         public static bool RegeneratePressed()
         {
 #if ENABLE_INPUT_SYSTEM
