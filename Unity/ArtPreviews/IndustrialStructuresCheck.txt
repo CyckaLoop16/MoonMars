@@ -1,0 +1,8 @@
+PASS: industrial structural kit.
+Walkway_Deck: 628 triangles; URP textured materials, normals, UVs and bounds OK.
+Walkway_Railing: 392 triangles; URP textured materials, normals, UVs and bounds OK.
+Foundation: 688 triangles; URP textured materials, normals, UVs and bounds OK.
+Foundation_Edge: 232 triangles; URP textured materials, normals, UVs and bounds OK.
+PASS: all 32 walkway/foundation neighbour masks, with connected sides clear.
+PASS: all 64 existing fixture power/connection cases.
+Day and night URP previews rendered.

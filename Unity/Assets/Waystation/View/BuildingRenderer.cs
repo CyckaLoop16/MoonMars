@@ -207,6 +207,7 @@ namespace Waystation.View
                 }
 
                 if (b.Def.Serves.Length > 0) AddPadFx(root, b, powered);
+                foreach (var moduleArt in root.GetComponentsInChildren<ModuleArtLighting>(true)) moduleArt.Bind(b, s, root.transform);
                 if (!b.Connected) AddEmergencyLamp(root, b);
             }
             UpdatePads();
@@ -228,6 +229,11 @@ namespace Waystation.View
         public GameObject CreatePreview(BuildingType type)
         {
             var root = new GameObject($"Preview {type}");
+            Vector3 MovingSocket(Vector3 fallback)
+            {
+                var art = root.GetComponentInChildren<ModuleArtLighting>();
+                return art != null && art.MovingSocket != null ? root.transform.InverseTransformPoint(art.MovingSocket.position) : fallback;
+            }
             var def = BuildingCatalog.Get(type);
             switch (type)
             {
@@ -242,11 +248,11 @@ namespace Waystation.View
                     {
                         Spawn(root, type.ToString(), type.ToString(), () => ModulePlaceholder(type, true), Vector3.zero, Quaternion.identity);
                         if (type == BuildingType.SolarArray)
-                            Spawn(root, "SolarArray_Wing", "SolarArray_Wing", SolarWing, new Vector3(0f, 0.68f, 0f), Quaternion.Euler(-25f, 0f, 0f));
+                            Spawn(root, "SolarArray_Wing", "SolarArray_Wing", SolarWing, MovingSocket(new Vector3(0f, 0.68f, 0f)), Quaternion.Euler(-25f, 0f, 0f));
                         if (type == BuildingType.CommsArray)
-                            Spawn(root, "CommsArray_Dish", "CommsArray_Dish", Dish, new Vector3(0f, 1.25f, 0f), Quaternion.Euler(-30f, 225f, 0f));
+                            Spawn(root, "CommsArray_Dish", "CommsArray_Dish", Dish, MovingSocket(new Vector3(0f, 1.25f, 0f)), Quaternion.Euler(-30f, 225f, 0f));
                         if (type == BuildingType.AtcTower)
-                            Spawn(root, "AtcTower_Radar", "AtcTower_Radar", Radar, new Vector3(0f, 2.47f, 0f), Quaternion.Euler(0f, 30f, 0f));
+                            Spawn(root, "AtcTower_Radar", "AtcTower_Radar", Radar, MovingSocket(new Vector3(0f, 2.47f, 0f)), Quaternion.Euler(0f, 30f, 0f));
                     }
                     else
                     {
@@ -541,24 +547,26 @@ namespace Waystation.View
         {
             var t = root.transform;
             var fx = new ModuleFx();
+            var art = root.GetComponentInChildren<ModuleArtLighting>();
+            Vector3 MovingSocket(Vector3 fallback) => art != null && art.MovingSocket != null ? root.transform.InverseTransformPoint(art.MovingSocket.position) : fallback;
             switch (b.Type)
             {
                 case BuildingType.SolarArray:
-                    fx.Wing = Spawn(root, "SolarArray_Wing", "SolarArray_Wing", SolarWing, new Vector3(0f, 0.68f, 0f), Quaternion.identity).transform;
+                    fx.Wing = Spawn(root, "SolarArray_Wing", "SolarArray_Wing", SolarWing, MovingSocket(new Vector3(0f, 0.68f, 0f)), Quaternion.identity).transform;
                     break;
 
                 case BuildingType.CommsArray:
-                    fx.Dish = Spawn(root, "CommsArray_Dish", "CommsArray_Dish", Dish, new Vector3(0f, 1.25f, 0f), Quaternion.Euler(-30f, b.Id * 47f, 0f)).transform;
+                    fx.Dish = Spawn(root, "CommsArray_Dish", "CommsArray_Dish", Dish, MovingSocket(new Vector3(0f, 1.25f, 0f)), Quaternion.Euler(-30f, b.Id * 47f, 0f)).transform;
                     break;
 
                 case BuildingType.AtcTower:
-                    fx.Radar = Spawn(root, "AtcTower_Radar", "AtcTower_Radar", Radar, new Vector3(0f, 2.47f, 0f), Quaternion.identity).transform;
+                    fx.Radar = Spawn(root, "AtcTower_Radar", "AtcTower_Radar", Radar, MovingSocket(new Vector3(0f, 2.47f, 0f)), Quaternion.identity).transform;
                     break;
 
                 case BuildingType.BatteryBank:
                     fx.ChargeLights = new GameObject[4];
                     for (int i = 0; i < 4; i++)
-                        fx.ChargeLights[i] = Spawn(root, "BatteryBank_Charge", "BatteryBank_Charge", ChargeLight, new Vector3(0.36f, 0.3f, -0.45f + i * 0.3f), Quaternion.identity, prefabAllowed: false);
+                        fx.ChargeLights[i] = Spawn(root, "BatteryBank_Charge", "BatteryBank_Charge", ChargeLight, new Vector3(0.36f, 0.3f, -0.45f + i * 0.3f), Quaternion.identity);
                     break;
 
                 case BuildingType.FuelCellGenerator:
@@ -569,7 +577,7 @@ namespace Waystation.View
 
                 case BuildingType.IceRefinery:
                     if (!powered) break;
-                    fx.Glow = Spawn(root, "IceRefinery_Glow", "IceRefinery_Glow", RefineryGlow, Vector3.zero, Quaternion.identity, prefabAllowed: false);
+                    fx.Glow = Spawn(root, "IceRefinery_Glow", "IceRefinery_Glow", RefineryGlow, Vector3.zero, Quaternion.identity);
                     fx.GlowLight = FxLight.Create(t, new Vector3(0.45f, 0.9f, -0.75f), Sodium, 0f, 2.8f, FxLightMode.Flicker);
                     fx.Plume = Fx.Create(t, FxPreset.Vapor, new Vector3(0.45f, 1.65f, -0.2f), Vector3.up);
                     break;

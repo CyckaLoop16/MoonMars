@@ -1,0 +1,25 @@
+PASS: industrial module kit.
+SolarArray: 492 triangles; lit materials, UVs, normals and emission maps OK.
+BatteryBank: 1020 triangles; lit materials, UVs, normals and emission maps OK.
+FuelCellGenerator: 1412 triangles; lit materials, UVs, normals and emission maps OK.
+FuelTank: 2144 triangles; lit materials, UVs, normals and emission maps OK.
+IceRefinery: 1440 triangles; lit materials, UVs, normals and emission maps OK.
+PilotLounge: 620 triangles; lit materials, UVs, normals and emission maps OK.
+CommsArray: 504 triangles; lit materials, UVs, normals and emission maps OK.
+AtcTower: 504 triangles; lit materials, UVs, normals and emission maps OK.
+Hangar: 736 triangles; lit materials, UVs, normals and emission maps OK.
+SolarArray_Wing: 216 triangles; lit materials, UVs, normals and emission maps OK.
+CommsArray_Dish: 1244 triangles; lit materials, UVs, normals and emission maps OK.
+AtcTower_Radar: 216 triangles; lit materials, UVs, normals and emission maps OK.
+BatteryBank_Charge: 24 triangles; lit materials, UVs, normals and emission maps OK.
+IceRefinery_Glow: 48 triangles; lit materials, UVs, normals and emission maps OK.
+SolarArray: runtime loaded native art and rendered in URP.
+BatteryBank: runtime loaded native art and rendered in URP.
+FuelCellGenerator: runtime loaded native art and rendered in URP.
+FuelTank: runtime loaded native art and rendered in URP.
+IceRefinery: runtime loaded native art and rendered in URP.
+PilotLounge: runtime loaded native art and rendered in URP.
+CommsArray: runtime loaded native art and rendered in URP.
+AtcTower: runtime loaded native art and rendered in URP.
+Hangar: runtime loaded native art and rendered in URP.
+PASS: native moving parts, solar sweep clearance, charge levels, refinery running state and power-off emissions.
