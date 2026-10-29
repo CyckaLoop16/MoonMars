@@ -39,9 +39,9 @@ foundation tiles stay 1 × 1 unit.
 | Starter pad | `Unity/Assets/Waystation/Resources/Buildings/StarterPad.prefab` | Pivot at footprint centre, deck top at Y=0; footprint 8×8 cells (16 m) |
 | Landing pad | `.../Resources/Buildings/LandingPad.prefab` | 8×8 cells |
 | Hangar | `.../Resources/Buildings/Hangar.prefab` | 10×10 cells, open enough that a docked ship is visible |
-| Walkway deck | `.../Resources/Buildings/Walkway_Deck.prefab` | Full 1×1 grated catwalk deck |
+| Walkway deck | `.../Resources/Buildings/Walkway_Deck.prefab` | Full 1×1 grated catwalk deck, edge to edge, pattern that tiles seamlessly (placeholder slats every 0.2 units) |
 | Walkway railing | `.../Resources/Buildings/Walkway_Railing.prefab` | Railing along the cell's **+Z** edge; placed (rotated) on every side with no neighbour |
-| Foundation | `.../Resources/Buildings/Foundation.prefab` | Full 1×1 heavy deck plate |
+| Foundation | `.../Resources/Buildings/Foundation.prefab` | Full 1×1 heavy deck plate, edge to edge with no border, so neighbours fuse into one surface (the placeholder adds 2×2-cell panel seams only between foundations) |
 | Foundation edge | `.../Resources/Buildings/Foundation_Edge.prefab` | Trim along the **+Z** edge; placed on every open side |
 | Modules | `.../Resources/Buildings/SolarArray.prefab`, `BatteryBank`, `FuelCellGenerator`, `FuelTank`, `IceRefinery`, `PilotLounge`, `CommsArray`, `AtcTower` | Footprint per DESIGN.md; base at Y=0 (they stand on foundations) |
 | Moving parts | `.../Resources/Buildings/SolarArray_Wing.prefab`, `CommsArray_Dish.prefab`, `AtcTower_Radar.prefab` | Wing: panels face +Y (code turns it to the sun); dish faces +Z; radar spins about Y |

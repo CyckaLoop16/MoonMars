@@ -192,12 +192,12 @@ namespace Waystation.View
                 {
                     case BuildingType.Walkway:
                         int mask = s.LinkMask(b.Origin);
-                        BuildTile(root, mask, "Walkway_Deck", WalkwayDeck, "Walkway_Railing", WalkwayRailing);
+                        BuildTile(root, mask, "Walkway_Deck", WalkwayDeckKey(b.Origin, SameMask(s, b)), () => WalkwayDeck(b.Origin, SameMask(s, b)), "Walkway_Railing", WalkwayRailing);
                         AddWalkwayLamp(root, b, mask, powered);
                         break;
                     case BuildingType.Foundation:
                         int foundationMask = s.LinkMask(b.Origin);
-                        BuildTile(root, foundationMask, "Foundation", FoundationPlate, "Foundation_Edge", FoundationEdge);
+                        BuildTile(root, foundationMask, "Foundation", FoundationKey(b.Origin, SameMask(s, b)), () => FoundationPlate(b.Origin, SameMask(s, b)), "Foundation_Edge", FoundationEdge);
                         AddFoundationLights(root, b, foundationMask, powered);
                         break;
                     default:
@@ -252,10 +252,29 @@ namespace Waystation.View
             switch (type)
             {
                 case BuildingType.Walkway:
-                    BuildTile(root, 0, "Walkway_Deck", WalkwayDeck, "Walkway_Railing", WalkwayRailing);
+                    // A short straight run, to show the tiles joining up.
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        var tile = new GameObject("Tile");
+                        tile.transform.SetParent(root.transform, false);
+                        tile.transform.localPosition = new Vector3(i, 0f, 0f);
+                        var cell = new Cell(i + 2, 0);
+                        int same = (i > -1 ? 1 << 3 : 0) | (i < 1 ? 1 << 1 : 0);
+                        BuildTile(tile, same, "Walkway_Deck", WalkwayDeckKey(cell, same), () => WalkwayDeck(cell, same), "Walkway_Railing", WalkwayRailing);
+                    }
                     break;
                 case BuildingType.Foundation:
-                    BuildTile(root, 0, "Foundation", FoundationPlate, "Foundation_Edge", FoundationEdge);
+                    // A 2 × 2 patch: one fused plate.
+                    for (int x = 0; x < 2; x++)
+                    for (int y = 0; y < 2; y++)
+                    {
+                        var tile = new GameObject("Tile");
+                        tile.transform.SetParent(root.transform, false);
+                        tile.transform.localPosition = new Vector3(x - 0.5f, 0f, y - 0.5f);
+                        var cell = new Cell(x, y);
+                        int same = (y == 0 ? 1 << 0 : 1 << 2) | (x == 0 ? 1 << 1 : 1 << 3);
+                        BuildTile(tile, same, "Foundation", FoundationKey(cell, same), () => FoundationPlate(cell, same), "Foundation_Edge", FoundationEdge);
+                    }
                     break;
                 default:
                     if (def.RequiresFoundation)
@@ -923,9 +942,9 @@ namespace Waystation.View
         // ------------------------------------------------------------------ auto-connecting tiles
 
         /// <summary>A deck piece plus an edge piece on every side that faces open space.</summary>
-        void BuildTile(GameObject root, int mask, string deckKey, System.Func<Mesh> deck, string edgeKey, System.Func<Mesh> edge)
+        void BuildTile(GameObject root, int mask, string deckPrefab, string deckMeshKey, System.Func<Mesh> deck, string edgeKey, System.Func<Mesh> edge)
         {
-            Spawn(root, deckKey, deckKey, deck, Vector3.zero, Quaternion.identity);
+            Spawn(root, deckPrefab, deckMeshKey, deck, Vector3.zero, Quaternion.identity);
             for (int i = 0; i < 4; i++)
             {
                 if ((mask & (1 << i)) != 0) continue; // a neighbour is there: leave the side open
@@ -1066,13 +1085,44 @@ namespace Waystation.View
 
         // ------------------------------------------------------------------ walkway and foundation pieces
 
-        static Mesh WalkwayDeck()
+        /// <summary>Which of a tile's four sides (N, E, S, W bits) join a tile of the same kind.</summary>
+        static int SameMask(Station s, Building b)
+        {
+            int mask = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                var n = b.Origin + Cell.Directions[i];
+                bool same = b.Type == BuildingType.Foundation ? s.FloorAt(n) != null : s.BuildingAt(n)?.Type == b.Type;
+                if (same) mask |= 1 << i;
+            }
+            return mask;
+        }
+
+        /// <summary>Stable per-cell noise for wear and supports.</summary>
+        static int CellHash(Cell c) => ((c.X * 73856093) ^ (c.Y * 19349663)) & 0x7fffffff;
+
+        const int North = 1 << 0, East = 1 << 1, South = 1 << 2, West = 1 << 3;
+
+        static string WalkwayDeckKey(Cell c, int same) => $"Walkway_Deck_{c.X & 1}{c.Y & 1}_{same}_{(CellHash(c) % 5 == 0 ? 1 : 0)}";
+
+        /// <summary>
+        /// A grated deck filling the whole cell. The slats are spaced so they carry on into the next tile;
+        /// underneath, stringers run along open sides and a cross member sits every second cell, with the
+        /// odd support strut, so a run of walkway looks like one catwalk rather than a row of tiles.
+        /// </summary>
+        static Mesh WalkwayDeck(Cell c, int same)
         {
             var b = new MeshBuilder();
             b.AddBox(new Vector3(0f, -0.05f, 0f), new Vector3(1f, 0.1f, 1f), Grate);
             for (int i = -2; i <= 2; i++)
-                b.AddBox(new Vector3(i * 0.18f, 0.003f, 0f), new Vector3(0.05f, 0.01f, 0.96f), GrateSlat);
-            b.AddSpike(new Vector3(0f, -0.1f, 0f), new Vector3(0f, -0.45f, 0f), 0.22f, 4, Underside, 45f);
+                b.AddBox(new Vector3(i * 0.2f, 0.003f, 0f), new Vector3(0.05f, 0.01f, 1f), GrateSlat);
+
+            if ((same & North) == 0) b.AddBox(new Vector3(0f, -0.16f, 0.46f), new Vector3(1f, 0.14f, 0.06f), Underside);
+            if ((same & South) == 0) b.AddBox(new Vector3(0f, -0.16f, -0.46f), new Vector3(1f, 0.14f, 0.06f), Underside);
+            if ((same & East) == 0) b.AddBox(new Vector3(0.46f, -0.16f, 0f), new Vector3(0.06f, 0.14f, 1f), Underside);
+            if ((same & West) == 0) b.AddBox(new Vector3(-0.46f, -0.16f, 0f), new Vector3(0.06f, 0.14f, 1f), Underside);
+            if ((c.X & 1) == 0) b.AddBox(new Vector3(-0.5f, -0.15f, 0f), new Vector3(0.05f, 0.1f, 1f), Underside);
+            if (CellHash(c) % 5 == 0) b.AddSpike(new Vector3(0f, -0.2f, 0f), new Vector3(0f, -0.6f, 0f), 0.12f, 4, Underside, 45f);
             return b.ToMesh("Walkway_Deck");
         }
 
@@ -1081,12 +1131,13 @@ namespace Waystation.View
         {
             var b = new MeshBuilder();
             const float z = 0.46f;
-            // 1 cell = 2 m: a 1.1 m handrail, a knee rail and posts every metre.
-            foreach (float x in new[] { -0.46f, 0f, 0.46f })
+            // 1 cell = 2 m: a 1.1 m handrail, a knee rail, a kick plate and a post every metre. Rails
+            // run the full cell and posts sit a quarter in, so a run of tiles reads as one railing.
+            foreach (float x in new[] { -0.25f, 0.25f })
                 b.AddBox(new Vector3(x, 0.27f, z), new Vector3(0.04f, 0.54f, 0.04f), Post);
-            b.AddBox(new Vector3(0f, 0.55f, z), new Vector3(0.98f, 0.035f, 0.045f), Stripe);
-            b.AddBox(new Vector3(0f, 0.28f, z), new Vector3(0.98f, 0.02f, 0.025f), Post);
-            b.AddBox(new Vector3(0f, 0.04f, z), new Vector3(0.98f, 0.06f, 0.015f), Post);
+            b.AddBox(new Vector3(0f, 0.55f, z), new Vector3(1f, 0.035f, 0.045f), Stripe);
+            b.AddBox(new Vector3(0f, 0.28f, z), new Vector3(1f, 0.02f, 0.025f), Post);
+            b.AddBox(new Vector3(0f, 0.04f, z), new Vector3(1f, 0.06f, 0.015f), Post);
             return b.ToMesh("Walkway_Railing");
         }
 
@@ -1119,15 +1170,44 @@ namespace Waystation.View
             return b.ToMesh("FoundationGuideLight");
         }
 
-        static Mesh FoundationPlate()
+        static string FoundationKey(Cell c, int same)
+        {
+            int h = CellHash(c);
+            return $"Foundation_{c.X & 1}{c.Y & 1}_{same}_{h % 6}_{(h / 7) % 9 == 0}";
+        }
+
+        /// <summary>
+        /// A deck plate filling the whole cell. Joined foundations fuse into 2 × 2-cell (4 m) panels:
+        /// seams and rivets only fall on panel lines between foundations, never on open edges, so 1×2,
+        /// 2×2 and larger patches read as one plate. Beams run under the seams and along open edges.
+        /// </summary>
+        static Mesh FoundationPlate(Cell c, int same)
         {
             var b = new MeshBuilder();
             b.AddBox(new Vector3(0f, -0.15f, 0f), new Vector3(1f, 0.3f, 1f), Plate);
-            b.AddBox(new Vector3(0f, 0.005f, 0f), new Vector3(0.86f, 0.01f, 0.86f), PlateTop);
-            foreach (var (sx, sz) in new[] { (1, 1), (1, -1), (-1, 1), (-1, -1) })
-                b.AddBox(new Vector3(sx * 0.36f, 0.015f, sz * 0.36f), Vector3.one * 0.05f, Post);
-            b.AddBox(new Vector3(0.2f, 0.012f, -0.25f), new Vector3(0.3f, 0.005f, 0.08f), Rust);
-            b.AddSpike(new Vector3(0f, -0.3f, 0f), new Vector3(0f, -0.8f, 0f), 0.35f, 4, Underside, 45f);
+            b.AddQuad(new Vector3(-0.5f, 0.001f, -0.5f), new Vector3(-0.5f, 0.001f, 0.5f), new Vector3(0.5f, 0.001f, 0.5f), new Vector3(0.5f, 0.001f, -0.5f), Vector3.up, PlateTop);
+
+            bool seamWest = (c.X & 1) == 0 && (same & West) != 0;
+            bool seamSouth = (c.Y & 1) == 0 && (same & South) != 0;
+            if (seamWest) b.AddBox(new Vector3(-0.5f, 0.002f, 0f), new Vector3(0.03f, 0.004f, 1f), GrateSlat);
+            if (seamSouth) b.AddBox(new Vector3(0f, 0.002f, -0.5f), new Vector3(1f, 0.004f, 0.03f), GrateSlat);
+            if (seamWest && seamSouth)
+                foreach (var (sx, sz) in new[] { (1, 1), (1, -1), (-1, 1), (-1, -1) })
+                    b.AddBox(new Vector3(-0.5f + sx * 0.06f, 0.008f, -0.5f + sz * 0.06f), new Vector3(0.035f, 0.016f, 0.035f), Post);
+
+            // Wear: the odd rust streak or scuffed patch, placed by cell so it doesn't repeat in a grid.
+            int h = CellHash(c);
+            if (h % 6 == 0) b.AddBox(new Vector3(((h >> 3) % 50) / 100f - 0.25f, 0.003f, ((h >> 9) % 50) / 100f - 0.25f), new Vector3(0.3f, 0.004f, 0.08f), Rust, (h >> 4) % 90);
+            if (h % 6 == 3) b.AddBox(new Vector3(((h >> 5) % 40) / 100f - 0.2f, 0.003f, ((h >> 11) % 40) / 100f - 0.2f), new Vector3(0.18f, 0.004f, 0.18f), Plate, (h >> 6) % 90);
+
+            // Underside: beams under the panel seams and a skirt along open edges.
+            if (seamWest) b.AddBox(new Vector3(-0.5f, -0.4f, 0f), new Vector3(0.1f, 0.2f, 1f), Underside);
+            if (seamSouth) b.AddBox(new Vector3(0f, -0.4f, -0.5f), new Vector3(1f, 0.2f, 0.1f), Underside);
+            if ((same & North) == 0) b.AddBox(new Vector3(0f, -0.4f, 0.45f), new Vector3(1f, 0.22f, 0.1f), Underside);
+            if ((same & South) == 0) b.AddBox(new Vector3(0f, -0.4f, -0.45f), new Vector3(1f, 0.22f, 0.1f), Underside);
+            if ((same & East) == 0) b.AddBox(new Vector3(0.45f, -0.4f, 0f), new Vector3(0.1f, 0.22f, 1f), Underside);
+            if ((same & West) == 0) b.AddBox(new Vector3(-0.45f, -0.4f, 0f), new Vector3(0.1f, 0.22f, 1f), Underside);
+            if ((h / 7) % 9 == 0) b.AddSpike(new Vector3(0f, -0.3f, 0f), new Vector3(0f, -1.1f, 0f), 0.25f, 4, Underside, 45f);
             return b.ToMesh("Foundation");
         }
 
