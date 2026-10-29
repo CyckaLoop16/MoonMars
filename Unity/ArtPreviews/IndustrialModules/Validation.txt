@@ -1,25 +1,34 @@
 PASS: industrial module kit.
-SolarArray: 492 triangles; lit materials, UVs, normals and emission maps OK.
-BatteryBank: 1020 triangles; lit materials, UVs, normals and emission maps OK.
-FuelCellGenerator: 1412 triangles; lit materials, UVs, normals and emission maps OK.
-FuelTank: 2144 triangles; lit materials, UVs, normals and emission maps OK.
-IceRefinery: 1440 triangles; lit materials, UVs, normals and emission maps OK.
-PilotLounge: 620 triangles; lit materials, UVs, normals and emission maps OK.
-CommsArray: 504 triangles; lit materials, UVs, normals and emission maps OK.
-AtcTower: 504 triangles; lit materials, UVs, normals and emission maps OK.
-Hangar: 736 triangles; lit materials, UVs, normals and emission maps OK.
-SolarArray_Wing: 216 triangles; lit materials, UVs, normals and emission maps OK.
-CommsArray_Dish: 1244 triangles; lit materials, UVs, normals and emission maps OK.
-AtcTower_Radar: 216 triangles; lit materials, UVs, normals and emission maps OK.
+SolarArray: 1272 triangles; lit materials, UVs, normals and emission maps OK.
+BatteryBank: 2156 triangles; lit materials, UVs, normals and emission maps OK.
+FuelCellGenerator: 2480 triangles; lit materials, UVs, normals and emission maps OK.
+FuelTank: 2604 triangles; lit materials, UVs, normals and emission maps OK.
+IceRefinery: 2352 triangles; lit materials, UVs, normals and emission maps OK.
+PilotLounge: 1012 triangles; lit materials, UVs, normals and emission maps OK.
+CommsArray: 952 triangles; lit materials, UVs, normals and emission maps OK.
+AtcTower: 1040 triangles; lit materials, UVs, normals and emission maps OK.
+Hangar: 1532 triangles; lit materials, UVs, normals and emission maps OK.
+SolarArray_Wing: 548 triangles; lit materials, UVs, normals and emission maps OK.
+CommsArray_Dish: 2108 triangles; lit materials, UVs, normals and emission maps OK.
+AtcTower_Radar: 260 triangles; lit materials, UVs, normals and emission maps OK.
 BatteryBank_Charge: 24 triangles; lit materials, UVs, normals and emission maps OK.
 IceRefinery_Glow: 48 triangles; lit materials, UVs, normals and emission maps OK.
+SolarArray: fills 5x5 world footprint; preview and moving-part scale agree.
 SolarArray: runtime loaded native art and rendered in URP.
+BatteryBank: fills 3x5 world footprint; preview and moving-part scale agree.
 BatteryBank: runtime loaded native art and rendered in URP.
+FuelCellGenerator: fills 3x5 world footprint; preview and moving-part scale agree.
 FuelCellGenerator: runtime loaded native art and rendered in URP.
+FuelTank: fills 5x5 world footprint; preview and moving-part scale agree.
 FuelTank: runtime loaded native art and rendered in URP.
+IceRefinery: fills 5x8 world footprint; preview and moving-part scale agree.
 IceRefinery: runtime loaded native art and rendered in URP.
+PilotLounge: fills 5x5 world footprint; preview and moving-part scale agree.
 PilotLounge: runtime loaded native art and rendered in URP.
+CommsArray: fills 5x5 world footprint; preview and moving-part scale agree.
 CommsArray: runtime loaded native art and rendered in URP.
+AtcTower: fills 5x5 world footprint; preview and moving-part scale agree.
 AtcTower: runtime loaded native art and rendered in URP.
+Hangar: fills 10x10 world footprint; preview and moving-part scale agree.
 Hangar: runtime loaded native art and rendered in URP.
 PASS: native moving parts, solar sweep clearance, charge levels, refinery running state and power-off emissions.

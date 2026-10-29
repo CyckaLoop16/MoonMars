@@ -15,7 +15,7 @@ namespace Waystation.EditorTools
         const string Folder="Assets/Waystation/Art/IndustrialModules";
         const string Prefabs="Assets/Waystation/Resources/Buildings/";
         const string Shared="Assets/Waystation/Art/IndustrialPads/Materials/";
-        const string Revision="2";
+        const string Revision="3";
         public static readonly string[] Names={"SolarArray","BatteryBank","FuelCellGenerator","FuelTank","IceRefinery","PilotLounge","CommsArray","AtcTower","Hangar",
             "SolarArray_Wing","CommsArray_Dish","AtcTower_Radar","BatteryBank_Charge","IceRefinery_Glow"};
         static Dictionary<string,Material> _materials;
@@ -35,7 +35,7 @@ namespace Waystation.EditorTools
             if(!ready)Build();
         }
         [MenuItem("Waystation/Art/Rebuild Industrial Modules")]
-        static void Build()
+        public static void Build()
         {
             try
             {
@@ -46,7 +46,9 @@ namespace Waystation.EditorTools
                     var mesh=new ArtMesh();var glow=new Dictionary<string,Glow>();Vector3? moving=null;
                     if(Enum.TryParse<BuildingType>(name,out var type))
                     {
-                        var def=BuildingCatalog.Get(type);Skid(mesh,def.Width,def.Height);
+                        var def=BuildingCatalog.Get(type);
+                        float width=def.Width/BuildingRenderer.DesignScale,depth=def.Height/BuildingRenderer.DesignScale;
+                        Skid(mesh,width,depth);
                         if(type!=BuildingType.Hangar)AreaLamp(mesh,glow,def);
                         switch(type)
                         {
@@ -78,13 +80,14 @@ namespace Waystation.EditorTools
                         }
                         glow["RunAmber"]=new Glow(ModuleArtLighting.Mode.Running,new Vector3(.45f,.9f,-.75f));
                     }
+                    Details(name,mesh);
                     Save(name,mesh,glow,moving);
                 }
                 AssetDatabase.SaveAssets();IndustrialModuleCheck.Run();
                 File.WriteAllText(Folder+"/Revision.txt",Revision);AssetDatabase.ImportAsset(Folder+"/Revision.txt");
                 Debug.Log("Industrial modules installed and verified.");
             }
-            catch(Exception error){Debug.LogError("Industrial module installation: "+error);}
+            catch(Exception error){Debug.LogError("Industrial module installation: "+error);if(Application.isBatchMode)throw;}
         }
 
         static void Materials()
@@ -141,7 +144,7 @@ namespace Waystation.EditorTools
         }
         static void AreaLamp(ArtMesh b,Dictionary<string,Glow> glow,BuildingDef def)
         {
-            var p=new Vector3(-(def.Width*.5f-.2f),.9f,-(def.Height*.5f-.2f));
+            var p=new Vector3(-(def.Width/BuildingRenderer.DesignScale*.5f-.2f),.9f,-(def.Height/BuildingRenderer.DesignScale*.5f-.2f));
             b.Box(new Vector3(p.x,.43f,p.z),new Vector3(.035f,.82f,.035f),"Steel");
             b.Box(p-new Vector3(0,.02f,0),new Vector3(.16f,.07f,.13f),"Dark");
             b.Box(p+new Vector3(0,.025f,0),new Vector3(.12f,.015f,.09f),"ModuleLamp");
@@ -184,7 +187,7 @@ namespace Waystation.EditorTools
             }
             foreach(float x in new[]{-.34f,.34f})b.Box(new Vector3(x,.43f,0),new Vector3(.035f,.59f,1.58f),"Dark");
             b.Box(new Vector3(0,.40f,-.84f),new Vector3(.64f,.45f,.06f),"Orange");
-            for(int i=0;i<4;i++)b.Box(new Vector3(.355f,.3f,-.45f+i*.3f),new Vector3(.035f,.16f,.25f),"Dark");
+            for(int i=0;i<4;i++)b.Box(new Vector3(.535f,.3f,-.45f+i*.3f),new Vector3(.035f,.16f,.25f),"Dark");
             b.Beam(new Vector3(-.31f,.13f,-.75f),new Vector3(-.31f,.13f,.75f),.023f,"Orange",8);
             foreach(float x in new[]{-.19f,.19f})b.Cylinder(new Vector3(x,.79f,.68f),.04f,.10f,x<0?"Dark":"Orange",12);
         }
@@ -337,10 +340,193 @@ namespace Waystation.EditorTools
             b.Box(new Vector3(1.7f,.38f,1.7f),new Vector3(.045f,.76f,.045f),"Steel");
         }
 
+        // Details are authored in the same design units as the machinery and its FX sockets.
+        static void Details(string name,ArtMesh b)
+        {
+            void Bolts(Vector3 center,float width,float depth,float y)
+            {
+                foreach(float x in new[]{-width*.5f,width*.5f})foreach(float z in new[]{-depth*.5f,depth*.5f})
+                    b.Cylinder(center+new Vector3(x,y,z),.018f,.018f,"Steel",6);
+            }
+            void Vent(Vector3 center,int count,float pitch,float length)
+            {
+                b.Box(center,new Vector3(count*pitch+.05f,.025f,length+.05f),"Dark");
+                for(int i=0;i<count;i++)b.Box(center+new Vector3((i-(count-1)*.5f)*pitch,.018f,0),new Vector3(.018f,.025f,length),"Steel");
+            }
+            void Ladder(float x,float z,float top)
+            {
+                foreach(float dx in new[]{-.075f,.075f})b.Box(new Vector3(x+dx,top*.5f,z),new Vector3(.018f,top,.025f),"Steel");
+                for(float y=.17f;y<top;y+=.15f)b.Box(new Vector3(x,y,z-.01f),new Vector3(.17f,.018f,.025f),"Steel");
+            }
+            switch(name)
+            {
+                case "SolarArray":
+                    b.Cylinder(new Vector3(0,.27f,0),.14f,.18f,"Dark",24);
+                    foreach(float y in new[]{.21f,.32f,.43f,.66f})b.Cylinder(new Vector3(0,y,0),.10f,.025f,"Steel",24);
+                    Bolts(Vector3.zero,.42f,.42f,.165f);
+                    foreach(float side in new[]{-1f,1f})
+                    {
+                        b.Cylinder(new Vector3(side*.22f,.13f,.20f),.055f,.045f,"Dark",12);
+                        b.Beam(new Vector3(side*.22f,.16f,.20f),new Vector3(side*.06f,.72f,0),.018f,"Orange",10);
+                    }
+                    b.Box(new Vector3(.55f,.23f,.327f),new Vector3(.43f,.21f,.015f),"Steel");
+                    b.Box(new Vector3(.55f,.23f,.314f),new Vector3(.22f,.09f,.015f),"Screen");
+                    foreach(float z in new[]{.43f,.65f})b.Beam(new Vector3(.32f,.13f,z),new Vector3(.12f,.13f,z),.018f,"Dark",8);
+                    break;
+                case "SolarArray_Wing":
+                    foreach(float side in new[]{-1f,1f})
+                    {
+                        float x=side*.48f;
+                        foreach(float z in new[]{-.22f,0f,.22f})b.Box(new Vector3(x,-.04f,z),new Vector3(.75f,.035f,.018f),"Steel");
+                        b.Box(new Vector3(x,.017f,0),new Vector3(.018f,.012f,.63f),"Steel");
+                        Bolts(new Vector3(x,0,0),.76f,.66f,.034f);
+                    }
+                    b.Cylinder(new Vector3(0,-.02f,0),.09f,.075f,"Dark",20);
+                    break;
+                case "BatteryBank":
+                    foreach(float side in new[]{-1f,1f})
+                    {
+                        b.SlabAt(new Vector3(side*.43f,0,0),.13f,1.62f,.018f,.16f,.57f,"Teal");
+                        b.Box(new Vector3(side*.505f,.37f,0),new Vector3(.025f,.19f,1.46f),"Dark");
+                        for(int i=0;i<10;i++)b.Box(new Vector3(side*.523f,.37f,-.65f+i*.145f),new Vector3(.015f,.13f,.035f),"Steel");
+                        b.Beam(new Vector3(side*.28f,.79f,-.64f),new Vector3(side*.28f,.79f,.64f),.018f,side<0?"Orange":"Dark",8);
+                    }
+                    foreach(float z in new[]{-.78f,.78f})b.Box(new Vector3(0,.81f,z),new Vector3(.67f,.04f,.04f),"Steel");
+                    for(int i=0;i<4;i++)
+                    {
+                        float z=-.60f+i*.39f;
+                        foreach(float x in new[]{-.16f,.16f})
+                        {
+                            b.Box(new Vector3(x,.57f,z-.183f),new Vector3(.12f,.025f,.014f),"Steel");
+                            Bolts(new Vector3(x,0,z),.20f,.25f,.768f);
+                        }
+                    }
+                    break;
+                case "FuelCellGenerator":
+                    b.Slab(.96f,1.78f,.055f,.08f,.15f,"Steel");
+                    foreach(float z in new[]{-.55f,0f,.55f})
+                    {
+                        b.Cylinder(new Vector3(-.07f,.72f,z),.11f,.05f,"Dark",20);
+                        Bolts(new Vector3(-.07f,0,z),.21f,.21f,.75f);
+                        b.Beam(new Vector3(-.35f,.29f,z),new Vector3(-.07f,.29f,z),.025f,"Orange",10);
+                        b.Beam(new Vector3(-.35f,.53f,z),new Vector3(-.07f,.53f,z),.022f,"Steel",10);
+                    }
+                    foreach(float y in new[]{.29f,.53f})b.Beam(new Vector3(-.35f,y,-.77f),new Vector3(-.35f,y,.77f),.035f,"Steel",12);
+                    foreach(float y in new[]{.77f,.84f,.90f})b.Cylinder(new Vector3(.25f,y,.75f),.069f,.018f,"Steel",16);
+                    b.SlabAt(new Vector3(.33f,0,-.72f),.29f,.28f,.025f,.17f,.58f,"Teal");
+                    Vent(new Vector3(.33f,.60f,-.72f),4,.05f,.21f);
+                    break;
+                case "FuelTank":
+                    foreach(float side in new[]{-1f,1f})
+                    {
+                        b.Beam(new Vector3(-.48f,.17f,side*.48f),new Vector3(.48f,.73f,side*.48f),.022f,"Steel",8);
+                        b.Beam(new Vector3(.48f,.17f,side*.48f),new Vector3(-.48f,.73f,side*.48f),.022f,"Steel",8);
+                    }
+                    Ladder(-.76f,-.12f,1.24f);
+                    b.Box(new Vector3(-.70f,1.23f,-.12f),new Vector3(.24f,.035f,.34f),"Steel");
+                    foreach(float z in new[]{-.30f,.06f})b.Box(new Vector3(-.79f,1.40f,z),new Vector3(.025f,.35f,.025f),"Steel");
+                    b.Beam(new Vector3(-.79f,1.56f,-.30f),new Vector3(-.79f,1.56f,.06f),.012f,"Yellow",8);
+                    b.Beam(new Vector3(.65f,.18f,-.45f),new Vector3(.65f,.18f,.55f),.045f,"Steel",12);
+                    foreach(float z in new[]{-.35f,.4f})b.Cylinder(new Vector3(.65f,.19f,z),.08f,.06f,"Dark",16);
+                    break;
+                case "IceRefinery":
+                    Ladder(.84f,-.20f,1.38f);
+                    b.SlabAt(new Vector3(.23f,0,1.04f),.93f,.68f,.05f,.12f,.22f,"Steel");
+                    foreach(float x in new[]{-.02f,.48f})
+                    {
+                        b.Cylinder(new Vector3(x,.52f,1.04f),.19f,.59f,"Teal",20);
+                        foreach(float y in new[]{.26f,.76f})b.Cylinder(new Vector3(x,y,1.04f),.205f,.04f,"Steel",20);
+                        b.Beam(new Vector3(x,.83f,1.04f),new Vector3(x,.98f,1.04f),.022f,"Orange",10);
+                        b.Beam(new Vector3(x,.98f,1.04f),new Vector3(x,.98f,.46f),.022f,"Orange",10);
+                    }
+                    b.Beam(new Vector3(.45f,.98f,.46f),new Vector3(.45f,.98f,.12f),.035f,"Steel",12);
+                    foreach(float z in new[]{.17f,.95f})b.Box(new Vector3(-.84f,.57f,z),new Vector3(.065f,.045f,.13f),"Dark");
+                    Vent(new Vector3(-.45f,.48f,-1.11f),6,.065f,.30f);
+                    break;
+                case "PilotLounge":
+                    foreach(float x in new[]{-.64f,0f,.64f})b.Box(new Vector3(x,.48f,-.75f),new Vector3(.035f,.64f,.04f),"Steel");
+                    foreach(float z in new[]{-.55f,.55f})b.Box(new Vector3(.825f,.48f,z),new Vector3(.035f,.64f,.04f),"Steel");
+                    b.SlabAt(new Vector3(.3f,0,-.28f),.52f,.48f,.04f,.94f,1.02f,"Teal");
+                    Vent(new Vector3(.3f,1.04f,-.28f),6,.067f,.36f);
+                    b.Beam(new Vector3(.3f,.97f,-.02f),new Vector3(.3f,.97f,.4f),.025f,"Steel",10);
+                    b.Box(new Vector3(.50f,.12f,-.85f),new Vector3(.42f,.06f,.16f),"Steel");
+                    b.Box(new Vector3(.50f,.08f,-.91f),new Vector3(.47f,.04f,.12f),"Yellow");
+                    foreach(float z in new[]{-.53f,.53f})Bolts(new Vector3(0,0,z),1.34f,.02f,.951f);
+                    break;
+                case "CommsArray":
+                    foreach(float x in new[]{-.15f,.15f})b.Beam(new Vector3(x,.20f,.14f),new Vector3(-x,1.0f,.11f),.014f,"Steel",6);
+                    Ladder(.20f,.19f,1.08f);
+                    b.Cylinder(new Vector3(0,1.10f,0),.20f,.05f,"Teal",24);
+                    for(int i=0;i<6;i++)b.Box(new Vector3(-.70f+i*.08f,.465f,.50f),new Vector3(.025f,.035f,.44f),"Steel");
+                    b.SlabAt(new Vector3(.55f,0,.55f),.43f,.48f,.035f,.08f,.49f,"Teal");
+                    Vent(new Vector3(.55f,.51f,.55f),5,.065f,.34f);
+                    b.Beam(new Vector3(-.50f,.12f,.25f),new Vector3(.55f,.12f,.25f),.022f,"Orange",10);
+                    break;
+                case "CommsArray_Dish":
+                    for(int i=0;i<12;i++)
+                    {
+                        float a=i*Mathf.PI/6;
+                        Vector3 Back(float radius)=>new Vector3(Mathf.Cos(a)*radius,Mathf.Sin(a)*radius,-.24f+.18f*(radius/.65f)*(radius/.65f));
+                        foreach(var radii in new[]{new Vector2(0,.22f),new Vector2(.22f,.44f),new Vector2(.44f,.62f)})
+                            b.Beam(Back(radii.x),Back(radii.y),.014f,"Steel",6);
+                        b.Box(Back(.62f),new Vector3(.025f,.025f,.025f),"Dark");
+                    }
+                    break;
+                case "AtcTower":
+                    Ladder(-.31f,0,1.58f);
+                    foreach(float z in new[]{-.4f,.4f})b.Box(new Vector3(.66f,.26f,z),new Vector3(.16f,.27f,.24f),"Teal");
+                    Vent(new Vector3(.66f,.405f,.4f),3,.045f,.16f);
+                    b.Beam(new Vector3(.32f,.09f,.45f),new Vector3(.32f,1.60f,.45f),.022f,"Orange",10);
+                    for(int i=0;i<8;i++)
+                    {
+                        float a=i*Mathf.PI/4;
+                        b.Beam(new Vector3(Mathf.Cos(a)*.28f,1.46f,Mathf.Sin(a)*.28f),new Vector3(Mathf.Cos(a)*.58f,1.68f,Mathf.Sin(a)*.58f),.018f,"Steel",8);
+                    }
+                    b.Cylinder(new Vector3(.28f,2.30f,.10f),.06f,.08f,"Teal",16);
+                    break;
+                case "AtcTower_Radar":
+                    foreach(float x in new[]{-.47f,.47f})b.Box(new Vector3(x,0,-.065f),new Vector3(.035f,.22f,.025f),"Steel");
+                    b.Beam(new Vector3(-.45f,-.08f,-.07f),new Vector3(.45f,.08f,-.07f),.012f,"Steel",6);
+                    break;
+                case "Hangar":
+                    foreach(float side in new[]{-1f,1f})
+                    {
+                        for(int i=0;i<5;i++)
+                        {
+                            float z=-1.40f+i*.62f;
+                            b.Beam(new Vector3(side*1.83f,.75f,z),new Vector3(side*1.83f,1.65f,z+.52f),.025f,"Steel",8);
+                        }
+                        for(int i=0;i<3;i++)
+                        {
+                            float z=-.95f+i*.70f;
+                            b.Box(new Vector3(side*1.61f,.27f,z),new Vector3(.24f,.42f,.43f),"Teal");
+                            b.Box(new Vector3(side*1.47f,.28f,z),new Vector3(.025f,.27f,.33f),"Dark");
+                            b.Box(new Vector3(side*1.45f,.41f,z),new Vector3(.025f,.025f,.16f),"Steel");
+                        }
+                        b.Box(new Vector3(side*1.75f,1.65f,.70f),new Vector3(.16f,.13f,.45f),"Steel");
+                    }
+                    foreach(float y in new[]{1.33f,1.83f})b.Box(new Vector3(0,y,1.83f),new Vector3(3.05f,.045f,.065f),"Steel");
+                    for(int i=-5;i<=5;i++)b.Box(new Vector3(i*.27f,1.58f,1.83f),new Vector3(.035f,.48f,.025f),"Steel");
+                    Vent(new Vector3(-.95f,1.28f,1.81f),9,.075f,.19f);
+                    break;
+            }
+        }
+
         static void Save(string name,ArtMesh data,Dictionary<string,Glow> glow,Vector3? moving)
         {
             string path=Folder+"/Meshes/"+name+".asset";var fresh=data.ToMesh(name);var mesh=AssetDatabase.LoadAssetAtPath<Mesh>(path);
-            if(mesh==null){mesh=fresh;AssetDatabase.CreateAsset(mesh,path);}else{EditorUtility.CopySerialized(fresh,mesh);UnityEngine.Object.DestroyImmediate(fresh);}
+            if(mesh==null){mesh=fresh;AssetDatabase.CreateAsset(mesh,path);}
+            else
+            {
+                // CopySerialized alone can leave an existing Mesh's GPU buffers on the old geometry.
+                // Use Mesh setters so a rebuild updates both the asset and its live render data.
+                mesh.Clear();mesh.indexFormat=fresh.indexFormat;mesh.vertices=fresh.vertices;
+                mesh.normals=fresh.normals;mesh.uv=fresh.uv;mesh.tangents=fresh.tangents;
+                mesh.subMeshCount=fresh.subMeshCount;
+                for(int i=0;i<fresh.subMeshCount;i++)mesh.SetTriangles(fresh.GetTriangles(i),i);
+                mesh.RecalculateBounds();EditorUtility.SetDirty(mesh);AssetDatabase.SaveAssetIfDirty(mesh);
+                UnityEngine.Object.DestroyImmediate(fresh);
+            }
             var root=new GameObject(name);
             try
             {

@@ -242,12 +242,8 @@ namespace Waystation.View
         public GameObject CreatePreview(BuildingType type)
         {
             var root = new GameObject($"Preview {type}");
-            Vector3 MovingSocket(Vector3 fallback)
-            {
-                var art = root.GetComponentInChildren<ModuleArtLighting>();
-                return art != null && art.MovingSocket != null ? root.transform.InverseTransformPoint(art.MovingSocket.position) : fallback;
-            }
             var def = BuildingCatalog.Get(type);
+            var fit = new Vector2(def.Width - 0.2f, def.Height - 0.2f);
             if (!def.IsPaintable) root.transform.localScale = Vector3.one * DesignScale;
             switch (type)
             {
@@ -260,17 +256,17 @@ namespace Waystation.View
                 default:
                     if (def.RequiresFoundation)
                     {
-                        Spawn(root, type.ToString(), type.ToString(), () => ModulePlaceholder(type, true), Vector3.zero, Quaternion.identity);
+                        Spawn(root, type.ToString(), type.ToString(), () => ModulePlaceholder(type, true), Vector3.zero, Quaternion.identity, fit: fit);
                         if (type == BuildingType.SolarArray)
-                            Spawn(root, "SolarArray_Wing", "SolarArray_Wing", SolarWing, MovingSocket(new Vector3(0f, 0.68f, 0f)), Quaternion.Euler(-25f, 0f, 0f));
+                            SpawnModulePart(root, "SolarArray_Wing", SolarWing, new Vector3(0f, 0.68f, 0f), Quaternion.Euler(-25f, 0f, 0f), moving: true);
                         if (type == BuildingType.CommsArray)
-                            Spawn(root, "CommsArray_Dish", "CommsArray_Dish", Dish, MovingSocket(new Vector3(0f, 1.25f, 0f)), Quaternion.Euler(-30f, 225f, 0f));
+                            SpawnModulePart(root, "CommsArray_Dish", Dish, new Vector3(0f, 1.25f, 0f), Quaternion.Euler(-30f, 225f, 0f), moving: true);
                         if (type == BuildingType.AtcTower)
-                            Spawn(root, "AtcTower_Radar", "AtcTower_Radar", Radar, MovingSocket(new Vector3(0f, 2.47f, 0f)), Quaternion.Euler(0f, 30f, 0f));
+                            SpawnModulePart(root, "AtcTower_Radar", Radar, new Vector3(0f, 2.47f, 0f), Quaternion.Euler(0f, 30f, 0f), moving: true);
                     }
                     else
                     {
-                        Spawn(root, type.ToString(), type.ToString(), () => Placeholder(type, true), Vector3.zero, Quaternion.identity);
+                        Spawn(root, type.ToString(), type.ToString(), () => Placeholder(type, true), Vector3.zero, Quaternion.identity, fit: fit);
                     }
                     break;
             }
@@ -374,6 +370,7 @@ namespace Waystation.View
         {
             var t = root.transform;
             float w = DesignWidth(b.Def), h = DesignDepth(b.Def);
+            Vector3 ArtSocket(string name, Vector3 fallback) => ModuleArtPosition(root, fallback, "FX_" + name);
             bool failing = b.Id % 5 == 3; // the odd lamp is always on its way out
 
             switch (b.Type)
@@ -405,24 +402,24 @@ namespace Waystation.View
                     break;
 
                 case BuildingType.Hangar:
-                    FxLight.Flood(t, new Vector3(-(w / 2f - 0.4f), 1.2f, h / 2f - 0.4f), WorkLight, 1.3f, 3.8f);
-                    FxLight.Flood(t, new Vector3(w / 2f - 0.4f, 1.2f, h / 2f - 0.4f), WorkLight, 1.3f, 3.8f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
-                    FxLight.Create(t, new Vector3(0f, 1.1f, -h / 2f + 0.2f), Alarm, 0.7f, 2.2f, FxLightMode.Pulse);
+                    FxLight.Flood(t, ArtSocket("Work_A", new Vector3(-(w / 2f - 0.4f), 1.2f, h / 2f - 0.4f)), WorkLight, 1.3f, 3.8f);
+                    FxLight.Flood(t, ArtSocket("Work_B", new Vector3(w / 2f - 0.4f, 1.2f, h / 2f - 0.4f)), WorkLight, 1.3f, 3.8f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
+                    FxLight.Create(t, ArtSocket("SignalRed", new Vector3(0f, 1.1f, -h / 2f + 0.2f)), Alarm, 0.7f, 2.2f, FxLightMode.Pulse);
                     break;
 
                 default:
                     if (!b.Def.RequiresFoundation) break;
                     // A floodlight on one corner of every module, and a beacon on the tall ones.
-                    FxLight.Flood(t, new Vector3(-(w / 2f - 0.15f), 0.9f, -(h / 2f - 0.15f)), Sodium, 1.1f, 2.6f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
-                    if (b.Type == BuildingType.CommsArray) FxLight.Create(t, new Vector3(-0.5f, 0.5f, 0.5f), Alarm, 1.2f, 2.8f, FxLightMode.Strobe);
+                    FxLight.Flood(t, ArtSocket("ModuleLamp", new Vector3(-(w / 2f - 0.15f), 0.9f, -(h / 2f - 0.15f))), Sodium, 1.1f, 2.6f, failing ? FxLightMode.Flicker : FxLightMode.Steady);
+                    if (b.Type == BuildingType.CommsArray) FxLight.Create(t, ArtSocket("SignalRed", new Vector3(-0.5f, 0.5f, 0.5f)), Alarm, 1.2f, 2.8f, FxLightMode.Strobe);
                     if (b.Type == BuildingType.AtcTower)
                     {
-                        FxLight.Create(t, new Vector3(0f, 1.9f, 0f), Glass, 1.4f, 3.5f);
-                        FxLight.Create(t, new Vector3(0.6f, 0.45f, -0.6f), Charge, 0.8f, 1.6f, FxLightMode.Pulse);
+                        FxLight.Create(t, ArtSocket("ControlGlass", new Vector3(0f, 1.9f, 0f)), Glass, 1.4f, 3.5f);
+                        FxLight.Create(t, ArtSocket("SignalGreen", new Vector3(0.6f, 0.45f, -0.6f)), Charge, 0.8f, 1.6f, FxLightMode.Pulse);
                     }
-                    if (b.Type == BuildingType.FuelTank) FxLight.Create(t, new Vector3(0f, 1.9f, 0f), Alarm, 0.8f, 1.8f, FxLightMode.Pulse);
+                    if (b.Type == BuildingType.FuelTank) FxLight.Create(t, ArtSocket("SignalRed", new Vector3(0f, 1.9f, 0f)), Alarm, 0.8f, 1.8f, FxLightMode.Pulse);
                     var sign = SignLight(b.Type);
-                    if (sign.HasValue) FxLight.Create(t, sign.Value.position, sign.Value.color, 1.0f, 2.6f, sign.Value.mode);
+                    if (sign.HasValue) FxLight.Create(t, ArtSocket(b.Type == BuildingType.PilotLounge ? "LoungeNeon" : "Sign", sign.Value.position), sign.Value.color, 1.0f, 2.6f, sign.Value.mode);
                     break;
             }
         }
@@ -562,39 +559,38 @@ namespace Waystation.View
         {
             var t = root.transform;
             var fx = new ModuleFx();
-            var art = root.GetComponentInChildren<ModuleArtLighting>();
-            Vector3 MovingSocket(Vector3 fallback) => art != null && art.MovingSocket != null ? root.transform.InverseTransformPoint(art.MovingSocket.position) : fallback;
+            Vector3 ArtPosition(Vector3 p) => ModuleArtPosition(root, p);
             switch (b.Type)
             {
                 case BuildingType.SolarArray:
-                    fx.Wing = Spawn(root, "SolarArray_Wing", "SolarArray_Wing", SolarWing, MovingSocket(new Vector3(0f, 0.68f, 0f)), Quaternion.identity).transform;
+                    fx.Wing = SpawnModulePart(root, "SolarArray_Wing", SolarWing, new Vector3(0f, 0.68f, 0f), Quaternion.identity, moving: true).transform;
                     break;
 
                 case BuildingType.CommsArray:
-                    fx.Dish = Spawn(root, "CommsArray_Dish", "CommsArray_Dish", Dish, MovingSocket(new Vector3(0f, 1.25f, 0f)), Quaternion.Euler(-30f, b.Id * 47f, 0f)).transform;
+                    fx.Dish = SpawnModulePart(root, "CommsArray_Dish", Dish, new Vector3(0f, 1.25f, 0f), Quaternion.Euler(-30f, b.Id * 47f, 0f), moving: true).transform;
                     break;
 
                 case BuildingType.AtcTower:
-                    fx.Radar = Spawn(root, "AtcTower_Radar", "AtcTower_Radar", Radar, MovingSocket(new Vector3(0f, 2.47f, 0f)), Quaternion.identity).transform;
+                    fx.Radar = SpawnModulePart(root, "AtcTower_Radar", Radar, new Vector3(0f, 2.47f, 0f), Quaternion.identity, moving: true).transform;
                     break;
 
                 case BuildingType.BatteryBank:
                     fx.ChargeLights = new GameObject[4];
                     for (int i = 0; i < 4; i++)
-                        fx.ChargeLights[i] = Spawn(root, "BatteryBank_Charge", "BatteryBank_Charge", ChargeLight, new Vector3(0.36f, 0.3f, -0.45f + i * 0.3f), Quaternion.identity);
+                        fx.ChargeLights[i] = SpawnModulePart(root, "BatteryBank_Charge", ChargeLight, new Vector3(root.GetComponentInChildren<ModuleArtLighting>() != null ? 0.54f : 0.36f, 0.3f, -0.45f + i * 0.3f), Quaternion.identity);
                     break;
 
                 case BuildingType.FuelCellGenerator:
                     if (!powered) break;
-                    fx.GlowLight = FxLight.Create(t, new Vector3(0.45f, 0.35f, 0f), Sodium, 0f, 2.2f, FxLightMode.Pulse);
-                    fx.Plume = Fx.Create(t, FxPreset.Vapor, new Vector3(0.25f, 0.95f, 0.75f), Vector3.up);
+                    fx.GlowLight = FxLight.Create(t, ArtPosition(new Vector3(0.45f, 0.35f, 0f)), Sodium, 0f, 2.2f, FxLightMode.Pulse);
+                    fx.Plume = Fx.Create(t, FxPreset.Vapor, ArtPosition(new Vector3(0.25f, 0.95f, 0.75f)), Vector3.up);
                     break;
 
                 case BuildingType.IceRefinery:
                     if (!powered) break;
-                    fx.Glow = Spawn(root, "IceRefinery_Glow", "IceRefinery_Glow", RefineryGlow, Vector3.zero, Quaternion.identity);
-                    fx.GlowLight = FxLight.Create(t, new Vector3(0.45f, 0.9f, -0.75f), Sodium, 0f, 2.8f, FxLightMode.Flicker);
-                    fx.Plume = Fx.Create(t, FxPreset.Vapor, new Vector3(0.45f, 1.65f, -0.2f), Vector3.up);
+                    fx.Glow = SpawnModulePart(root, "IceRefinery_Glow", RefineryGlow, Vector3.zero, Quaternion.identity);
+                    fx.GlowLight = FxLight.Create(t, ArtPosition(new Vector3(0.45f, 0.9f, -0.75f)), Sodium, 0f, 2.8f, FxLightMode.Flicker);
+                    fx.Plume = Fx.Create(t, FxPreset.Vapor, ArtPosition(new Vector3(0.45f, 1.65f, -0.2f)), Vector3.up);
                     break;
             }
             _modules[b.Id] = fx;
@@ -956,6 +952,29 @@ namespace Waystation.View
             go.transform.localPosition = position;
             go.transform.localRotation = rotation;
             if (prefab != null && fit.HasValue) ArtFit.Footprint(go, fit.Value.x, fit.Value.y);
+            return go;
+        }
+
+        static Vector3 ModuleArtPosition(GameObject root, Vector3 authoredPosition, string socketName = null)
+        {
+            var art = root.GetComponentInChildren<ModuleArtLighting>();
+            if (art == null) return authoredPosition;
+            if (socketName != null)
+                foreach (var surface in art.Surfaces)
+                    if (surface.Socket != null && surface.Socket.name == socketName)
+                        return root.transform.InverseTransformPoint(surface.Socket.position);
+            return root.transform.InverseTransformPoint(art.transform.TransformPoint(authoredPosition));
+        }
+
+        // Moving parts and live overlays must inherit the fitted body's scale as well as its pivot.
+        GameObject SpawnModulePart(GameObject root, string key, System.Func<Mesh> placeholder, Vector3 authoredPosition, Quaternion rotation, bool moving = false)
+        {
+            var art = root.GetComponentInChildren<ModuleArtLighting>();
+            var position = moving && art != null && art.MovingSocket != null
+                ? root.transform.InverseTransformPoint(art.MovingSocket.position)
+                : ModuleArtPosition(root, authoredPosition);
+            var go = Spawn(root, key, key, placeholder, position, rotation);
+            if (art != null) go.transform.localScale = Vector3.Scale(go.transform.localScale, art.transform.localScale);
             return go;
         }
 

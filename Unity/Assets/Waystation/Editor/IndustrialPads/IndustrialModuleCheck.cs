@@ -53,7 +53,7 @@ namespace Waystation.EditorTools
                     if(Enum.TryParse<BuildingType>(name,out var type))
                     {
                         var def=BuildingCatalog.Get(type);
-                        foreach(var p in v)Require(Mathf.Abs(p.x)<=def.Width*.5f+.0001f&&Mathf.Abs(p.z)<=def.Height*.5f+.0001f,"Module exceeds its footprint: "+name);
+                        foreach(var p in v)Require(Mathf.Abs(p.x)<=def.Width/BuildingRenderer.DesignScale*.5f+.0001f&&Mathf.Abs(p.z)<=def.Height/BuildingRenderer.DesignScale*.5f+.0001f,"Module exceeds its footprint: "+name);
                         Require(v.Min(p=>p.y)>=-.25f,"Module has an unexpected low pivot: "+name);
                         if(name=="Hangar")foreach(var p in v)
                             Require(!(Mathf.Abs(p.x)<1.15f&&Mathf.Abs(p.z)<1.15f&&p.y>.05f&&p.y<1.1f),"Hangar obstructs a landed ship.");
@@ -119,7 +119,7 @@ namespace Waystation.EditorTools
             PreviewRenderUtility preview=null;VolumeProfile profile=null;var temporary=new HashSet<UnityEngine.Object>();
             try
             {
-                var station=new Station(10,10,127){BatteryCapacity=100,BatteryCharge=75,PowerSatisfaction=1};
+                var station=new Station(24,24,127){BatteryCapacity=100,BatteryCharge=75,PowerSatisfaction=1};
                 int id=2;
                 if(def.RequiresFoundation)for(int x=0;x<def.Width;x++)for(int z=0;z<def.Height;z++)
                     station.Buildings.Add(new Building{Id=id++,Type=BuildingType.Foundation,Origin=new Cell(4+x,4+z),Connected=true});
@@ -133,7 +133,9 @@ namespace Waystation.EditorTools
                     {
                         var moving=Field(fx,pair.Item2)as Transform;Require(moving!=null,"Missing animated part "+name);
                         Require(AssetDatabase.GetAssetPath(moving.GetComponent<MeshFilter>().sharedMesh).Contains("IndustrialModules"),"Animated part fell back to a placeholder.");
-                        if(name=="SolarArray")Require(Mathf.Abs(moving.localPosition.y-.98f)<.001f,"Solar pivot did not use its model socket.");
+                        var body=moduleRoot.GetComponentInChildren<ModuleArtLighting>();
+                        Require(Vector3.Distance(moving.position,body.MovingSocket.position)<.001f,"Moving part pivot detached from fitted art: "+name);
+                        Require(Vector3.Distance(moving.localScale,body.transform.localScale)<.001f,"Moving part did not inherit fitted art scale: "+name);
                         if(name=="CommsArray")moving.localRotation=Quaternion.Euler(-25f,135f,0);
                         if(name=="AtcTower")moving.localRotation=Quaternion.Euler(0,25f,0);
                     }
@@ -155,6 +157,23 @@ namespace Waystation.EditorTools
                         owner.Running=true;Invoke(renderer,"UpdateModules");Require(glow.activeSelf,"Running refinery windows are dark.");
                     }
                 }
+                // Assert world-space coverage: a changed catalog footprint must not shrink the equipment.
+                var bodyRenderer=moduleRoot.GetComponentInChildren<MeshRenderer>();
+                var bodyBounds=bodyRenderer.bounds;
+                Require(bodyBounds.size.x>=def.Width*.86f&&bodyBounds.size.z>=def.Height*.86f,"Art underfills current footprint: "+name);
+                foreach(var mr in moduleRoot.GetComponentsInChildren<MeshRenderer>())
+                {
+                    var localCenter=mr.bounds.center-moduleRoot.position;
+                    Require(Mathf.Abs(localCenter.x)+mr.bounds.extents.x<=def.Width*.5f+.02f&&Mathf.Abs(localCenter.z)+mr.bounds.extents.z<=def.Height*.5f+.02f,"Runtime art exceeds current footprint: "+name);
+                }
+                var thumbnail=renderer.CreatePreview(type);
+                try
+                {
+                    var previewBody=thumbnail.GetComponentInChildren<MeshRenderer>();
+                    Require(Vector3.Distance(previewBody.bounds.size,bodyBounds.size)<.01f,"Build-menu preview uses a different body scale: "+name);
+                }
+                finally{UnityEngine.Object.DestroyImmediate(thumbnail);}
+                report.Add(name+": fills "+def.Width+"x"+def.Height+" world footprint; preview and moving-part scale agree.");
                 Invoke(renderer,"UpdateModules");
                 foreach(var lamp in root.GetComponentsInChildren<FxLight>(true))if(lamp.GetComponent<Light>()==null)Invoke(lamp,"OnEnable");
                 LightRig.Daylight=.55f;LightRig.PowerLevel=1f;var rig=root.AddComponent<LightRig>();Invoke(rig,"LateUpdate");
@@ -167,7 +186,7 @@ namespace Waystation.EditorTools
                 preview.lights[1].intensity=.22f;preview.lights[1].color=new Color(.42f,.58f,.85f);preview.ambientColor=new Color(.11f,.13f,.17f);
                 var camera=preview.camera;camera.cameraType=CameraType.Game;camera.orthographic=true;camera.orthographicSize=Mathf.Max(.90f,Mathf.Max(bounds.size.x,bounds.size.z)*.64f,bounds.size.y*.68f);
                 camera.allowHDR=true;camera.nearClipPlane=.01f;camera.farClipPlane=100f;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.018f,.025f,.04f);
-                var focus=bounds.center;camera.transform.position=focus+new Vector3(5f,5.5f,-7f);camera.transform.LookAt(focus);camera.GetUniversalAdditionalCameraData().renderPostProcessing=true;
+                var focus=bounds.center;camera.transform.position=focus+new Vector3(15f,16.5f,-21f);camera.transform.LookAt(focus);camera.GetUniversalAdditionalCameraData().renderPostProcessing=true;
                 var volume=root.AddComponent<Volume>();volume.isGlobal=true;volume.priority=100f;profile=ScriptableObject.CreateInstance<VolumeProfile>();volume.sharedProfile=profile;
                 profile.Add<Tonemapping>(true).mode.Override(TonemappingMode.ACES);var bloom=profile.Add<Bloom>(true);bloom.threshold.Override(.95f);bloom.intensity.Override(.55f);
                 preview.BeginStaticPreview(new Rect(0,0,700,700));preview.Render(true);var image=preview.EndStaticPreview();File.WriteAllBytes(Path.Combine(folder,name+".png"),image.EncodeToPNG());UnityEngine.Object.DestroyImmediate(image);
