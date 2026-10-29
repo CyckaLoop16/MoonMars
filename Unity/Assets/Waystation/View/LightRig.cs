@@ -26,7 +26,11 @@ namespace Waystation.View
 
         public Color Color = Color.white;
         public float Intensity = 1f;
+        /// <summary>Reach in the lamp's own units: it grows with the scale of whatever the lamp is mounted on.</summary>
         public float Range = 3f;
+
+        /// <summary>Reach in world units (cells).</summary>
+        public float WorldRange => Range * transform.lossyScale.x;
         public FxLightMode Mode;
         /// <summary>Floodlights and walkway lamps dim in sunlight; indicators and beacons don't.</summary>
         public bool DayDim;
@@ -120,7 +124,7 @@ namespace Waystation.View
             if (_light == null) return;
             _light.enabled = intensity > 0.01f;
             _light.color = Color;
-            _light.range = Range;
+            _light.range = WorldRange;
             _light.intensity = intensity * 2f;
         }
     }
@@ -179,7 +183,7 @@ namespace Waystation.View
                     var lamp = _sorted[i];
                     var p = lamp.transform.position;
                     var c = MeshBuilder.ToRenderSpace(lamp.Color) * lamp.Current;
-                    _positions[i] = new Vector4(p.x, p.y, p.z, lamp.Range);
+                    _positions[i] = new Vector4(p.x, p.y, p.z, lamp.WorldRange);
                     _colors[i] = new Vector4(c.r, c.g, c.b, 0f);
                 }
                 else

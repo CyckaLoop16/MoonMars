@@ -98,14 +98,14 @@ namespace Waystation.Sim.Tests
             // Foundations east of the hub, but the cantina's own cells are all there is: then a walkway
             // gap breaks the way (foundations two cells away, joined only by... nothing).
             var hub = s.Hub;
-            var far = new Cell(hub.Origin.X + 6, hub.Origin.Y);
-            for (int x = 0; x < 2; x++) for (int y = 0; y < 2; y++)
+            var far = new Cell(hub.Origin.X + hub.Def.Width + 3, hub.Origin.Y);
+            for (int x = 0; x < 5; x++) for (int y = 0; y < 5; y++)
                 sim.Execute(new PlaceBuilding(BuildingType.Foundation, new Cell(far.X + x, far.Y + y)), out _);
             sim.Execute(new PlaceBuilding(BuildingType.Cantina, far), out _);
             Assert.That(Crew.FindProvider(s, Crew.HomeCell(hub), ServiceType.Food, null, null).building, Is.Null);
 
             // A walkway bridge makes it reachable.
-            for (int x = hub.Origin.X + 3; x < far.X; x++)
+            for (int x = hub.Origin.X + hub.Def.Width; x < far.X; x++)
                 sim.Execute(new PlaceBuilding(BuildingType.Walkway, new Cell(x, hub.Origin.Y)), out _);
             var (cantina, path) = Crew.FindProvider(s, Crew.HomeCell(hub), ServiceType.Food, null, null);
             Assert.That(cantina, Is.Not.Null);
@@ -161,17 +161,17 @@ namespace Waystation.Sim.Tests
             var s = sim.Station;
             s.Money = 100000;
             var hub = s.Hub;
-            var far = new Cell(hub.Origin.X + 6, hub.Origin.Y);
-            for (int x = 0; x < 2; x++) for (int y = 0; y < 2; y++)
+            var far = new Cell(hub.Origin.X + hub.Def.Width + 3, hub.Origin.Y);
+            for (int x = 0; x < 5; x++) for (int y = 0; y < 5; y++)
                 sim.Execute(new PlaceBuilding(BuildingType.Foundation, new Cell(far.X + x, far.Y + y)), out _);
             sim.Execute(new PlaceBuilding(BuildingType.Cantina, far), out _);
-            for (int x = hub.Origin.X + 3; x < far.X; x++)
+            for (int x = hub.Origin.X + hub.Def.Width; x < far.X; x++)
                 sim.Execute(new PlaceBuilding(BuildingType.Walkway, new Cell(x, hub.Origin.Y)), out _);
 
             var ship = Dock(s, ShipRole.Traveller, ServiceType.Food);
             sim.Advance(0.5);
             Assert.That(s.People, Is.Not.Empty);
-            var bridge = s.BuildingAt(new Cell(hub.Origin.X + 4, hub.Origin.Y));
+            var bridge = s.BuildingAt(new Cell(hub.Origin.X + hub.Def.Width + 1, hub.Origin.Y));
             sim.Execute(new Demolish(bridge.Id), out _);
             sim.Advance(10);
             Assert.That(s.People, Is.Empty);

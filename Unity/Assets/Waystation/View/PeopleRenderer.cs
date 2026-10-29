@@ -11,12 +11,15 @@ namespace Waystation.View
     /// in black and gold…) with a glowing visor or collar light so they read in the eclipse.
     ///
     /// Art drop-in slots: Resources/People/&lt;ShipRole&gt;.prefab (e.g. Military.prefab), or
-    /// Resources/People/Person.prefab for everyone. Pivot at the feet, facing +Z, ~0.35 units tall.
+    /// Resources/People/Person.prefab for everyone. Pivot at the feet, facing +Z; fitted to 0.9 units
+    /// (1.8 m) tall.
     /// </summary>
     public sealed class PeopleRenderer : MonoBehaviour
     {
         const float DeckHeight = 0.02f;
         const float Smoothing = 14f;
+        /// <summary>1.8 m in cells. The placeholder figure is modelled at 0.35 units.</summary>
+        const float PersonHeight = 0.9f;
 
         static readonly Dictionary<ShipRole, (string body, string trim, string light)[]> Looks = new Dictionary<ShipRole, (string, string, string)[]>
         {
@@ -69,7 +72,7 @@ namespace Waystation.View
                 // A little bob while walking.
                 bool walking = p.State == PersonState.Walking || p.State == PersonState.Returning;
                 var body = t.GetChild(0);
-                body.localPosition = walking ? new Vector3(0f, Mathf.Abs(Mathf.Sin(Time.time * 11f + p.Id)) * 0.02f, 0f) : Vector3.zero;
+                body.localPosition = walking ? new Vector3(0f, Mathf.Abs(Mathf.Sin(Time.time * 11f + p.Id)) * 0.05f, 0f) : Vector3.zero;
             }
 
             _gone.Clear();
@@ -85,7 +88,7 @@ namespace Waystation.View
         Vector3 WorldPosition(Person p)
         {
             var (x, y) = p.Position;
-            float spread = p.State == PersonState.Queueing ? 0.16f : 0.11f;
+            float spread = p.State == PersonState.Queueing ? 0.4f : 0.28f;
             float angle = (p.Slot * 2.4f + p.Id * 0.7f) % (2f * Mathf.PI);
             float radius = p.Slot == 0 && p.State != PersonState.Queueing ? 0f : spread * (1 + p.Slot % 2);
             return new Vector3((float)x - _station.Width / 2f + Mathf.Cos(angle) * radius, DeckHeight,
@@ -108,6 +111,7 @@ namespace Waystation.View
             if (prefab != null)
             {
                 body = Instantiate(prefab, root);
+                ArtFit.Height(body, PersonHeight);
             }
             else
             {
@@ -118,6 +122,7 @@ namespace Waystation.View
                 if (!_meshes.TryGetValue(key, out var mesh)) _meshes[key] = mesh = Placeholder(looks[key.Item2]);
                 body.AddComponent<MeshFilter>().sharedMesh = mesh;
                 body.AddComponent<MeshRenderer>().sharedMaterial = _material;
+                body.transform.localScale = Vector3.one * (PersonHeight / 0.35f);
             }
             body.transform.localPosition = Vector3.zero;
             return root;

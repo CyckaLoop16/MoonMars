@@ -140,7 +140,7 @@ namespace Waystation.View
             _grid.SetActive(false);
 
             BuildDebris(rng, gridWidth, gridHeight, lit);
-            Fx.Create(transform, FxPreset.Dust, new Vector3(0f, 1.5f, 0f), Vector3.up, startActive: true);
+            Fx.Create(transform, FxPreset.Dust, new Vector3(0f, 3f, 0f), Vector3.up, startActive: true);
 
             UpdateSky(Waystation.Sim.Orbit.StartPhase, 1f);
         }
@@ -521,8 +521,8 @@ namespace Waystation.View
             for (int i = 0; i < 34; i++)
             {
                 float angle = Range(rng, 0f, 2f * Mathf.PI);
-                float dist = Mathf.Max(w, h) * 0.5f + Range(rng, 2f, 26f);
-                var p = new Vector3(Mathf.Cos(angle) * dist, Range(rng, -12f, -1.5f), Mathf.Sin(angle) * dist);
+                float dist = Range(rng, 30f, Mathf.Max(w, h) * 0.5f + 60f);
+                var p = new Vector3(Mathf.Cos(angle) * dist, Range(rng, -30f, -4f), Mathf.Sin(angle) * dist);
 
                 b.Clear();
                 if (i % 3 == 0)
@@ -542,6 +542,7 @@ namespace Waystation.View
                 var go = AddChild($"Debris {i}", b.ToMesh("Debris"), material);
                 go.transform.position = p;
                 go.transform.rotation = Random.rotationUniform;
+                go.transform.localScale = Vector3.one * Range(rng, 2f, 3.5f); // rocks and wreckage tens of metres across
                 _debris.Add((go.transform, new Vector3(Range(rng, -10f, 10f), Range(rng, -10f, 10f), Range(rng, -10f, 10f))));
             }
         }

@@ -65,27 +65,38 @@ Power is in **kW**, battery storage in **MJ**.
   is the first thing to plan when expanding.
 - Any powered module can be **switched off** from the inspector (it still costs upkeep).
 
+## Scale
+
+**One grid cell is 2 × 2 m.** A walkway is one cell wide with a 1.1 m handrail; people are 1.8 m tall;
+a shuttle is about 11 m long, a hauler about 17 m; a landing pad is 16 m across; the build area is
+96 × 96 cells (192 m, about the size of the ISS). Walkways and foundations are painted by dragging:
+foundations fill a rectangle, walkways run in an L.
+
+Coming next (agreed direction): **decks and trusses**, so the station grows up, down and along spines,
+not just across one plate, with lifts between decks; and **docking arms** on the station's edge for
+big freighters and warships, with S/M/L pads for smaller craft.
+
 ## Buildings (prototype)
 
 | Building | Size | Cost | Upkeep/min | Role |
 |---|---|---|---|---|
-| Waystation Pad | 3×3 | (start) | 5 | Starter pad + 800-unit fuel tank, the network hub |
-| Landing Pad | 3×3 | 900 | 8 | Shuttles |
-| Hangar | 4×4 | 2,600 | 25 | Haulers and shuttles, repairs |
-| Walkway | 1×1 | 25 | 0.3 | Open-air catwalk; railings only on open sides, so paths join up |
-| Foundation | 1×1 | 60 | 0.5 | Heavy deck plate that extends the station; modules are built on top |
+| Waystation Pad | 8×8 | (start) | 5 | Starter pad + 800-unit fuel tank, the network hub |
+| Landing Pad | 8×8 | 900 | 8 | Shuttles |
+| Hangar | 10×10 | 2,600 | 25 | Haulers and shuttles, repairs |
+| Walkway | 1×1 | 10 | 0.1 | Open-air catwalk; railings only on open sides, so paths join up |
+| Foundation | 1×1 | 12 | 0.08 | Heavy deck plate that extends the station; modules are built on top |
 
 Modules must stand entirely on foundations (a foundation can't be removed from under one):
 
 | Module | Size | Cost | Upkeep/min | Power | Role |
 |---|---|---|---|---|---|
-| Solar Array | 2×2 | 450 | 1 | +10 kW in sun | Sun-tracking wings; nothing in the eclipse |
-| Battery Bank | 1×2 | 350 | 1 | stores 0.9 MJ | Carries the station through the eclipse |
-| Fuel Cell Generator | 1×2 | 700 | 4 | +12 kW backup | Starts on low battery, burns 0.3 fuel/s |
-| Fuel Tank | 2×2 | 500 | 2 | – | +600 fuel capacity |
-| Ice Refinery | 2×3 | 2,200 | 18 | −14 kW | Makes 1 fuel/s from comet ice, only on spare power |
-| Comms Array | 2×2 | 1,800 | 12 | −4 kW | ×1.25 traffic and +2 holding slots each (up to 3) |
-| Traffic Control | 2×2 | 4,000 | 30 | −5 kW | Clears hailing ships to free pads automatically |
+| Solar Array | 5×5 | 450 | 1 | +10 kW in sun | Sun-tracking wings; nothing in the eclipse |
+| Battery Bank | 3×5 | 350 | 1 | stores 0.9 MJ | Carries the station through the eclipse |
+| Fuel Cell Generator | 3×5 | 700 | 4 | +12 kW backup | Starts on low battery, burns 0.3 fuel/s |
+| Fuel Tank | 5×5 | 500 | 2 | – | +600 fuel capacity |
+| Ice Refinery | 5×8 | 2,200 | 18 | −14 kW | Makes 1 fuel/s from comet ice, only on spare power |
+| Comms Array | 5×5 | 1,800 | 12 | −4 kW | ×1.25 traffic and +2 holding slots each (up to 3) |
+| Traffic Control | 5×5 | 4,000 | 30 | −5 kW | Clears hailing ships to free pads automatically |
 
 ## Ships, people and services
 
@@ -114,15 +125,15 @@ Service buildings, all built on foundations, in three categories:
 
 | Category | Building | Size | Cost | Upkeep | Power | Service | Capacity | Visit | Fee |
 |---|---|---|---|---|---|---|---|---|---|
-| Business | USM Barracks | 3×2 | 2,600 | 10 | −5 kW | report to the USM | 4 | 16 s | 45 |
-| Business | Explorers' Guild | 2×2 | 2,000 | 10 | −3 kW | file a survey | 3 | 12 s | 55 |
-| Business | Corporate Office | 2×3 | 2,400 | 12 | −4 kW | business meeting | 2 | 14 s | 90 |
-| Leisure | Pilot Lounge | 2×2 | 1,000 | 8 | −3 kW | rest | 4 | 14 s | 18 |
-| Leisure | Cantina | 2×2 | 900 | 7 | −3 kW | food & drink | 4 | 10 s | 22 |
-| Leisure | Observation Deck | 3×2 | 1,300 | 6 | −2 kW | sightseeing | 6 | 12 s | 15 |
-| Commerce | Trading Outpost | 3×3 | 2,200 | 14 | −4 kW | trade cargo | 3 | 14 s | 70 |
-| Commerce | Bazaar | 2×2 | 1,100 | 7 | −2 kW | shopping | 5 | 10 s | 25 |
-| Commerce | Parts Depot | 2×2 | 1,400 | 9 | −4 kW | spare parts | 2 | 8 s | 60 |
+| Business | USM Barracks | 8×5 | 2,600 | 10 | −5 kW | report to the USM | 4 | 16 s | 45 |
+| Business | Explorers' Guild | 5×5 | 2,000 | 10 | −3 kW | file a survey | 3 | 12 s | 55 |
+| Business | Corporate Office | 5×8 | 2,400 | 12 | −4 kW | business meeting | 2 | 14 s | 90 |
+| Leisure | Pilot Lounge | 5×5 | 1,000 | 8 | −3 kW | rest | 4 | 14 s | 18 |
+| Leisure | Cantina | 5×5 | 900 | 7 | −3 kW | food & drink | 4 | 10 s | 22 |
+| Leisure | Observation Deck | 8×5 | 1,300 | 6 | −2 kW | sightseeing | 6 | 12 s | 15 |
+| Commerce | Trading Outpost | 8×8 | 2,200 | 14 | −4 kW | trade cargo | 3 | 14 s | 70 |
+| Commerce | Bazaar | 5×5 | 1,100 | 7 | −2 kW | shopping | 5 | 10 s | 25 |
+| Commerce | Parts Depot | 5×5 | 1,400 | 9 | −4 kW | spare parts | 2 | 8 s | 60 |
 
 People walk only on walkways, bare foundations and pads (not through modules); they enter a building
 from any walkable cell next to it. Below 50% power, services close. A building with people inside

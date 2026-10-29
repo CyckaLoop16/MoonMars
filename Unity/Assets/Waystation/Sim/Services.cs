@@ -225,8 +225,8 @@ namespace Waystation.Sim
     /// </summary>
     public static class Crew
     {
-        /// <summary>Walking speed, cells per second.</summary>
-        public const double WalkSpeed = 1.6;
+        /// <summary>Walking speed, cells (2 m) per game second: a brisk 5 m/s, since game time runs fast.</summary>
+        public const double WalkSpeed = 2.5;
         /// <summary>How long someone waits at a full building before giving up.</summary>
         public const double QueueSeconds = 20;
         /// <summary>Extra "distance" for a full building when choosing where to go.</summary>

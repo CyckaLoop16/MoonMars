@@ -3,7 +3,10 @@ using System.Collections.Generic;
 
 namespace Waystation.Sim
 {
-    /// <summary>A square on the station's build grid (a flat lattice in space). X runs east, Y runs north.</summary>
+    /// <summary>
+    /// A square on the station's build grid (a flat lattice in space). X runs east, Y runs north.
+    /// One cell is 2 × 2 metres: a walkway is one cell wide, a landing pad 8 × 8.
+    /// </summary>
     public readonly struct Cell : IEquatable<Cell>
     {
         public readonly int X;
@@ -156,7 +159,7 @@ namespace Waystation.Sim
         {
             Add(new BuildingDef
             {
-                Type = BuildingType.StarterPad, Name = "Waystation Pad", Width = 3, Height = 3,
+                Type = BuildingType.StarterPad, Name = "Waystation Pad", Width = 8, Height = 8,
                 Description = "Where it all started: a landing platform with the station's fuel tank and comms mast.",
                 Label = "Pad", Buildable = false, IsHub = true, UpkeepPerMinute = 5, FuelCapacity = 800,
                 Serves = new[] { ShipClass.Shuttle },
@@ -165,78 +168,78 @@ namespace Waystation.Sim
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.LandingPad, Name = "Landing Pad", Width = 3, Height = 3, Cost = 900,
+                Type = BuildingType.LandingPad, Name = "Landing Pad", Width = 8, Height = 8, Cost = 900,
                 Description = "Another place for shuttles to set down and refuel. Must be connected to the station.",
                 Label = "Pad", Category = BuildCategory.Landing,
                 UpkeepPerMinute = 8, Serves = new[] { ShipClass.Shuttle }, PowerUse = 2,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.Hangar, Name = "Hangar", Width = 4, Height = 4, Cost = 2600,
+                Type = BuildingType.Hangar, Name = "Hangar", Width = 10, Height = 10, Cost = 2600,
                 Description = "Open repair bay with a gantry crane. Takes haulers (and shuttles). Must be connected to the station.",
                 Label = "Hangar", Category = BuildCategory.Landing,
                 UpkeepPerMinute = 25, Repairs = true, Serves = new[] { ShipClass.Hauler, ShipClass.Shuttle }, PowerUse = 6,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.Walkway, Name = "Walkway", Width = 1, Height = 1, Cost = 25,
+                Type = BuildingType.Walkway, Name = "Walkway", Width = 1, Height = 1, Cost = 10,
                 Description = "Open-air grated catwalk with railings and fuel lines underneath. Links modules to the station.",
-                UpkeepPerMinute = 0.3, IsPaintable = true, Category = BuildCategory.Structure,
+                UpkeepPerMinute = 0.1, IsPaintable = true, Category = BuildCategory.Structure,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.Foundation, Name = "Foundation", Width = 1, Height = 1, Cost = 60,
+                Type = BuildingType.Foundation, Name = "Foundation", Width = 1, Height = 1, Cost = 12,
                 Description = "Heavy deck plate. Extends the station, and every module (power, fuel, services) is built on top of foundations.",
-                UpkeepPerMinute = 0.5, IsPaintable = true, IsFloor = true, Category = BuildCategory.Structure,
+                UpkeepPerMinute = 0.08, IsPaintable = true, IsFloor = true, Category = BuildCategory.Structure,
             });
 
             // ---- Modules (on foundations)
             Add(new BuildingDef
             {
-                Type = BuildingType.SolarArray, Name = "Solar Array", Width = 2, Height = 2, Cost = 450,
+                Type = BuildingType.SolarArray, Name = "Solar Array", Width = 5, Height = 5, Cost = 450,
                 Description = "Sun-tracking photovoltaic wings. Free power in sunlight, nothing at all in the planet's shadow.",
                 Category = BuildCategory.Power, RequiresFoundation = true, UpkeepPerMinute = 1, SolarOutput = 10,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.BatteryBank, Name = "Battery Bank", Width = 1, Height = 2, Cost = 350,
+                Type = BuildingType.BatteryBank, Name = "Battery Bank", Width = 3, Height = 5, Cost = 350,
                 Description = "Stores surplus power by day to carry the station through the eclipse.",
                 Category = BuildCategory.Power, RequiresFoundation = true, UpkeepPerMinute = 1, BatteryCapacity = 900,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.FuelCellGenerator, Name = "Fuel Cell Generator", Width = 1, Height = 2, Cost = 700,
+                Type = BuildingType.FuelCellGenerator, Name = "Fuel Cell Generator", Width = 3, Height = 5, Cost = 700,
                 Description = "Backup power. Starts by itself when the batteries run low, and burns station fuel while it runs.",
                 Category = BuildCategory.Power, RequiresFoundation = true, UpkeepPerMinute = 4, GeneratorOutput = 12, FuelBurn = 0.3,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.FuelTank, Name = "Fuel Tank", Width = 2, Height = 2, Cost = 500,
+                Type = BuildingType.FuelTank, Name = "Fuel Tank", Width = 5, Height = 5, Cost = 500,
                 Description = "Pressurised propellant sphere. More fuel on hand, fewer tanker runs.",
                 Category = BuildCategory.Fuel, RequiresFoundation = true, UpkeepPerMinute = 2, FuelCapacity = 600,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.IceRefinery, Name = "Ice Refinery", Width = 2, Height = 3, Cost = 2200,
+                Type = BuildingType.IceRefinery, Name = "Ice Refinery", Width = 5, Height = 8, Cost = 2200,
                 Description = "Cracks tethered comet ice into propellant. Power-hungry: it only runs on spare power or a healthy battery.",
                 Category = BuildCategory.Fuel, RequiresFoundation = true, UpkeepPerMinute = 18, PowerUse = 14, RefineRate = 1,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.PilotLounge, Name = "Pilot Lounge", Width = 2, Height = 2, Cost = 1000,
+                Type = BuildingType.PilotLounge, Name = "Pilot Lounge", Width = 5, Height = 5, Cost = 1000,
                 Description = "Bunks, showers and bad coffee. Somewhere to rest between jumps.",
                 Category = BuildCategory.Leisure, RequiresFoundation = true, UpkeepPerMinute = 8, PowerUse = 3,
                 Provides = ServiceType.Rest, Capacity = 4, VisitSeconds = 14, VisitFee = 18,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.CommsArray, Name = "Comms Array", Width = 2, Height = 2, Cost = 1800,
+                Type = BuildingType.CommsArray, Name = "Comms Array", Width = 5, Height = 5, Cost = 1800,
                 Description = "Long-range dish broadcasting the station's beacon. More traffic, and room for more ships in the holding pattern.",
                 Category = BuildCategory.Operations, RequiresFoundation = true, UpkeepPerMinute = 12, PowerUse = 4, Comms = true,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.AtcTower, Name = "Traffic Control", Width = 2, Height = 2, Cost = 4000,
+                Type = BuildingType.AtcTower, Name = "Traffic Control", Width = 5, Height = 5, Cost = 4000,
                 Description = "Air traffic control tower. Clears hailing ships to free pads automatically while it has power.",
                 Category = BuildCategory.Operations, RequiresFoundation = true, UpkeepPerMinute = 30, PowerUse = 5, Atc = true,
             });
@@ -244,14 +247,14 @@ namespace Waystation.Sim
             // ---- Leisure
             Add(new BuildingDef
             {
-                Type = BuildingType.Cantina, Name = "Cantina", Width = 2, Height = 2, Cost = 900,
+                Type = BuildingType.Cantina, Name = "Cantina", Width = 5, Height = 5, Cost = 900,
                 Description = "Noodles, rotgut and a jukebox nobody can turn off.",
                 Category = BuildCategory.Leisure, RequiresFoundation = true, UpkeepPerMinute = 7, PowerUse = 3,
                 Provides = ServiceType.Food, Capacity = 4, VisitSeconds = 10, VisitFee = 22,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.ObservationDeck, Name = "Observation Deck", Width = 3, Height = 2, Cost = 1300,
+                Type = BuildingType.ObservationDeck, Name = "Observation Deck", Width = 8, Height = 5, Cost = 1300,
                 Description = "A long armoured window onto the planet below. Travellers pay to watch the sunrise.",
                 Category = BuildCategory.Leisure, RequiresFoundation = true, UpkeepPerMinute = 6, PowerUse = 2,
                 Provides = ServiceType.Sightseeing, Capacity = 6, VisitSeconds = 12, VisitFee = 15,
@@ -260,21 +263,21 @@ namespace Waystation.Sim
             // ---- Commerce
             Add(new BuildingDef
             {
-                Type = BuildingType.TradingOutpost, Name = "Trading Outpost", Width = 3, Height = 3, Cost = 2200,
+                Type = BuildingType.TradingOutpost, Name = "Trading Outpost", Width = 8, Height = 8, Cost = 2200,
                 Description = "Cargo brokers and a scales-and-scanners customs floor. Freighters and merchants need one; the station takes a cut.",
                 Category = BuildCategory.Commerce, RequiresFoundation = true, UpkeepPerMinute = 14, PowerUse = 4,
                 Provides = ServiceType.Trade, Capacity = 3, VisitSeconds = 14, VisitFee = 70,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.Bazaar, Name = "Bazaar", Width = 2, Height = 2, Cost = 1100,
+                Type = BuildingType.Bazaar, Name = "Bazaar", Width = 5, Height = 5, Cost = 1100,
                 Description = "Stalls selling rations, trinkets and things that fell off a freighter.",
                 Category = BuildCategory.Commerce, RequiresFoundation = true, UpkeepPerMinute = 7, PowerUse = 2,
                 Provides = ServiceType.Shopping, Capacity = 5, VisitSeconds = 10, VisitFee = 25,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.PartsDepot, Name = "Parts Depot", Width = 2, Height = 2, Cost = 1400,
+                Type = BuildingType.PartsDepot, Name = "Parts Depot", Width = 5, Height = 5, Cost = 1400,
                 Description = "Salvaged and new ship parts. Explorers and damaged freighters stock up here.",
                 Category = BuildCategory.Commerce, RequiresFoundation = true, UpkeepPerMinute = 9, PowerUse = 4,
                 Provides = ServiceType.Parts, Capacity = 2, VisitSeconds = 8, VisitFee = 60,
@@ -283,21 +286,21 @@ namespace Waystation.Sim
             // ---- Business
             Add(new BuildingDef
             {
-                Type = BuildingType.MilitaryBarracks, Name = "USM Barracks", Width = 3, Height = 2, Cost = 2600,
+                Type = BuildingType.MilitaryBarracks, Name = "USM Barracks", Width = 8, Height = 5, Cost = 2600,
                 Description = "A United Systems of Mankind outpost. Brings USM patrols to the station; the USM pays a stipend for every marine who reports in.",
                 Category = BuildCategory.Business, RequiresFoundation = true, UpkeepPerMinute = 10, PowerUse = 5,
                 Provides = ServiceType.Military, Capacity = 4, VisitSeconds = 16, VisitFee = 45,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.ExplorersGuild, Name = "Explorers' Guild", Width = 2, Height = 2, Cost = 2000,
+                Type = BuildingType.ExplorersGuild, Name = "Explorers' Guild", Width = 5, Height = 5, Cost = 2000,
                 Description = "A chapter house of the Explorers' Guild. Brings guild surveyors, who pay to file their charts.",
                 Category = BuildCategory.Business, RequiresFoundation = true, UpkeepPerMinute = 10, PowerUse = 3,
                 Provides = ServiceType.Survey, Capacity = 3, VisitSeconds = 12, VisitFee = 55,
             });
             Add(new BuildingDef
             {
-                Type = BuildingType.CorporateOffice, Name = "Corporate Office", Width = 2, Height = 3, Cost = 2400,
+                Type = BuildingType.CorporateOffice, Name = "Corporate Office", Width = 5, Height = 8, Cost = 2400,
                 Description = "Glass, carpet and a receptionist. Brings executive shuttles, who pay well and expect a lot.",
                 Category = BuildCategory.Business, RequiresFoundation = true, UpkeepPerMinute = 12, PowerUse = 4,
                 Provides = ServiceType.Corporate, Capacity = 2, VisitSeconds = 14, VisitFee = 90,

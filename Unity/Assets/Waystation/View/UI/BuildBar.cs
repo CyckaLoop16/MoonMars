@@ -148,7 +148,7 @@ namespace Waystation.View
                 {
                     case Tool.Build:
                         var def = BuildingCatalog.Get(_game.BuildType);
-                        hint = def.IsPaintable ? $"{def.Name}: click or drag" : def.RequiresFoundation ? $"{def.Name}: place on foundations" : $"{def.Name}: click to place";
+                        hint = _game.PlacementInfo ?? (def.IsPaintable ? $"{def.Name}: drag to {(def.IsFloor ? "fill an area" : "lay a path")}" : def.RequiresFoundation ? $"{def.Name}: place on foundations" : $"{def.Name}: click to place");
                         break;
                     case Tool.Demolish:
                         hint = "Demolish: click a building";

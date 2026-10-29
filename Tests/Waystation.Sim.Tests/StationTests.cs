@@ -46,7 +46,7 @@ namespace Waystation.Sim.Tests
             var hub = s.Hub;
 
             // A pad two cells east of the hub, with a gap between them.
-            int gapX = hub.Origin.X + 3;
+            int gapX = hub.Origin.X + hub.Def.Width;
             var padOrigin = new Cell(gapX + 1, hub.Origin.Y);
             sim.Execute(new PlaceBuilding(BuildingType.LandingPad, padOrigin), out _);
             var pad = s.BuildingAt(padOrigin);
@@ -68,7 +68,7 @@ namespace Waystation.Sim.Tests
             var s = sim.Station;
             s.Money = 10000;
             var hub = s.Hub;
-            var c = new Cell(hub.Origin.X + 3, hub.Origin.Y + 1); // just east of the hub
+            var c = new Cell(hub.Origin.X + hub.Def.Width, hub.Origin.Y + hub.Def.Height - 1); // just east of the hub, at its top row
             sim.Execute(new PlaceBuilding(BuildingType.Walkway, c), out _);
             sim.Execute(new PlaceBuilding(BuildingType.Walkway, c + Cell.Directions[1]), out _);
 
@@ -164,8 +164,8 @@ namespace Waystation.Sim.Tests
             Assert.That(new AssignLanding(hauler.Id, hub.Id).Validate(s), Does.Contain("can't take a hauler"));
 
             // Hangar touching the hub's east side: connected without a corridor.
-            sim.Execute(new PlaceBuilding(BuildingType.Hangar, new Cell(hub.Origin.X + 3, hub.Origin.Y)), out _);
-            var hangar = s.BuildingAt(new Cell(hub.Origin.X + 3, hub.Origin.Y));
+            sim.Execute(new PlaceBuilding(BuildingType.Hangar, new Cell(hub.Origin.X + hub.Def.Width, hub.Origin.Y)), out _);
+            var hangar = s.BuildingAt(new Cell(hub.Origin.X + hub.Def.Width, hub.Origin.Y));
             Assert.That(hangar.Connected);
             Assert.That(sim.Execute(new AssignLanding(hauler.Id, hangar.Id), out var error), Is.True, error);
 
@@ -346,11 +346,11 @@ namespace Waystation.Sim.Tests
             var s = sim.Station;
             s.Money = 100000;
             var hub = s.Hub;
-            sim.Execute(new PlaceBuilding(BuildingType.LandingPad, new Cell(hub.Origin.X + 3, hub.Origin.Y)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.LandingPad, new Cell(hub.Origin.X + hub.Def.Width, hub.Origin.Y)), out _);
             sim.Execute(new PlaceBuilding(BuildingType.Hangar, new Cell(0, 0)), out _);
 
             Assert.That(s.Label(hub), Is.EqualTo("Pad 1"));
-            Assert.That(s.Label(s.BuildingAt(new Cell(hub.Origin.X + 3, hub.Origin.Y))), Is.EqualTo("Pad 2"));
+            Assert.That(s.Label(s.BuildingAt(new Cell(hub.Origin.X + hub.Def.Width, hub.Origin.Y))), Is.EqualTo("Pad 2"));
             Assert.That(s.Label(s.BuildingAt(new Cell(0, 0))), Is.EqualTo("Hangar 1"));
         }
 
@@ -361,7 +361,7 @@ namespace Waystation.Sim.Tests
             var s = sim.Station;
             s.Money = 10000;
             var hub = s.Hub;
-            int x = hub.Origin.X + 3;
+            int x = hub.Origin.X + hub.Def.Width;
 
             // Pad two cells out, bridged by a foundation plate and a walkway.
             sim.Execute(new PlaceBuilding(BuildingType.LandingPad, new Cell(x + 2, hub.Origin.Y)), out _);

@@ -40,7 +40,7 @@ namespace Waystation.Sim.Tests
         internal static Cell Foundations(Simulation sim, int w, int h)
         {
             var s = sim.Station;
-            var origin = new Cell(s.Hub.Origin.X + 3, s.Hub.Origin.Y);
+            var origin = new Cell(s.Hub.Origin.X + s.Hub.Def.Width, s.Hub.Origin.Y);
             for (int x = 0; x < w; x++)
             for (int y = 0; y < h; y++)
                 Assert.That(sim.Execute(new PlaceBuilding(BuildingType.Foundation, new Cell(origin.X + x, origin.Y + y)), out var e), Is.True, e);
@@ -56,7 +56,7 @@ namespace Waystation.Sim.Tests
 
             Assert.That(new PlaceBuilding(BuildingType.SolarArray, new Cell(2, 2)).Validate(s), Does.Contain("foundations"));
 
-            var origin = Foundations(sim, 2, 2);
+            var origin = Foundations(sim, 5, 5);
             Assert.That(sim.Execute(new PlaceBuilding(BuildingType.SolarArray, origin), out var error), Is.True, error);
 
             var array = s.BuildingAt(origin);
@@ -84,7 +84,7 @@ namespace Waystation.Sim.Tests
             s.Money = 10000;
             double before = s.FuelCapacity;
 
-            var origin = Foundations(sim, 2, 2);
+            var origin = Foundations(sim, 5, 5);
             sim.Execute(new PlaceBuilding(BuildingType.FuelTank, origin), out _);
             Assert.That(s.FuelCapacity, Is.EqualTo(before + BuildingCatalog.Get(BuildingType.FuelTank).FuelCapacity));
         }
@@ -109,7 +109,7 @@ namespace Waystation.Sim.Tests
             var sim = GameSetup.NewStation(1);
             var s = sim.Station;
             s.Money = 10000;
-            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, FoundationTests.Foundations(sim, 2, 2)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, FoundationTests.Foundations(sim, 5, 5)), out _);
 
             sim.Advance(1);
             Assert.That(s.SolarPower, Is.EqualTo(10).Within(1e-6));
@@ -128,7 +128,7 @@ namespace Waystation.Sim.Tests
             // Three hangars: 2 + 3 × 6 = 20 kW against the hub's 8.
             var hub = s.Hub;
             for (int i = 0; i < 3; i++)
-                Assert.That(sim.Execute(new PlaceBuilding(BuildingType.Hangar, new Cell(hub.Origin.X + 3 + 4 * i, hub.Origin.Y)), out var e), Is.True, e);
+                Assert.That(sim.Execute(new PlaceBuilding(BuildingType.Hangar, new Cell(hub.Origin.X + hub.Def.Width + 10 * i, hub.Origin.Y)), out var e), Is.True, e);
 
             sim.Advance(5);
             Assert.That(s.BatteryCharge, Is.LessThan(s.BatteryCapacity));
@@ -154,11 +154,12 @@ namespace Waystation.Sim.Tests
             s.Money = 100000;
             var hub = s.Hub;
             for (int i = 0; i < 2; i++)
-                sim.Execute(new PlaceBuilding(BuildingType.Hangar, new Cell(hub.Origin.X + 3 + 4 * i, hub.Origin.Y)), out _);
+                sim.Execute(new PlaceBuilding(BuildingType.Hangar, new Cell(hub.Origin.X + hub.Def.Width + 10 * i, hub.Origin.Y)), out _);
             // Foundations west of the hub for the generator.
-            var west = new Cell(hub.Origin.X - 1, hub.Origin.Y);
-            sim.Execute(new PlaceBuilding(BuildingType.Foundation, west), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.Foundation, new Cell(west.X, west.Y + 1)), out _);
+            var west = new Cell(hub.Origin.X - 3, hub.Origin.Y);
+            for (int x = 0; x < 3; x++)
+            for (int y = 0; y < 5; y++)
+                sim.Execute(new PlaceBuilding(BuildingType.Foundation, new Cell(west.X + x, west.Y + y)), out _);
             Assert.That(sim.Execute(new PlaceBuilding(BuildingType.FuelCellGenerator, west), out var error), Is.True, error);
 
             double fuel = s.FuelStock;
@@ -173,10 +174,10 @@ namespace Waystation.Sim.Tests
             var sim = GameSetup.NewStation(1);
             var s = sim.Station;
             s.Money = 100000;
-            var origin = FoundationTests.Foundations(sim, 6, 3);
+            var origin = FoundationTests.Foundations(sim, 15, 8);
             sim.Execute(new PlaceBuilding(BuildingType.IceRefinery, origin), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, new Cell(origin.X + 2, origin.Y)), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, new Cell(origin.X + 4, origin.Y)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, new Cell(origin.X + 5, origin.Y)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, new Cell(origin.X + 10, origin.Y)), out _);
 
             s.FuelStock = 500; // above the tanker threshold, below full
             sim.Advance(10);
@@ -196,7 +197,7 @@ namespace Waystation.Sim.Tests
             s.Money = 100000;
             Assert.That(s.AutoClearance, Is.False);
 
-            sim.Execute(new PlaceBuilding(BuildingType.AtcTower, FoundationTests.Foundations(sim, 2, 2)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.AtcTower, FoundationTests.Foundations(sim, 5, 5)), out _);
             sim.Advance(0.1);
             Assert.That(s.AtcOnline);
 
@@ -218,7 +219,7 @@ namespace Waystation.Sim.Tests
             Assert.That(error, Does.Contain("no power switch"));
 
             s.Money = 10000;
-            var pad = new Cell(s.Hub.Origin.X + 3, s.Hub.Origin.Y);
+            var pad = new Cell(s.Hub.Origin.X + s.Hub.Def.Width, s.Hub.Origin.Y);
             sim.Execute(new PlaceBuilding(BuildingType.LandingPad, pad), out _);
             var b = s.BuildingAt(pad);
             Assert.That(sim.Execute(new SetEnabled(b.Id, false), out error), Is.True, error);
@@ -233,13 +234,13 @@ namespace Waystation.Sim.Tests
             var sim = GameSetup.NewStation(5);
             var s = sim.Station;
             s.Money = 100000;
-            var origin = FoundationTests.Foundations(sim, 6, 4);
+            var origin = FoundationTests.Foundations(sim, 16, 10);
             sim.Execute(new PlaceBuilding(BuildingType.IceRefinery, origin), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, new Cell(origin.X + 2, origin.Y)), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.PilotLounge, new Cell(origin.X + 4, origin.Y)), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.CommsArray, new Cell(origin.X + 2, origin.Y + 2)), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.BatteryBank, new Cell(origin.X + 4, origin.Y + 2)), out _);
-            sim.Execute(new PlaceBuilding(BuildingType.FuelCellGenerator, new Cell(origin.X + 5, origin.Y + 2)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.SolarArray, new Cell(origin.X + 5, origin.Y)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.PilotLounge, new Cell(origin.X + 10, origin.Y)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.CommsArray, new Cell(origin.X + 5, origin.Y + 5)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.BatteryBank, new Cell(origin.X + 10, origin.Y + 5)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.FuelCellGenerator, new Cell(origin.X + 13, origin.Y + 5)), out _);
             s.AutoAssign = true;
             double start = s.Money;
             double income = s.Revenue, expenses = s.Expenses;

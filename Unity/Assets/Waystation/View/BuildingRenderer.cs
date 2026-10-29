@@ -118,6 +118,17 @@ namespace Waystation.View
         Material _material;
         Station _station;
 
+        /// <summary>
+        /// Placeholder models (and the first pad art) are authored at "design scale", 1 unit = 5 m, and
+        /// scaled up by this into world units (1 unit = 1 cell = 2 m). Walkway and foundation tiles are
+        /// authored at world scale. Installed building art of any scale is fitted to its footprint.
+        /// </summary>
+        public const float DesignScale = 2.5f;
+
+        /// <summary>A building's footprint in design units, less a small gap between neighbours.</summary>
+        static float DesignWidth(BuildingDef def) => def.Width / DesignScale - 0.1f;
+        static float DesignDepth(BuildingDef def) => def.Height / DesignScale - 0.1f;
+
         // Placement animation: new buildings drop into place, thump down and kick up dust.
         const float DropSeconds = 0.42f, SettleSeconds = 0.3f, TileDropSeconds = 0.2f, TileSettleSeconds = 0.14f;
         static readonly Color FlashColor = MeshBuilder.Hex("#ffe2b8");
@@ -172,6 +183,7 @@ namespace Waystation.View
                 var root = new GameObject($"{s.Label(b)} #{b.Id}");
                 root.transform.SetParent(transform, false);
                 root.transform.position = Center(b, s.Width, s.Height);
+                if (!b.Def.IsPaintable) root.transform.localScale = Vector3.one * DesignScale;
                 _objects.Add(root);
                 _roots[b.Id] = root.transform;
                 bool powered = b.Operating;
@@ -190,14 +202,15 @@ namespace Waystation.View
                         break;
                     default:
                         string key = powered ? b.Type.ToString() : b.Type + "_Dark";
+                        var fit = new Vector2(b.Def.Width - 0.2f, b.Def.Height - 0.2f);
                         if (b.Def.RequiresFoundation)
                         {
-                            Spawn(root, b.Type.ToString(), key, () => ModulePlaceholder(b.Type, powered), Vector3.zero, Quaternion.identity);
+                            Spawn(root, b.Type.ToString(), key, () => ModulePlaceholder(b.Type, powered), Vector3.zero, Quaternion.identity, fit: fit);
                             AddModuleFx(root, b, powered);
                         }
                         else
                         {
-                            Spawn(root, b.Type.ToString(), key, () => Placeholder(b.Type, powered), Vector3.zero, Quaternion.identity);
+                            Spawn(root, b.Type.ToString(), key, () => Placeholder(b.Type, powered), Vector3.zero, Quaternion.identity, fit: fit);
                         }
                         var padArt = root.GetComponentInChildren<PadArtLighting>();
                         if (padArt != null) padArt.SetPowered(powered);
@@ -235,6 +248,7 @@ namespace Waystation.View
                 return art != null && art.MovingSocket != null ? root.transform.InverseTransformPoint(art.MovingSocket.position) : fallback;
             }
             var def = BuildingCatalog.Get(type);
+            if (!def.IsPaintable) root.transform.localScale = Vector3.one * DesignScale;
             switch (type)
             {
                 case BuildingType.Walkway:
@@ -304,7 +318,8 @@ namespace Waystation.View
                 bool tile = b.Def.IsPaintable;
                 float drop = tile ? TileDropSeconds : DropSeconds;
                 float settle = tile ? TileSettleSeconds : SettleSeconds;
-                float height = tile ? 0.6f : 2.4f;
+                float height = tile ? 1f : 6f;
+                float scale = tile ? 1f : DesignScale;
                 var rest = Center(b, _station.Width, _station.Height);
                 float t = now - a.Start;
 
@@ -313,7 +328,7 @@ namespace Waystation.View
                     // Falling, accelerating, slightly stretched.
                     float k = t / drop;
                     root.position = rest + Vector3.up * (height * (1f - k * k));
-                    root.localScale = new Vector3(0.94f + 0.06f * k, 1.06f - 0.06f * k, 0.94f + 0.06f * k);
+                    root.localScale = scale * new Vector3(0.94f + 0.06f * k, 1.06f - 0.06f * k, 0.94f + 0.06f * k);
                     continue;
                 }
 
@@ -329,10 +344,10 @@ namespace Waystation.View
                 float s = Mathf.Clamp01((t - drop) / settle);
                 float squash = Mathf.Sin(s * Mathf.PI) * (1f - s) * (tile ? 0.12f : 0.18f);
                 root.position = rest;
-                root.localScale = new Vector3(1f + squash * 0.5f, 1f - squash, 1f + squash * 0.5f);
+                root.localScale = scale * new Vector3(1f + squash * 0.5f, 1f - squash, 1f + squash * 0.5f);
                 if (s >= 1f)
                 {
-                    root.localScale = Vector3.one;
+                    root.localScale = Vector3.one * scale;
                     (done ??= new List<int>()).Add(kv.Key);
                 }
             }
@@ -358,7 +373,7 @@ namespace Waystation.View
         void AddFixtures(GameObject root, Building b)
         {
             var t = root.transform;
-            float w = b.Def.Width - 0.1f, h = b.Def.Height - 0.1f;
+            float w = DesignWidth(b.Def), h = DesignDepth(b.Def);
             bool failing = b.Id % 5 == 3; // the odd lamp is always on its way out
 
             switch (b.Type)
@@ -433,7 +448,7 @@ namespace Waystation.View
         void AddPadFx(GameObject root, Building b, bool powered)
         {
             var t = root.transform;
-            float w = b.Def.Width - 0.1f, h = b.Def.Height - 0.1f;
+            float w = DesignWidth(b.Def), h = DesignDepth(b.Def);
             var fx = new PadFx();
 
             var status = new GameObject("StatusLight");
@@ -491,9 +506,9 @@ namespace Waystation.View
             string prefab = enclosed ? "Walkway_InsetLight" : "Walkway_Lamp";
             string key = prefab + (powered ? "" : "_Dark");
             var go = Spawn(root, prefab, key, () => enclosed ? InsetGuideLights(powered) : WalkwayLamp(powered), Vector3.zero, rotation);
-            var fallback = enclosed ? new Vector3(0f, .14f, 0f) : rotation * new Vector3(.38f, .70f, .38f);
+            var fallback = enclosed ? new Vector3(0f, .14f, 0f) : rotation * new Vector3(.26f, 1.14f, .26f);
             var mode = (b.Origin.X + b.Origin.Y) % 11 == 0 ? FxLightMode.Flicker : FxLightMode.Steady;
-            BindTileFixture(root, go, powered, true, fallback, Sodium, enclosed ? .35f : .65f, 1.8f, mode);
+            BindTileFixture(root, go, powered, true, fallback, Sodium, enclosed ? .35f : .65f, 3f, mode);
         }
 
         void AddFoundationLights(GameObject root, Building b, int mask, bool powered)
@@ -538,7 +553,7 @@ namespace Waystation.View
         void AddEmergencyLamp(GameObject root, Building b)
         {
             Spawn(root, "EmergencyLamp", "EmergencyLamp", EmergencyLamp, Vector3.zero, Quaternion.identity, prefabAllowed: false);
-            FxLight.Create(root.transform, new Vector3(0f, 1.15f, 0f), Alarm, 1.4f, Mathf.Max(2.4f, b.Def.Width * 0.9f), FxLightMode.Flicker);
+            FxLight.Create(root.transform, new Vector3(0f, 1.15f, 0f), Alarm, 1.4f, Mathf.Max(2.4f, b.Def.Width / DesignScale * 0.9f), FxLightMode.Flicker);
         }
 
         // ------------------------------------------------------------------ modules: moving parts and status
@@ -638,7 +653,7 @@ namespace Waystation.View
         {
             var b = new MeshBuilder();
             var def = BuildingCatalog.Get(type);
-            float w = def.Width - 0.1f, h = def.Height - 0.1f;
+            float w = DesignWidth(def), h = DesignDepth(def);
             float glow = powered ? 1f : 0f;
             Color Lamp(Color c) => powered ? c : Dead;
 
@@ -921,7 +936,8 @@ namespace Waystation.View
 
         // ------------------------------------------------------------------ spawning
 
-        GameObject Spawn(GameObject parent, string prefabKey, string meshKey, System.Func<Mesh> placeholder, Vector3 position, Quaternion rotation, bool prefabAllowed = true)
+        /// <param name="fit">For building art: the footprint (world units) to fit installed art to.</param>
+        GameObject Spawn(GameObject parent, string prefabKey, string meshKey, System.Func<Mesh> placeholder, Vector3 position, Quaternion rotation, bool prefabAllowed = true, Vector2? fit = null)
         {
             var prefab = prefabAllowed ? LoadPrefab(prefabKey) : null;
             GameObject go;
@@ -939,6 +955,7 @@ namespace Waystation.View
             }
             go.transform.localPosition = position;
             go.transform.localRotation = rotation;
+            if (prefab != null && fit.HasValue) ArtFit.Footprint(go, fit.Value.x, fit.Value.y);
             return go;
         }
 
@@ -956,12 +973,12 @@ namespace Waystation.View
         {
             var b = new MeshBuilder();
             var def = BuildingCatalog.Get(type);
-            float w = def.Width - 0.1f, h = def.Height - 0.1f;
+            float w = DesignWidth(def), h = DesignDepth(def);
             float glow = powered ? 1f : 0f;
             var lamp = powered ? Sodium : Dead;
 
             b.AddBox(new Vector3(0f, -0.12f, 0f), new Vector3(w, 0.24f, h), Deck);
-            b.AddSpike(new Vector3(0f, -0.24f, 0f), new Vector3(0f, -0.4f - def.Width * 0.3f, 0f), Mathf.Min(w, h) * 0.45f, 4, Underside, 45f);
+            b.AddSpike(new Vector3(0f, -0.24f, 0f), new Vector3(0f, -0.4f - def.Width / DesignScale * 0.3f, 0f), Mathf.Min(w, h) * 0.45f, 4, Underside, 45f);
             AddEdgeStripes(b, w, h);
             foreach (var (sx, sz) in new[] { (1, 1), (1, -1), (-1, 1), (-1, -1) })
                 b.AddBox(new Vector3(sx * (w / 2f - 0.12f), 0.04f, sz * (h / 2f - 0.12f)), Vector3.one * 0.08f, lamp, 0f, glow * 0.6f);
@@ -1064,10 +1081,12 @@ namespace Waystation.View
         {
             var b = new MeshBuilder();
             const float z = 0.46f;
+            // 1 cell = 2 m: a 1.1 m handrail, a knee rail and posts every metre.
             foreach (float x in new[] { -0.46f, 0f, 0.46f })
-                b.AddBox(new Vector3(x, 0.18f, z), new Vector3(0.05f, 0.36f, 0.05f), Post);
-            b.AddBox(new Vector3(0f, 0.37f, z), new Vector3(0.98f, 0.04f, 0.05f), Stripe);
-            b.AddBox(new Vector3(0f, 0.19f, z), new Vector3(0.98f, 0.025f, 0.03f), Post);
+                b.AddBox(new Vector3(x, 0.27f, z), new Vector3(0.04f, 0.54f, 0.04f), Post);
+            b.AddBox(new Vector3(0f, 0.55f, z), new Vector3(0.98f, 0.035f, 0.045f), Stripe);
+            b.AddBox(new Vector3(0f, 0.28f, z), new Vector3(0.98f, 0.02f, 0.025f), Post);
+            b.AddBox(new Vector3(0f, 0.04f, z), new Vector3(0.98f, 0.06f, 0.015f), Post);
             return b.ToMesh("Walkway_Railing");
         }
 
@@ -1075,8 +1094,9 @@ namespace Waystation.View
         static Mesh WalkwayLamp(bool powered)
         {
             var b = new MeshBuilder();
-            b.AddBox(new Vector3(0.38f, 0.35f, 0.38f), new Vector3(0.05f, 0.7f, 0.05f), Post);
-            b.AddBox(new Vector3(0.38f, 0.72f, 0.38f), new Vector3(0.14f, 0.07f, 0.14f), powered ? Sodium : Dead, 45f, powered ? 1f : 0f);
+            b.AddBox(new Vector3(0.4f, 0.6f, 0.4f), new Vector3(0.05f, 1.2f, 0.05f), Post);
+            b.AddBox(new Vector3(0.33f, 1.2f, 0.33f), new Vector3(0.2f, 0.04f, 0.04f), Post, 45f);
+            b.AddBox(new Vector3(0.26f, 1.17f, 0.26f), new Vector3(0.14f, 0.06f, 0.14f), powered ? Sodium : Dead, 45f, powered ? 1f : 0f);
             return b.ToMesh(powered ? "Walkway_Lamp" : "Walkway_Lamp_Dark");
         }
 

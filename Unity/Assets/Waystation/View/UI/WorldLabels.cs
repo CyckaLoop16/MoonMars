@@ -51,7 +51,7 @@ namespace Waystation.View
             if (b == null) return;
             var label = Ui.Text($"+{amount:N0} cr", "ws-float-money").AddTo(Root);
             label.pickingMode = PickingMode.Ignore;
-            _floaters.Add(new Floater { Label = label, World = Center(b) + Vector3.up * 0.6f });
+            _floaters.Add(new Floater { Label = label, World = Center(b) + Vector3.up * 2f });
             Place(label, _floaters[_floaters.Count - 1].World);
         }
 
@@ -89,7 +89,7 @@ namespace Waystation.View
                 var label = Get(_ships, ship.Id, "ws-world-label");
                 Ui.Set(label, text);
                 Ui.Tone(label, tone);
-                Place(label, world + Vector3.up * 1.1f);
+                Place(label, world + Vector3.up * 4f);
             }
             Prune(_ships);
 
@@ -105,7 +105,7 @@ namespace Waystation.View
                     continue;
                 }
                 float t = f.Age / MoneyLifetime;
-                Place(f.Label, f.World + Vector3.up * (t * 1.4f));
+                Place(f.Label, f.World + Vector3.up * (t * 3f));
                 f.Label.style.opacity = 1f - t * t;
             }
         }

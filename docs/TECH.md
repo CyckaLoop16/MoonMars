@@ -26,11 +26,19 @@
 Art is produced **outside the codebase** (GPT). Code ships placeholders, and every visual has a
 drop-in slot. Put a prefab at the path and it replaces the placeholder with no code changes.
 
+**Scale:** 1 world unit = 1 grid cell = **2 m**. Author new art at that scale (a 16 m landing pad is 8
+units across, a person 0.9 units tall). Art at any other scale still works: `ArtFit` scales building
+art uniformly to its footprint, ships to their length (shuttle 5.5, hauler 8.5 units) and people to
+0.9 units tall. The placeholder models, and the first industrial pad art, are authored at a "design
+scale" of 1 unit = 5 m and scaled up by `BuildingRenderer.DesignScale` (2.5); lamps and effects
+attached to them scale with them (`FxLight.WorldRange`, particle hierarchy scaling). Walkway and
+foundation tiles stay 1 × 1 unit.
+
 | Asset | Drop-in path | Conventions |
 |---|---|---|
-| Starter pad | `Unity/Assets/Waystation/Resources/Buildings/StarterPad.prefab` | Pivot at footprint centre, deck top at Y=0, 1 unit = 1 grid cell (3×3) |
-| Landing pad | `.../Resources/Buildings/LandingPad.prefab` | 3×3 |
-| Hangar | `.../Resources/Buildings/Hangar.prefab` | 4×4, open enough that a docked ship is visible |
+| Starter pad | `Unity/Assets/Waystation/Resources/Buildings/StarterPad.prefab` | Pivot at footprint centre, deck top at Y=0; footprint 8×8 cells (16 m) |
+| Landing pad | `.../Resources/Buildings/LandingPad.prefab` | 8×8 cells |
+| Hangar | `.../Resources/Buildings/Hangar.prefab` | 10×10 cells, open enough that a docked ship is visible |
 | Walkway deck | `.../Resources/Buildings/Walkway_Deck.prefab` | Full 1×1 grated catwalk deck |
 | Walkway railing | `.../Resources/Buildings/Walkway_Railing.prefab` | Railing along the cell's **+Z** edge; placed (rotated) on every side with no neighbour |
 | Foundation | `.../Resources/Buildings/Foundation.prefab` | Full 1×1 heavy deck plate |

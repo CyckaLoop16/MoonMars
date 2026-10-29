@@ -10,8 +10,8 @@ namespace Waystation.View
     {
         public float Pitch = 35f;
         public float PanSpeed = 14f;
-        public float MinSize = 4f;
-        public float MaxSize = 28f;
+        public float MinSize = 6f;
+        public float MaxSize = 80f;
         public float RotateSmoothing = 10f;
 
         Camera _camera;
@@ -19,7 +19,7 @@ namespace Waystation.View
         Rect _bounds;
         float _targetYaw = 45f;
         float _yaw = 45f;
-        float _size = 11f;
+        float _size = 26f;
         Vector2 _lastMouse;
 
         public void Init(Camera cam, Vector3 pivot, Rect boundsXZ)
@@ -38,7 +38,7 @@ namespace Waystation.View
         public void FocusOn(Vector3 world)
         {
             _pivot = new Vector3(world.x, 0f, world.z);
-            _size = Mathf.Min(_size, 9f);
+            _size = Mathf.Min(_size, 20f);
             if (_camera != null) Apply();
         }
 

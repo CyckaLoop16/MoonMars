@@ -8,7 +8,8 @@ namespace Waystation.Sim
     public static class Rules
     {
         public const double StartingMoney = 1200;
-        public const int PlotSize = 32;
+        /// <summary>Build area, in cells (2 m each): 192 × 192 m.</summary>
+        public const int PlotSize = 96;
 
         public const double ApproachSeconds = 4;
         public const double LandingSeconds = 4;
@@ -676,8 +677,8 @@ namespace Waystation.Sim
         public static Simulation NewStation(int seed)
         {
             var s = new Station(Rules.PlotSize, Rules.PlotSize, seed) { Money = Rules.StartingMoney };
-            int mid = Rules.PlotSize / 2 - 1;
-            s.Buildings.Add(new Building { Id = s.NextBuildingId++, Type = BuildingType.StarterPad, Origin = new Cell(mid - 1, mid - 1) });
+            var hubDef = BuildingCatalog.Get(BuildingType.StarterPad);
+            s.Buildings.Add(new Building { Id = s.NextBuildingId++, Type = BuildingType.StarterPad, Origin = new Cell((Rules.PlotSize - hubDef.Width) / 2, (Rules.PlotSize - hubDef.Height) / 2) });
             s.RecomputeConnections();
             s.FuelStock = s.FuelCapacity;
             s.BatteryCapacity = s.Buildings.Sum(b => b.Def.BatteryCapacity);
