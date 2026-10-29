@@ -25,6 +25,10 @@ namespace Waystation.View
     public sealed class ShipRenderer : MonoBehaviour
     {
         const float PadHeight = 0.05f;
+        /// <summary>Placeholder ships are modelled small; this brings them to size (shuttle ~11 m, hauler ~17 m).</summary>
+        static float PlaceholderScale(ShipClass cls) => cls == ShipClass.Shuttle ? 3.6f : 3.4f;
+        /// <summary>Length installed ship art is fitted to, in cells (2 m).</summary>
+        static float ArtLength(ShipClass cls) => cls == ShipClass.Shuttle ? 5.5f : 8.5f;
 
         sealed class Visual
         {
@@ -72,6 +76,9 @@ namespace Waystation.View
         Material _material;
         Station _station;
         int _gridWidth, _gridHeight;
+        /// <summary>How far the built station reaches from the centre (cells), for the holding pattern.</summary>
+        float _extent = 10f;
+        int _extentRevision = -1;
 
         void Awake()
         {
@@ -99,6 +106,18 @@ namespace Waystation.View
         {
             if (_station == null) return;
             float dt = Time.deltaTime;
+            if (_extentRevision != _station.Revision)
+            {
+                _extentRevision = _station.Revision;
+                _extent = 10f;
+                foreach (var b in _station.Buildings)
+                {
+                    float x0 = b.Origin.X - _gridWidth / 2f, z0 = b.Origin.Y - _gridHeight / 2f;
+                    float x1 = x0 + b.Def.Width, z1 = z0 + b.Def.Height;
+                    float far = Mathf.Max(Mathf.Max(Mathf.Abs(x0), Mathf.Abs(x1)), Mathf.Max(Mathf.Abs(z0), Mathf.Abs(z1)));
+                    _extent = Mathf.Max(_extent, far * 1.15f);
+                }
+            }
 
             var holding = _station.Hailing.Select(s => s.Id).ToList();
             bool blinkOn = Mathf.Repeat(Time.unscaledTime, 0.8f) < 0.5f;
@@ -150,13 +169,13 @@ namespace Waystation.View
                 case ShipState.Hailing:
                     return HoldingPoint(slot);
                 case ShipState.Landing:
-                    return pad + Vector3.up * (PadHeight + 4f * (1f - EaseOut(p)));
+                    return pad + Vector3.up * (PadHeight + 14f * (1f - EaseOut(p)));
                 case ShipState.Servicing:
-                    return pad + Vector3.up * (PadHeight + 0.03f * Mathf.Sin(Time.time * 2f + ship.Id));
+                    return pad + Vector3.up * (PadHeight + 0.06f * Mathf.Sin(Time.time * 2f + ship.Id));
                 case ShipState.Departing:
                 {
                     var from = ship.BuildingId.HasValue ? pad : HoldingPoint(slot);
-                    return from + Vector3.up * (PadHeight + 6f * p * p) + ExitDirection(ship) * (40f * p * p * p);
+                    return from + Vector3.up * (PadHeight + 20f * p * p) + ExitDirection(ship) * (140f * p * p * p);
                 }
                 default:
                     return pad;
@@ -187,15 +206,16 @@ namespace Waystation.View
 
         Vector3 HoldingPoint(int slot)
         {
-            float radius = Mathf.Max(_gridWidth, _gridHeight) * 0.5f + 3f + (slot % 2) * 1.5f;
-            float angle = Time.time * 0.12f + slot * (2f * Mathf.PI / Rules.MaxHolding);
-            return new Vector3(Mathf.Cos(angle) * radius, 3.5f + (slot % 3) * 0.8f, Mathf.Sin(angle) * radius);
+            // Circle just outside what's been built, not the whole build area.
+            float radius = _extent + 14f + (slot % 2) * 5f;
+            float angle = Time.time * 0.06f + slot * (2f * Mathf.PI / Rules.MaxHolding);
+            return new Vector3(Mathf.Cos(angle) * radius, 10f + (slot % 3) * 2.5f, Mathf.Sin(angle) * radius);
         }
 
         static Vector3 EntryPoint(Ship ship)
         {
             float a = ship.Id * 2.39996f; // golden angle: arrivals come from all around
-            return new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 60f + Vector3.up * 8f;
+            return new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 160f + Vector3.up * 30f;
         }
 
         static Vector3 ExitDirection(Ship ship)
@@ -219,11 +239,13 @@ namespace Waystation.View
             if (prefab != null)
             {
                 go = Instantiate(prefab, transform);
+                ArtFit.Length(go, ArtLength(ship.Class));
             }
             else
             {
                 go = new GameObject();
                 go.transform.SetParent(transform, false);
+                go.transform.localScale = Vector3.one * PlaceholderScale(ship.Class);
                 var key = (ship.Class, LiveryFor(ship));
                 if (!_meshes.TryGetValue(key, out var mesh)) _meshes[key] = mesh = Placeholder(key.Item1, key.Item2);
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;

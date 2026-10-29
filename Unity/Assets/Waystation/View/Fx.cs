@@ -114,13 +114,13 @@ namespace Waystation.View
 
                 case FxPreset.Dust:
                     main.startLifetime = new ParticleSystem.MinMaxCurve(14f, 22f);
-                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.03f, 0.12f);
-                    main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
-                    main.maxParticles = 500;
+                    main.startSpeed = new ParticleSystem.MinMaxCurve(0.08f, 0.3f);
+                    main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.12f);
+                    main.maxParticles = 1500;
                     main.prewarm = true;
-                    Rate(ps, 10f);
+                    Rate(ps, 30f);
                     shape.shapeType = ParticleSystemShapeType.Box;
-                    shape.scale = new Vector3(40f, 6f, 40f);
+                    shape.scale = new Vector3(110f, 14f, 110f);
                     shape.randomDirectionAmount = 1f;
                     color.color = Fade(Hex("#dbe8ff"), Hex("#a8c0e0"), 0.5f, 0f);
                     size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.6f));
@@ -186,12 +186,13 @@ namespace Waystation.View
             var size = ps.sizeOverLifetime;
             size.enabled = true;
             var renderer = go.GetComponent<ParticleSystemRenderer>();
+            float k = Mathf.Max(1f, radius * 0.45f); // bigger buildings kick up bigger clouds
 
             if (sparks)
             {
                 main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.5f);
-                main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 3.5f);
-                main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.06f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f * k, 3.5f * k);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.03f * k, 0.06f * k);
                 color.color = Fade(Hex("#fff1c4"), Hex("#ff7a1a"), 1f, 0f);
                 size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.3f));
                 renderer.renderMode = ParticleSystemRenderMode.Stretch;
@@ -202,8 +203,8 @@ namespace Waystation.View
             else
             {
                 main.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.2f);
-                main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 1.4f);
-                main.startSize = new ParticleSystem.MinMaxCurve(0.15f, 0.35f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f * k, 1.4f * k);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.15f * k, 0.35f * k);
                 main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
                 color.color = Fade(Hex("#b8b4ac"), Hex("#6e6a64"), 0.55f, 0f);
                 size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 2.4f));

@@ -79,7 +79,8 @@ namespace Waystation.EditorTools
                 }
 
                 var station = new Station(16,14,912);
-                station.Buildings.Add(new Building { Id = 1, Type = BuildingType.StarterPad, Origin = new Cell(1,6) });
+                // The 8 × 8 hub sits just west of the walkways (x 4–9).
+                station.Buildings.Add(new Building { Id = 1, Type = BuildingType.StarterPad, Origin = new Cell(-4,3) });
                 int id = 2;
                 for (int x = 4; x <= 9; x++) station.Buildings.Add(new Building { Id = id++, Type = BuildingType.Walkway, Origin = new Cell(x,7) });
                 foreach (int y in new[] {6,8}) station.Buildings.Add(new Building { Id = id++, Type = BuildingType.Walkway, Origin = new Cell(7,y) });

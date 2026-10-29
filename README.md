@@ -64,14 +64,14 @@ docs/                           design, tech, roadmap
 
 Controls: clear a hailing ship with its pad button in the **Comms** panel (right), or `T` / click the
 ship, then click a pad · click a pad or ship to **inspect** it · build with the cards at the bottom or
-`P` pad · `H` hangar · `C` walkway · `F` foundation · `X` demolish · drag to paint walkways and
-foundations · `G` build grid · `L` log · `M` ledger · `Esc` closes a window, then the tool, then the selection, then
+`P` pad · `H` hangar · `C` walkway · `F` foundation · `X` demolish · drag to paint (foundations fill an area,
+walkways run in an L) · `G` build grid · `L` log · `M` ledger · `Esc` closes a window, then the tool, then the selection, then
 opens the menu · `Space` pause · `F9` cheat +10,000 cr (`Shift+F9` +100,000) · `1`/`2`/`3` speed · `WASD`/right-drag pan · wheel zoom · `Q`/`E` rotate.
 
 **First steps:** when a ship hails (blinking cyan beacon, Comms panel), clear it to Pad 1. When you
 can afford it, build a second landing pad touching the first, or anywhere with a walkway linking it
 back. Save up for a hangar to start taking haulers, but watch the **POWER** gauge first: a hangar
-overloads the starter grid. Paint a 2×2 patch of foundations (`F`) next to the station, put a
+overloads the starter grid. Drag out a 5×5 patch of foundations (`F`) next to the station, put a
 **Solar Array** on it (Power tab), and add a **Battery Bank** so the lights stay on through the eclipse.
 
 ### Run the sim tests (no Unity needed)

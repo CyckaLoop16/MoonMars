@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -43,7 +44,6 @@ namespace Waystation.View
         float _accumulator;
         int _resumeSpeed = 1;
         int _renderedRevision = -1;
-        Cell? _lastPaintedCell;
 
         public Simulation Sim { get; private set; }
         public Station Station => Sim.Station;
@@ -61,6 +61,9 @@ namespace Waystation.View
         public Ship ClearingShip { get; private set; }
         /// <summary>Why the current placement or clearance isn't allowed, for the HUD; null when it is.</summary>
         public string PlacementError { get; private set; }
+        /// <summary>What a drag-paint would place and cost, for the HUD.</summary>
+        public string PlacementInfo { get; private set; }
+        Cell? _dragStart;
         public string LastError { get; private set; }
         public float LastErrorTime { get; private set; } = -100f;
         public Camera Camera => _camera;
@@ -278,7 +281,7 @@ namespace Waystation.View
         {
             Tool = tool;
             if (tool != Tool.ClearToLand) ClearingShip = null;
-            _lastPaintedCell = null;
+            _dragStart = null;
         }
 
         /// <summary>Start clearing a hailing ship: the next click on a pad or hangar assigns it.</summary>
@@ -304,6 +307,7 @@ namespace Waystation.View
         void HandlePointer()
         {
             PlacementError = null;
+            if (Tool != Tool.Build) PlacementInfo = null;
             var mouse = InputShim.MousePosition();
             if (MenuOpen)
             {
@@ -354,19 +358,78 @@ namespace Waystation.View
         void HandleBuild()
         {
             var def = BuildingCatalog.Get(BuildType);
+            if (def.IsPaintable)
+            {
+                HandlePaint(def);
+                return;
+            }
+
+            PlacementInfo = null;
             var place = new PlaceBuilding(BuildType, OriginFor(HoverCell.Value, def));
             PlacementError = place.Validate(Station);
             ShowGhost(place.Origin, def.Width, def.Height, PlacementError == null);
+            if (InputShim.SelectPressed() && PlacementError == null) TryExecute(place);
+        }
 
-            bool click = InputShim.SelectPressed();
-            // Walkways and foundations paint while the button is held, one cell at a time.
-            bool paint = def.IsPaintable && InputShim.SelectHeld() && _lastPaintedCell != HoverCell;
-            if ((click || paint) && PlacementError == null)
+        /// <summary>
+        /// Walkways and foundations: press, drag and release. Foundations fill the rectangle; walkways
+        /// run in an L (along X, then along Y). Cells that are already taken are skipped.
+        /// </summary>
+        void HandlePaint(BuildingDef def)
+        {
+            if (InputShim.SelectPressed()) _dragStart = HoverCell;
+            var from = _dragStart ?? HoverCell.Value;
+            var to = HoverCell.Value;
+            var cells = def.IsFloor ? Rectangle(from, to) : LPath(from, to);
+
+            var valid = new List<Cell>();
+            string firstError = null;
+            foreach (var c in cells)
             {
-                TryExecute(place);
-                _lastPaintedCell = HoverCell;
+                var error = new PlaceBuilding(BuildType, c).Validate(Station);
+                if (error == null || error.Contains("credits")) valid.Add(c);
+                else if (firstError == null) firstError = error;
             }
-            if (!InputShim.SelectHeld()) _lastPaintedCell = null;
+
+            double cost = valid.Count * def.Cost;
+            bool affordable = cost <= Station.Money;
+            PlacementError = valid.Count == 0 ? firstError : !affordable ? $"Needs {cost:N0} credits" : null;
+            PlacementInfo = valid.Count > 0 ? $"{valid.Count} × {def.Name} · {cost:N0} cr" : null;
+            ShowGhostCells(valid.Count > 0 ? valid : cells, PlacementError == null);
+
+            if (_dragStart.HasValue && !InputShim.SelectHeld())
+            {
+                if (PlacementError == null)
+                    foreach (var c in valid)
+                        if (!TryExecute(new PlaceBuilding(BuildType, c))) break;
+                _dragStart = null;
+            }
+        }
+
+        static List<Cell> Rectangle(Cell a, Cell b)
+        {
+            var cells = new List<Cell>();
+            for (int x = Mathf.Min(a.X, b.X); x <= Mathf.Max(a.X, b.X); x++)
+            for (int y = Mathf.Min(a.Y, b.Y); y <= Mathf.Max(a.Y, b.Y); y++)
+                cells.Add(new Cell(x, y));
+            return cells;
+        }
+
+        static List<Cell> LPath(Cell a, Cell b)
+        {
+            var cells = new List<Cell>();
+            int dx = b.X > a.X ? 1 : -1, dy = b.Y > a.Y ? 1 : -1;
+            for (int x = a.X; ; x += dx)
+            {
+                cells.Add(new Cell(x, a.Y));
+                if (x == b.X) break;
+            }
+            for (int y = a.Y + dy; a.Y != b.Y; y += dy)
+            {
+                cells.Add(new Cell(b.X, y));
+                if (y == b.Y) break;
+            }
+            return cells;
         }
 
         void HandleClearance(bool overHud)
@@ -465,6 +528,23 @@ namespace Waystation.View
             _ghostOutline.SetPosition(3, new Vector3(x1, y + 0.02f, z0));
             _ghostOutline.startColor = _ghostOutline.endColor = MeshBuilder.ToRenderSpace(color);
             _ghostOutline.enabled = true;
+        }
+
+        /// <summary>A ghost square on each cell (painting walkways and foundations).</summary>
+        void ShowGhostCells(List<Cell> cells, bool valid)
+        {
+            var color = valid ? MeshBuilder.Hex("#5dff9a") : MeshBuilder.Hex("#ff4d6a");
+            const float y = 0.05f, inset = 0.06f;
+            var b = new MeshBuilder();
+            foreach (var c in cells)
+            {
+                float x0 = c.X - Station.Width / 2f + inset, z0 = c.Y - Station.Height / 2f + inset;
+                float x1 = x0 + 1f - 2f * inset, z1 = z0 + 1f - 2f * inset;
+                b.AddQuad(new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), Vector3.up, color * 0.5f, false);
+            }
+            b.ApplyTo(_ghostFill.sharedMesh);
+            _ghostFill.gameObject.SetActive(true);
+            _ghostOutline.enabled = false;
         }
 
         void HideGhost()

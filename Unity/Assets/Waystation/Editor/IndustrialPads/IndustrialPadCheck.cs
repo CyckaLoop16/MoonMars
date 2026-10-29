@@ -57,10 +57,11 @@ namespace Waystation.EditorTools
                 }
 
                 root = new GameObject("Industrial Pad Lighting Check") { hideFlags = HideFlags.HideAndDontSave };
-                var station = new Station(16, 10, 831);
-                station.Buildings.Add(new Building { Id = 1, Type = BuildingType.StarterPad, Origin = new Cell(3, 3) });
-                station.Buildings.Add(new Building { Id = 3, Type = BuildingType.LandingPad, Origin = new Cell(6, 3) });
-                station.Buildings.Add(new Building { Id = 4, Type = BuildingType.LandingPad, Origin = new Cell(11, 3) });
+                // Pads are 8 × 8 cells (1 cell = 2 m): the hub and pad #3 touch, pad #4 stands apart.
+                var station = new Station(40, 14, 831);
+                station.Buildings.Add(new Building { Id = 1, Type = BuildingType.StarterPad, Origin = new Cell(2, 3) });
+                station.Buildings.Add(new Building { Id = 3, Type = BuildingType.LandingPad, Origin = new Cell(10, 3) });
+                station.Buildings.Add(new Building { Id = 4, Type = BuildingType.LandingPad, Origin = new Cell(22, 3) });
                 station.RecomputeConnections();
                 Require(station.Buildings[0].Connected && station.Buildings[1].Connected && !station.Buildings[2].Connected, "Test connection topology incorrect.");
                 var buildings = root.AddComponent<BuildingRenderer>();

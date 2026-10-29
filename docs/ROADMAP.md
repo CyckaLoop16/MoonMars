@@ -48,6 +48,17 @@
 - HUD: role icons and need/wish icons on comms cards, a "Wants" list in the ship inspector,
   visitors and earnings for service buildings
 
+## P1.3: Real-world scale ✅
+- 1 cell = 2 m: walkways 2 m wide, people 1.8 m, shuttles ~11 m, haulers ~17 m, pads 16 m, a 192 m build area
+- Drag-to-fill painting (foundation rectangles, walkway L-runs) with cost preview
+- Installed art auto-fitted to its slot; placeholders, lamps and FX scaled together
+
+## Next (agreed)
+- **Decks and trusses:** stack decks above and below, lifts between them, truss spines with modules
+  mounted on any side; people path-find across decks; the camera shows one deck at a time
+- **Docking arms** at the station's edge for freighters and warships (gangway to the station), and
+  S/M/L pads for smaller craft
+
 ## P1: Feel & feedback
 - Playtest and tune the first 15 minutes
 - Ship arrival/landing polish: thrusters, landing lights, refuelling hose, docking clamps

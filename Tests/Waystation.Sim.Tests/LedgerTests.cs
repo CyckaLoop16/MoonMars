@@ -13,7 +13,7 @@ namespace Waystation.Sim.Tests
             var s = sim.Station;
             s.AutoAssign = true;
             double start = s.Money;
-            sim.Execute(new PlaceBuilding(BuildingType.LandingPad, new Cell(s.Hub.Origin.X + 3, s.Hub.Origin.Y)), out _);
+            sim.Execute(new PlaceBuilding(BuildingType.LandingPad, new Cell(s.Hub.Origin.X + s.Hub.Def.Width, s.Hub.Origin.Y)), out _);
             sim.Execute(new PlaceBuilding(BuildingType.Walkway, new Cell(0, 0)), out _);
             sim.Execute(new Demolish(s.BuildingAt(new Cell(0, 0)).Id), out _);
             sim.Advance(8 * 60);
@@ -24,8 +24,8 @@ namespace Waystation.Sim.Tests
             Assert.That(income, Is.EqualTo(s.Revenue).Within(1e-6));
             Assert.That(expenses, Is.EqualTo(s.Expenses).Within(1e-6));
 
-            Assert.That(s.Ledger.Totals[(int)LedgerLine.Construction], Is.EqualTo(900 + 25));
-            Assert.That(s.Ledger.Totals[(int)LedgerLine.Refunds], Is.EqualTo(25 * Rules.DemolishRefund));
+            Assert.That(s.Ledger.Totals[(int)LedgerLine.Construction], Is.EqualTo(BuildingCatalog.Get(BuildingType.LandingPad).Cost + BuildingCatalog.Get(BuildingType.Walkway).Cost));
+            Assert.That(s.Ledger.Totals[(int)LedgerLine.Refunds], Is.EqualTo(BuildingCatalog.Get(BuildingType.Walkway).Cost * Rules.DemolishRefund));
             Assert.That(s.Ledger.Totals[(int)LedgerLine.LandingFees], Is.GreaterThan(0));
             Assert.That(s.Ledger.Totals[(int)LedgerLine.FuelSales], Is.GreaterThan(0));
             Assert.That(s.Ledger.Totals[(int)LedgerLine.Upkeep], Is.GreaterThan(0));
